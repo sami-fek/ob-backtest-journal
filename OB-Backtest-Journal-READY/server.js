@@ -138,6 +138,6 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.use((req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => console.log(`OB Journal running on http://localhost:${PORT}`));
