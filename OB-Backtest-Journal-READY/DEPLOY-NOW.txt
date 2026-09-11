@@ -1,0 +1,36 @@
+OB BACKTEST JOURNAL — SIMPLE DEPLOY
+
+1) SUPABASE
+- Create a free project at supabase.com
+- Open SQL Editor
+- Paste schema.sql and click Run
+- Copy Project URL
+- Copy the service_role key (keep it secret)
+
+2) GITHUB
+- Create a PRIVATE repository
+- Upload ALL files in this folder
+- Do NOT upload a real .env file or API keys
+
+3) RENDER
+- Create an account at render.com using GitHub
+- New -> Web Service
+- Select this repository
+- Build command: npm install
+- Start command: npm start
+- Add environment variables:
+  SUPABASE_URL = your Supabase Project URL
+  SUPABASE_SERVICE_ROLE_KEY = your Supabase service_role key
+  GROQ_API_KEY = your Groq API key
+- Click Create Web Service / Deploy
+
+4) DONE
+- Open the Render URL
+- Create/edit a trade
+- Refresh and confirm it remains saved
+- Open AI Coach and test a journal analysis
+- For chart analysis, attach/include the trade screenshot
+
+IMPORTANT
+- Never put GROQ_API_KEY or SUPABASE_SERVICE_ROLE_KEY in index.html, GitHub, or chat.
+- The existing UI and Model OB system are intentionally preserved.
