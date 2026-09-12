@@ -70,6 +70,24 @@ function disciplineEntryBlockReason() {
   if (d.hardStop) return `Hard stop active after ${d.threshold} consecutive losses. No more trades can be added until the losing streak is reset.`;
   return '';
 }
+
+function disciplineShowWarning(message) {
+  let popup = document.getElementById('discipline-warning-popup');
+  if (!popup) {
+    popup = document.createElement('div');
+    popup.id = 'discipline-warning-popup';
+    popup.className = 'discipline-warning-popup';
+    document.body.appendChild(popup);
+  }
+  popup.innerHTML = `<div class="discipline-warning-icon">!</div><div class="discipline-warning-copy"><strong>Trade blocked</strong><span>${escapeHtml(message)}</span></div><button type="button" class="discipline-warning-close" aria-label="Close">×</button>`;
+  popup.classList.remove('show');
+  void popup.offsetWidth;
+  popup.classList.add('show');
+  popup.querySelector('.discipline-warning-close').onclick = () => popup.classList.remove('show');
+  clearTimeout(window.__obDisciplineWarningTimer);
+  window.__obDisciplineWarningTimer = setTimeout(() => popup.classList.remove('show'), 5000);
+}
+
 function disciplineInstallEntryGuard() {
   if (window.__obDisciplineEntryGuard) return;
   window.__obDisciplineEntryGuard = true;
@@ -80,7 +98,7 @@ function disciplineInstallEntryGuard() {
     if (!reason) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    alert(reason);
+    disciplineShowWarning(reason);
     disciplineRender();
   }, true);
 }
@@ -89,7 +107,7 @@ function disciplineStyles() {
   if (document.getElementById('discipline-styles')) return;
   const style = document.createElement('style'); style.id = 'discipline-styles';
   style.textContent = `
-    .discipline-panel{margin-bottom:14px}.discipline-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.discipline-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:rgba(255,255,255,.45)}.discipline-label{font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em}.discipline-value{font-size:19px;font-weight:700;margin-top:3px}.discipline-sub{font-size:10.5px;color:var(--ink-faint);margin-top:3px}.discipline-alert{margin-top:10px;border:1px solid rgba(200,60,60,.25);background:rgba(200,60,60,.06);border-radius:9px;padding:9px 10px;font-size:11.5px;color:var(--loss);font-weight:600}.discipline-clean{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;font-size:11px;color:var(--ink-soft)}.discipline-trend{display:flex;gap:6px;margin-top:8px;overflow:auto}.discipline-week{min-width:64px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px}.discipline-week b{display:block;font-size:12px}.discipline-week span{font-size:9px;color:var(--ink-faint)}.discipline-settings{display:flex;gap:7px;align-items:end;margin-top:10px;flex-wrap:wrap}.discipline-settings .field{min-width:120px}.discipline-settings input{font-size:12px}.discipline-save{background:rgba(255,255,255,.75);border:1px solid var(--line-strong);color:var(--ink-soft);border-radius:7px;padding:7px 10px;font-size:11px;cursor:pointer;font-family:inherit}.discipline-save:hover{border-color:var(--accent);color:var(--accent)}@media(max-width:700px){.discipline-grid{grid-template-columns:1fr 1fr}}
+    .discipline-panel{margin-bottom:14px}.discipline-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.discipline-card{border:1px solid var(--line);border-radius:10px;padding:10px;background:rgba(255,255,255,.45)}.discipline-label{font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em}.discipline-value{font-size:19px;font-weight:700;margin-top:3px}.discipline-sub{font-size:10.5px;color:var(--ink-faint);margin-top:3px}.discipline-alert{margin-top:10px;border:1px solid rgba(200,60,60,.25);background:rgba(200,60,60,.06);border-radius:9px;padding:9px 10px;font-size:11.5px;color:var(--loss);font-weight:600}.discipline-clean{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;font-size:11px;color:var(--ink-soft)}.discipline-trend{display:flex;gap:6px;margin-top:8px;overflow:auto}.discipline-week{min-width:64px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px}.discipline-week b{display:block;font-size:12px}.discipline-week span{font-size:9px;color:var(--ink-faint)}.discipline-settings{display:flex;gap:7px;align-items:end;margin-top:10px;flex-wrap:wrap}.discipline-settings .field{min-width:120px}.discipline-settings input{font-size:12px}.discipline-save{background:rgba(255,255,255,.75);border:1px solid var(--line-strong);color:var(--ink-soft);border-radius:7px;padding:7px 10px;font-size:11px;cursor:pointer;font-family:inherit}.discipline-save:hover{border-color:var(--accent);color:var(--accent)}.discipline-warning-popup{position:fixed;top:22px;right:22px;z-index:99999;width:min(390px,calc(100vw - 44px));display:flex;align-items:flex-start;gap:11px;padding:13px 14px;border:1px solid rgba(209,79,53,.28);border-radius:13px;background:rgba(255,255,255,.96);box-shadow:0 14px 38px rgba(16,24,40,.16),0 3px 10px rgba(16,24,40,.08);backdrop-filter:blur(14px);opacity:0;transform:translateY(-10px) scale(.98);pointer-events:none;transition:opacity .2s ease,transform .2s ease}.discipline-warning-popup.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}.discipline-warning-icon{width:27px;height:27px;flex:0 0 27px;display:grid;place-items:center;border-radius:50%;background:rgba(209,79,53,.12);color:var(--loss);font-weight:800;font-size:15px}.discipline-warning-copy{display:flex;flex-direction:column;gap:3px;min-width:0}.discipline-warning-copy strong{font-size:12.5px;color:var(--ink)}.discipline-warning-copy span{font-size:11px;line-height:1.45;color:var(--ink-soft)}.discipline-warning-close{margin-left:auto;border:0;background:transparent;color:var(--ink-faint);font-size:20px;line-height:18px;cursor:pointer;padding:0 1px}.discipline-warning-close:hover{color:var(--ink)}@media(max-width:700px){.discipline-grid{grid-template-columns:1fr 1fr}.discipline-warning-popup{top:12px;right:12px;width:calc(100vw - 24px)}}
   `; document.head.appendChild(style);
 }
 function disciplineRender() {
