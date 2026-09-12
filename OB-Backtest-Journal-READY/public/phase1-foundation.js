@@ -14,6 +14,8 @@ let phase1Accounts = [];
 let phase1Strategies = [];
 let phase1Context = { accountId: 'backtest-main', strategyId: 'model-ob' };
 let phase1Ready = false;
+let phase1BaseLoadResolve;
+const phase1BaseLoaded = new Promise(resolve => { phase1BaseLoadResolve = resolve; });
 
 async function phase1Get(key, fallback) {
   try {
@@ -156,6 +158,7 @@ phase1AddButton?.addEventListener('click', async (event) => {
 const phase1OriginalRender = render;
 render = async function() {
   await phase1OriginalRender();
+  if (!phase1Ready) phase1BaseLoadResolve();
   phase1PatchTable();
 };
 function phase1PatchTable() {
@@ -184,6 +187,7 @@ function phase1PatchTable() {
 
 async function phase1Init() {
   phase1Styles();
+  await phase1BaseLoaded;
   phase1Accounts = await phase1Get('ob-accounts', []);
   phase1Strategies = await phase1Get('ob-strategies', []);
   if (!phase1Accounts.length) { phase1Accounts = PHASE1_DEFAULT_ACCOUNTS.map(x => ({...x})); await phase1Set('ob-accounts', phase1Accounts); }
