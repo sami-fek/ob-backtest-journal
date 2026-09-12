@@ -8,13 +8,10 @@ const runtimePath = path.join(__dirname, '.server-runtime.mjs');
 const serverSource = fs.readFileSync(serverPath, 'utf8');
 const staticMarker = "app.use(express.static(path.join(__dirname, 'public')));";
 
-if (!serverSource.includes(staticMarker)) {
-  throw new Error('Could not locate the server static-file marker. Runtime bootstrap was not applied.');
-}
+if (!serverSource.includes(staticMarker)) throw new Error('Could not locate the server static-file marker. Runtime bootstrap was not applied.');
 
 const route = `
-// Runtime feature injection: keep the existing source HTML untouched while loading
-// incremental modules inside the existing inline script scope.
+// Runtime feature injection: keep the existing source HTML untouched while loading incremental modules.
 app.get('/', (req, res, next) => {
   try {
     const htmlPath = path.join(__dirname, 'public', 'index.html');
@@ -25,6 +22,7 @@ app.get('/', (req, res, next) => {
       path.join(__dirname, 'public', 'discipline-engine.js'),
       path.join(__dirname, 'public', 'discipline-trend.js'),
       path.join(__dirname, 'public', 'discipline-breakdown.js'),
+      path.join(__dirname, 'public', 'discipline-dashboard.js'),
       path.join(__dirname, 'public', 'analytics-engine.js'),
       path.join(__dirname, 'public', 'navigation-foundation.js'),
       path.join(__dirname, 'public', 'context-entry-ui.js')
