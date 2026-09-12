@@ -1,8 +1,10 @@
-// Phase 3: keep the central analytics filter context authoritative.
+// Phase 3: keep the central analytics filter context authoritative without render recursion.
 (function(){
+  let syncing = false;
   function sync(){
-    if (!window.obAnalyticsContext || typeof window.obAnalyticsContext.refresh !== 'function') return;
-    window.obAnalyticsContext.refresh();
+    if (syncing || !window.obAnalyticsContext || typeof window.obAnalyticsContext.refresh !== 'function') return;
+    syncing = true;
+    try { window.obAnalyticsContext.refresh(); } finally { syncing = false; }
   }
   if (typeof analyticsBaseTrades === 'function') {
     analyticsBaseTrades = function(){
@@ -13,6 +15,9 @@
   }
   if (typeof analyticsFilterTrades === 'function') analyticsFilterTrades = list => list;
   const originalRender = render;
-  render = async function(){ await originalRender(); sync(); };
+  render = async function(){
+    await originalRender();
+    if (!syncing) sync();
+  };
   sync();
 })();
