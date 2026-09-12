@@ -1234,9 +1234,8 @@ async function aiSend(userText, extraImages=[]){
   try{
     let provider=PROVIDERS[aiSettings.provider]||PROVIDERS.groq;
     let key=aiSettings.keys?.[aiSettings.provider];
-    if(!key){await loadAiSettings();provider=PROVIDERS[aiSettings.provider]||PROVIDERS.groq;key=aiSettings.keys?.[aiSettings.provider];}
-    if(!key) throw new Error(`No API key is loaded for ${provider.label}. Open AI setup and save your key.`);
-
+      if(!key){await loadAiSettings();provider=PROVIDERS[aiSettings.provider]||PROVIDERS.groq;key=aiSettings.keys?.[aiSettings.provider];}
+    if(!key && !hasServerStorage) throw new Error(`No API key is loaded for ${provider.label}. Open AI setup and save your key.`);
     const records=await getAiScopeTrades();
     if(!records.length) throw new Error('There are no trades in the selected scope. Select another scope or add a trade.');
     const includeImages=document.getElementById('ai-include-images').checked;
