@@ -24,6 +24,7 @@ app.get('/', (req, res, next) => {
       path.join(__dirname, 'public', 'phase1-foundation.js'),
       path.join(__dirname, 'public', 'discipline-engine.js'),
       path.join(__dirname, 'public', 'discipline-trend.js'),
+      path.join(__dirname, 'public', 'discipline-breakdown.js'),
       path.join(__dirname, 'public', 'analytics-engine.js'),
       path.join(__dirname, 'public', 'navigation-foundation.js'),
       path.join(__dirname, 'public', 'context-entry-ui.js')
