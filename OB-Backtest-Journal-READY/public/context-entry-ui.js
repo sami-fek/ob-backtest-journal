@@ -30,7 +30,5 @@
     refresh();
   };
 
-  const observer = new MutationObserver(refresh);
-  observer.observe(document.body, { childList: true, subtree: true });
   refresh();
 })();
