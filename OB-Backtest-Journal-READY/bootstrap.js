@@ -27,7 +27,6 @@ app.get('/', (req, res, next) => {
       path.join(__dirname, 'public', 'analytics-engine.js'),
       path.join(__dirname, 'public', 'analytics-comparison.js'),
       path.join(__dirname, 'public', 'analytics-risk.js'),
-      path.join(__dirname, 'public', 'analytics-insights.js'),
       path.join(__dirname, 'public', 'analytics-central-sync.js'),
       path.join(__dirname, 'public', 'navigation-foundation.js'),
       path.join(__dirname, 'public', 'backup-foundation.js'),
