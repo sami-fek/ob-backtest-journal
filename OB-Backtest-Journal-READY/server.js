@@ -88,27 +88,104 @@ function envKey(provider) { const cfg = providerConfig(provider); return cfg ? p
 
 function cleanAiAnswer(value) {
   let text = String(value ?? '');
-
-  // Never expose model reasoning, even if the provider puts it in the visible content.
   text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
   text = text.replace(/<analysis>[\s\S]*?<\/analysis>/gi, '');
-
-  // Keep the journal UI in plain ChatGPT-style text instead of Markdown formatting.
   text = text.replace(/```[a-zA-Z0-9_-]*\n?/g, '').replace(/```/g, '');
   text = text.replace(/^\s*#{1,6}\s*/gm, '');
   text = text.replace(/^\s*[-*+]\s+/gm, '• ');
   text = text.replace(/\*+/g, '');
-
-  // Remove Markdown table separator rows and convert remaining table rows to readable lines.
   text = text.replace(/^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/gm, '');
   text = text.replace(/^\s*\|\s*(.*?)\s*\|\s*$/gm, (_, row) => `• ${row.replace(/\s*\|\s*/g, ' — ')}`);
-
   text = text.replace(/[ \t]+$/gm, '');
   text = text.replace(/\n{3,}/g, '\n\n').trim();
   return text;
 }
 
-const AI_FORMAT_INSTRUCTION = `FINAL ANSWER FORMAT: Return only the useful final answer. Do not reveal reasoning or thinking. Use plain text, not Markdown. Never use asterisk characters. Never use Markdown tables or code blocks. Use short plain-text headings only when useful, followed by short paragraphs or bullets using the bullet character •. Be concise and practical. For most questions stay under 350 words. Structure the answer like a direct trading-coach response: strongest finding first, evidence next, clear conclusion, then one practical next test when useful.`;
+const AI_FORMAT_INSTRUCTION = `FINAL ANSWER FORMAT: Return only the useful final answer. Do not reveal reasoning or thinking. Use plain text, not Markdown. Never use asterisk characters. Never use Markdown tables or code blocks. Use short plain-text headings only when useful, followed by short paragraphs or bullets using the bullet character •. Be concise and practical. For most questions stay under 350 words. Structure the answer like a direct trading-coach response: strongest finding first, evidence next, clear conclusion, then one practical next test when useful. For an overall journal review, prefer exactly this structure when the evidence supports it: Main finding; What matters; Losses / problems; Conclusion; Next step. Do not turn the response into a formal report.`;
+
+function compactJournalText(text) {
+  let out = String(text ?? '');
+
+  // Notes are useful for psychology/execution analysis, but the full 1400-character
+  // note on every trade can push an overall review over Groq's free input-token limit.
+  // Keep enough of every note to detect recurring patterns while protecting the request.
+  out = out.replace(/Note:\s*([\s\S]*?)(?=\nScreenshots:)/g, (_, note) => {
+    const n = note.trim();
+    if (!n || n === '(no note)') return 'Note: (no note)\nScreenshots:';
+    return `Note: ${n.slice(0, 500)}${n.length > 500 ? '…' : ''}\nScreenshots:`;
+  });
+
+  // Old chat turns are not needed for an overall journal review. Keep the current
+  // journal context and current question intact; only shrink unusually large messages.
+  return out;
+}
+
+function estimateInputTokens(messages) {
+  // Conservative estimate for mixed natural language + journal text.
+  return Math.ceil(JSON.stringify(messages).length / 3.2);
+}
+
+function compactGroqMessages(messages) {
+  const cloned = messages.map(m => ({ ...m }));
+  for (const m of cloned) {
+    if (typeof m.content === 'string') m.content = compactJournalText(m.content);
+    else if (Array.isArray(m.content)) {
+      m.content = m.content.map(part => part?.type === 'text' ? { ...part, text: compactJournalText(part.text) } : part);
+    }
+  }
+
+  // Groq's free on-demand tier currently allows about 7000 input tokens/minute.
+  // Target well below that so an overall review remains reliable instead of failing
+  // with HTTP 413. This is a request-size guard, not a journal-data deletion rule.
+  const targetTokens = 5800;
+  if (estimateInputTokens(cloned) <= targetTokens) return cloned;
+
+  // Remove older conversational turns first. The current journal payload and question
+  // remain the highest-priority context.
+  const system = cloned.filter(m => m.role === 'system');
+  const nonSystem = cloned.filter(m => m.role !== 'system');
+  const current = nonSystem[nonSystem.length - 1];
+  const older = nonSystem.slice(0, -1);
+  let kept = [...system, current];
+
+  // Keep a small amount of the latest prior exchange for continuity, if it fits.
+  for (let i = older.length - 1; i >= 0; i--) {
+    const candidate = [older[i], ...kept];
+    if (estimateInputTokens(candidate) <= targetTokens) kept = candidate;
+    else break;
+  }
+
+  if (estimateInputTokens(kept) <= targetTokens) return kept;
+
+  // If the journal itself is still large, compact the current text without dropping
+  // the beginning stats or the final user question.
+  if (typeof current.content === 'string') {
+    let s = current.content;
+    const maxChars = 16500;
+    if (s.length > maxChars) {
+      const questionMarker = '\n\nUSER QUESTION:';
+      const qi = s.lastIndexOf(questionMarker);
+      const question = qi >= 0 ? s.slice(qi) : '';
+      const body = qi >= 0 ? s.slice(0, qi) : s;
+      const head = body.slice(0, 5000);
+      const tail = body.slice(-10500);
+      current.content = `${head}\n\n[Middle journal text compacted to stay within Groq input limits.]\n\n${tail}${question}`;
+    }
+  } else if (Array.isArray(current.content)) {
+    current.content = current.content.map(part => {
+      if (part?.type !== 'text') return part;
+      let s = String(part.text || '');
+      const maxChars = 14500;
+      if (s.length <= maxChars) return part;
+      const qi = s.lastIndexOf('\n\nUSER QUESTION:');
+      const question = qi >= 0 ? s.slice(qi) : '';
+      const body = qi >= 0 ? s.slice(0, qi) : s;
+      return { ...part, text: `${body.slice(0, 4500)}\n\n[Middle journal text compacted to stay within Groq input limits.]\n\n${body.slice(-9000)}${question}` };
+    });
+  }
+
+  return kept;
+}
 
 app.post('/api/ai', async (req, res) => {
   const { provider = 'groq', model, messages, max_completion_tokens = 800, temperature = 0.4 } = req.body || {};
@@ -120,7 +197,6 @@ app.post('/api/ai', async (req, res) => {
   try {
     const safeMaxTokens = Math.min(Math.max(Number(max_completion_tokens) || 800, 100), 800);
 
-    // Add a final formatting instruction without changing the user's journal question.
     const safeMessages = messages.map(m => ({ ...m }));
     const systemIndex = safeMessages.findIndex(m => m.role === 'system');
     if (systemIndex >= 0) {
@@ -132,7 +208,8 @@ app.post('/api/ai', async (req, res) => {
       safeMessages.unshift({ role: 'system', content: AI_FORMAT_INSTRUCTION });
     }
 
-    const payload = { model, messages: safeMessages, max_completion_tokens: safeMaxTokens, temperature };
+    const finalMessages = provider === 'groq' ? compactGroqMessages(safeMessages) : safeMessages;
+    const payload = { model, messages: finalMessages, max_completion_tokens: safeMaxTokens, temperature };
 
     if (provider === 'groq') {
       payload.include_reasoning = false;
