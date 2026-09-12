@@ -41,6 +41,8 @@
   }
   function activate(id,hash=true){if(!pageEls[id])id='dashboard';Object.entries(pageEls).forEach(([k,p])=>p.classList.toggle('active',k===id));nav.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));if(id!=='dashboard'){setMode(id);arrangeMode(id)}if(hash){try{history.replaceState(null,'',`#${id}`)}catch{}}window.scrollTo({top:0,behavior:'smooth'})}
   nav.addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(b)activate(b.dataset.page)});const initial=(location.hash||'').slice(1);activate(pageEls[initial]?initial:'dashboard',false);
-  const observer=new MutationObserver(()=>{hideUnwantedPanels();['backtest','demo','real'].forEach(id=>{if(pageEls[id].classList.contains('active'))arrangeMode(id)})});observer.observe(document.body,{childList:true,subtree:true});
+  let observer;
+  observer=new MutationObserver(()=>{observer.disconnect();hideUnwantedPanels();['backtest','demo','real'].forEach(id=>{if(pageEls[id].classList.contains('active'))arrangeMode(id)});observer.observe(document.body,{childList:true,subtree:true});});
+  observer.observe(document.body,{childList:true,subtree:true});
   window.simpleJournalShell={activate};
 })();
