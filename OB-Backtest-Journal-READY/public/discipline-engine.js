@@ -1,16 +1,20 @@
 // Phase 2: discipline engine.
-// Computes discipline from the current account + strategy filter without changing trade outcomes.
+// Computes discipline only for Demo, Real and Funded accounts.
 const DISCIPLINE_DEFAULTS = { lossThreshold: 2, dailyTradeLimit: 2 };
 let disciplineSettings = { ...DISCIPLINE_DEFAULTS };
 let disciplineReady = false;
 
+function disciplineModeAllowed() {
+  const mode = typeof phase1Mode === 'function' ? phase1Mode() : 'Backtest';
+  return ['Demo', 'Real', 'Funded'].includes(mode);
+}
 async function disciplineGet(key, fallback) {
   try { const raw = await storageGet(key); if (!raw) return fallback; return JSON.parse(raw) ?? fallback; }
   catch { return fallback; }
 }
 async function disciplineSet(key, value) { return storageSet(key, JSON.stringify(value)); }
 function disciplineTrades() {
-  if (typeof getFiltered !== 'function') return [];
+  if (!disciplineModeAllowed() || typeof getFiltered !== 'function') return [];
   return [...getFiltered()].sort((a,b) => String(a.date || '').localeCompare(String(b.date || '')) || Number(a.id || 0) - Number(b.id || 0));
 }
 function disciplineClean(t) { return t.clean === true ? true : t.clean === false ? false : null; }
@@ -39,11 +43,7 @@ function disciplineCalc() {
       dayStreak += 1;
       streak += 1;
       if (dayStreak >= threshold) { dayStopped = true; hardStop = true; }
-    } else if (t.result === 'win') {
-      dayStreak = 0;
-      streak = 0;
-      hardStop = false;
-    } else if (t.result === 'be') {
+    } else if (t.result === 'win' || t.result === 'be') {
       dayStreak = 0;
       streak = 0;
       hardStop = false;
@@ -66,6 +66,10 @@ function disciplineStyles() {
 }
 function disciplineRender() {
   let panel = document.getElementById('discipline-panel');
+  if (!disciplineModeAllowed()) {
+    panel?.remove();
+    return;
+  }
   if (!panel) {
     panel = document.createElement('div'); panel.id = 'discipline-panel'; panel.className = 'panel glass discipline-panel';
     const context = document.getElementById('phase1-context');
