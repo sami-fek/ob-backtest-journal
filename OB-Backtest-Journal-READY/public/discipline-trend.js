@@ -90,6 +90,38 @@
     return key.slice(5);
   }
 
+  function trendStyles() {
+    if (document.getElementById('discipline-trend-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'discipline-trend-styles';
+    style.textContent = `
+      .discipline-trend-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+      .discipline-trend-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+      .discipline-trend-head strong{display:block;font-size:12px;color:var(--ink)}
+      .discipline-trend-head span{display:block;font-size:10px;color:var(--ink-faint);margin-top:2px}
+      .discipline-trend-controls{display:flex;align-items:center;gap:5px}
+      .discipline-trend-controls select,.discipline-trend-controls input{height:30px;border:1px solid var(--line-strong);border-radius:7px;background:rgba(255,255,255,.68);color:var(--ink-soft);font:500 11px inherit;padding:0 7px}
+      .discipline-trend-controls input{width:125px}
+      .discipline-trend-controls>span{margin:0;color:var(--ink-faint);font-size:11px}
+      .discipline-trend-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:9px}
+      .discipline-trend-summary>div{border:1px solid var(--line);border-radius:9px;padding:8px 9px;background:rgba(255,255,255,.35)}
+      .discipline-trend-summary span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint)}
+      .discipline-trend-summary b{display:block;margin-top:3px;font-size:17px;color:var(--ink)}
+      .discipline-trend-summary small{display:block;margin-top:2px;font-size:9px;color:var(--ink-faint)}
+      .discipline-trend-bars{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;height:145px;margin-top:10px;padding:8px 4px 0;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.28)}
+      .discipline-trend-bar{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+      .discipline-bar-value{font-size:10px;font-weight:700;color:var(--ink-soft);margin-bottom:4px}
+      .discipline-bar-track{width:100%;height:82px;display:flex;align-items:flex-end;justify-content:center}
+      .discipline-bar-track i{display:block;width:min(42px,65%);min-height:4px;border-radius:6px 6px 2px 2px;background:rgba(47,111,237,.58);box-shadow:inset 0 1px rgba(255,255,255,.5)}
+      .discipline-trend-bar>span{font-size:9px;color:var(--ink-soft);margin-top:5px}
+      .discipline-trend-bar>small{font-size:8px;color:var(--ink-faint);margin-top:1px}
+      .discipline-trend-note{margin-top:7px;padding:7px 9px;border:1px solid rgba(47,111,237,.18);background:rgba(47,111,237,.05);border-radius:8px;font-size:10px;color:var(--ink-soft)}
+      .discipline-trend-empty{grid-column:1/-1;align-self:center;text-align:center;font-size:11px;color:var(--ink-faint)}
+      @media(max-width:700px){.discipline-trend-summary{grid-template-columns:1fr 1fr}.discipline-trend-bars{grid-template-columns:repeat(2,1fr);height:auto;min-height:170px}.discipline-trend-controls{width:100%;flex-wrap:wrap}.discipline-trend-controls input{flex:1;min-width:105px}}
+    `;
+    document.head.appendChild(style);
+  }
+
   function renderTrend(periodMode, customStart, customEnd) {
     const panel = document.getElementById('discipline-panel');
     if (!panel) return;
@@ -127,6 +159,7 @@
   function install() {
     if (window.__obDisciplineTrendInstalled) return;
     window.__obDisciplineTrendInstalled = true;
+    trendStyles();
     const original = disciplineRender;
     disciplineRender = function () {
       original();
