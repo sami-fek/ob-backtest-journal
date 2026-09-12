@@ -33,7 +33,8 @@ app.get('/', (req, res, next) => {
       path.join(__dirname, 'public', 'backup-foundation.js'),
       path.join(__dirname, 'public', 'settings-foundation.js'),
       path.join(__dirname, 'public', 'mt5-foundation.js'),
-      path.join(__dirname, 'public', 'context-entry-ui.js')
+      path.join(__dirname, 'public', 'context-entry-ui.js'),
+      path.join(__dirname, 'public', 'ui-refresh.js')
     ];
     const feature = featurePaths.map(p => fs.readFileSync(p, 'utf8')).join('\\n');
     const closingScript = '</script>';
