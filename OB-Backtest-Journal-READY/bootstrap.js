@@ -20,6 +20,7 @@ app.get('/', (req, res, next) => {
     const htmlPath = path.join(__dirname, 'public', 'index.html');
     let html = fs.readFileSync(htmlPath, 'utf8');
     const featurePaths = [
+      path.join(__dirname, 'public', 'trade-model.js'),
       path.join(__dirname, 'public', 'phase1-foundation.js'),
       path.join(__dirname, 'public', 'discipline-engine.js'),
       path.join(__dirname, 'public', 'analytics-engine.js'),
