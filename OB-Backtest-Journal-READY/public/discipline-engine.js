@@ -1,5 +1,5 @@
 // Phase 2: discipline engine.
-// Computes discipline only for Demo, Real and Funded accounts.
+// Computes discipline for Demo, Real and Funded accounts and blocks rule-breaking entries.
 const DISCIPLINE_DEFAULTS = { lossThreshold: 2, dailyTradeLimit: 2 };
 let disciplineSettings = { ...DISCIPLINE_DEFAULTS };
 let disciplineReady = false;
@@ -57,6 +57,34 @@ function disciplineCalc() {
   });
   return { list, threshold, dailyLimit, streak, hardStop, postStopTrades, postStopR, dailyLimitViolations, cleanCount, violationCount, evaluatedCount: evaluated.length, cleanPct: evaluated.length ? Math.round(cleanCount / evaluated.length * 100) : null, violationMap, trend };
 }
+
+function disciplineTodayCount() {
+  const today = new Date().toISOString().slice(0,10);
+  return disciplineTrades().filter(t => String(t.date || '').slice(0,10) === today).length;
+}
+function disciplineEntryBlockReason() {
+  if (!disciplineModeAllowed()) return '';
+  const d = disciplineCalc();
+  const todayCount = disciplineTodayCount();
+  if (todayCount >= d.dailyLimit) return `Daily trade limit reached (${d.dailyLimit}). No more trades can be added today.`;
+  if (d.hardStop) return `Hard stop active after ${d.threshold} consecutive losses. No more trades can be added until the losing streak is reset.`;
+  return '';
+}
+function disciplineInstallEntryGuard() {
+  if (window.__obDisciplineEntryGuard) return;
+  window.__obDisciplineEntryGuard = true;
+  document.addEventListener('click', event => {
+    const button = event.target.closest?.('#f-add');
+    if (!button) return;
+    const reason = disciplineEntryBlockReason();
+    if (!reason) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    alert(reason);
+    disciplineRender();
+  }, true);
+}
+
 function disciplineStyles() {
   if (document.getElementById('discipline-styles')) return;
   const style = document.createElement('style'); style.id = 'discipline-styles';
@@ -93,6 +121,7 @@ async function disciplineInit() {
   disciplineStyles();
   disciplineSettings = { ...DISCIPLINE_DEFAULTS, ...(await disciplineGet('ob-discipline-settings', {})) };
   disciplineReady = true;
+  disciplineInstallEntryGuard();
   disciplineRender();
 }
 disciplineInit().catch(err => console.error('Discipline engine init failed:', err));
