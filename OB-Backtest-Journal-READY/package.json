@@ -4,7 +4,7 @@
   "private": true,
   "description": "OB Backtest Journal with persistent server storage and server-side AI proxy",
   "type": "module",
-  "scripts": {"start":"node server.js"},
+  "scripts": {"start":"node bootstrap.js"},
   "engines": {"node": ">=20"},
   "dependencies": {
     "better-sqlite3": "^11.8.1",
