@@ -23,6 +23,7 @@ app.get('/', (req, res, next) => {
       path.join(__dirname, 'public', 'discipline-trend.js'),
       path.join(__dirname, 'public', 'discipline-breakdown.js'),
       path.join(__dirname, 'public', 'discipline-dashboard.js'),
+      path.join(__dirname, 'public', 'analytics-foundation.js'),
       path.join(__dirname, 'public', 'analytics-engine.js'),
       path.join(__dirname, 'public', 'navigation-foundation.js'),
       path.join(__dirname, 'public', 'context-entry-ui.js')
