@@ -30,6 +30,7 @@ app.get('/', (req, res, next) => {
       path.join(__dirname, 'public', 'analytics-insights.js'),
       path.join(__dirname, 'public', 'analytics-central-sync.js'),
       path.join(__dirname, 'public', 'navigation-foundation.js'),
+      path.join(__dirname, 'public', 'backup-foundation.js'),
       path.join(__dirname, 'public', 'mt5-foundation.js'),
       path.join(__dirname, 'public', 'context-entry-ui.js')
     ];
