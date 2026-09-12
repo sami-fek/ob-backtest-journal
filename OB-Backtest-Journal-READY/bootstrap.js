@@ -21,7 +21,8 @@ app.get('/', (req, res, next) => {
     let html = fs.readFileSync(htmlPath, 'utf8');
     const featurePaths = [
       path.join(__dirname, 'public', 'phase1-foundation.js'),
-      path.join(__dirname, 'public', 'discipline-engine.js')
+      path.join(__dirname, 'public', 'discipline-engine.js'),
+      path.join(__dirname, 'public', 'analytics-engine.js')
     ];
     const feature = featurePaths.map(p => fs.readFileSync(p, 'utf8')).join('\\n');
     const closingScript = '</script>';
