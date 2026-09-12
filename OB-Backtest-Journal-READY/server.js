@@ -86,6 +86,30 @@ const PROVIDER_CONFIG = {
 function providerConfig(provider) { return PROVIDER_CONFIG[provider]; }
 function envKey(provider) { const cfg = providerConfig(provider); return cfg ? process.env[cfg.env] : null; }
 
+function cleanAiAnswer(value) {
+  let text = String(value ?? '');
+
+  // Never expose model reasoning, even if the provider puts it in the visible content.
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  text = text.replace(/<analysis>[\s\S]*?<\/analysis>/gi, '');
+
+  // Keep the journal UI in plain ChatGPT-style text instead of Markdown formatting.
+  text = text.replace(/```[a-zA-Z0-9_-]*\n?/g, '').replace(/```/g, '');
+  text = text.replace(/^\s*#{1,6}\s*/gm, '');
+  text = text.replace(/^\s*[-*+]\s+/gm, '• ');
+  text = text.replace(/\*+/g, '');
+
+  // Remove Markdown table separator rows and convert remaining table rows to readable lines.
+  text = text.replace(/^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/gm, '');
+  text = text.replace(/^\s*\|\s*(.*?)\s*\|\s*$/gm, (_, row) => `• ${row.replace(/\s*\|\s*/g, ' — ')}`);
+
+  text = text.replace(/[ \t]+$/gm, '');
+  text = text.replace(/\n{3,}/g, '\n\n').trim();
+  return text;
+}
+
+const AI_FORMAT_INSTRUCTION = `FINAL ANSWER FORMAT: Return only the useful final answer. Do not reveal reasoning or thinking. Use plain text, not Markdown. Never use asterisk characters. Never use Markdown tables or code blocks. Use short plain-text headings only when useful, followed by short paragraphs or bullets using the bullet character •. Be concise and practical. For most questions stay under 350 words. Structure the answer like a direct trading-coach response: strongest finding first, evidence next, clear conclusion, then one practical next test when useful.`;
+
 app.post('/api/ai', async (req, res) => {
   const { provider = 'groq', model, messages, max_completion_tokens = 800, temperature = 0.4 } = req.body || {};
   const cfg = providerConfig(provider);
@@ -94,12 +118,22 @@ app.post('/api/ai', async (req, res) => {
   if (!model || !Array.isArray(messages)) return res.status(400).json({ error: 'model and messages are required' });
 
   try {
-    // Hard cap the browser request so an old frontend cannot ask Groq for a huge response.
     const safeMaxTokens = Math.min(Math.max(Number(max_completion_tokens) || 800, 100), 800);
-    const payload = { model, messages, max_completion_tokens: safeMaxTokens, temperature };
 
-    // Groq reasoning models can return their internal reasoning separately. The journal UI
-    // should display only the final answer, not the <think> block.
+    // Add a final formatting instruction without changing the user's journal question.
+    const safeMessages = messages.map(m => ({ ...m }));
+    const systemIndex = safeMessages.findIndex(m => m.role === 'system');
+    if (systemIndex >= 0) {
+      safeMessages[systemIndex] = {
+        ...safeMessages[systemIndex],
+        content: `${safeMessages[systemIndex].content || ''}\n\n${AI_FORMAT_INSTRUCTION}`
+      };
+    } else {
+      safeMessages.unshift({ role: 'system', content: AI_FORMAT_INSTRUCTION });
+    }
+
+    const payload = { model, messages: safeMessages, max_completion_tokens: safeMaxTokens, temperature };
+
     if (provider === 'groq') {
       payload.include_reasoning = false;
       if (model.startsWith('qwen/')) payload.reasoning_effort = 'none';
@@ -114,6 +148,11 @@ app.post('/api/ai', async (req, res) => {
     const text = await upstream.text();
     let body = text;
     try { body = JSON.parse(text); } catch {}
+
+    if (upstream.ok && body?.choices?.[0]?.message?.content) {
+      body.choices[0].message.content = cleanAiAnswer(body.choices[0].message.content);
+    }
+
     return res.status(upstream.status).json(body);
   } catch (err) {
     console.error('AI upstream request failed:', err);
