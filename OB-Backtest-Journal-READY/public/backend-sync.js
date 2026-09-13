@@ -83,6 +83,11 @@
   uiScript.onload = () => {
     const widgetScript = document.createElement('script');
     widgetScript.src = '/account-widget-fix.js';
+    widgetScript.onload = () => {
+      const accountEditFix = document.createElement('script');
+      accountEditFix.src = '/account-edit-persistence-fix.js';
+      document.head.appendChild(accountEditFix);
+    };
     document.head.appendChild(widgetScript);
   };
   document.head.appendChild(uiScript);
