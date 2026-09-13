@@ -136,6 +136,9 @@
     setTimeout(() => document.getElementById('newAccountName')?.focus(), 0);
   }
 
+  // The wallet widget invokes this bridge for its Add account control.
+  window.openAddAccountModal = openAddAccountModal;
+
   function ensureBalanceCard() {
     const display = document.getElementById('accountBalanceDisplay');
     const panel = display?.closest('.bg-gradient-to-br');
