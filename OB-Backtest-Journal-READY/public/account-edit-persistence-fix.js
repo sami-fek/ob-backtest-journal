@@ -54,9 +54,41 @@
     window.openEditAccountModal = patchedOpen;
   }
 
+  function patchTradeDrawerSave() {
+    const saveButton = document.getElementById('drawerSaveBtn');
+    if (!saveButton || saveButton.__closePeekPatched) return;
+
+    const originalClick = saveButton.onclick;
+    if (typeof originalClick !== 'function') return;
+
+    saveButton.__closePeekPatched = true;
+    saveButton.onclick = function (event) {
+      const result = originalClick.call(this, event);
+
+      // Saving the trade should also close the right-side trade peek drawer.
+      // Use the page's existing closeDrawer() so its normal closing animation
+      // and state cleanup remain intact.
+      if (typeof window.closeDrawer === 'function') {
+        window.closeDrawer();
+      } else {
+        const drawer = document.getElementById('tradeDrawer');
+        if (drawer) {
+          drawer.classList.remove('drawer-open');
+          drawer.classList.add('hidden');
+        }
+      }
+
+      return result;
+    };
+  }
+
   function boot() {
     patchEditModal();
-    const observer = new MutationObserver(patchEditModal);
+    patchTradeDrawerSave();
+    const observer = new MutationObserver(() => {
+      patchEditModal();
+      patchTradeDrawerSave();
+    });
     observer.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('wallet-accounts-updated', persistAccounts);
   }
