@@ -7,7 +7,8 @@
   let animating=false;
   let suppressRenderUntil=0;
   const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  const getMode=()=>{try{return typeof activeMode!=='undefined'?activeMode:'Demo';}catch(_){return 'Demo';}};
+  const SUPPORTED_MODES = new Set(['Demo','Real','Funded']);
+  const getMode=()=>{let mode='Demo';try{if(typeof activeMode!=='undefined')mode=activeMode;}catch(_){}return SUPPORTED_MODES.has(mode)?mode:'Demo';};
   const accountKey=mode=>`my_journal_active_account_${mode}_v1`;
 
   function injectStyles(){
@@ -53,8 +54,8 @@
     let data={};try{data=JSON.parse(localStorage.getItem(ACCOUNT_KEY)||'{}');}catch(_){}
     const mode=getMode();
     const fallback={Demo:[{id:'demo-1',name:'Demo 01',startingBalance:100000,balance:100000}],Real:[{id:'real-1',name:'Real 01',startingBalance:100000,balance:100000}],Funded:[{id:'funded-1',name:'Funded 01',startingBalance:100000,balance:100000}]};
-    const accounts=Array.isArray(data[mode])&&data[mode].length?data[mode]:fallback[mode];
-    return(accounts||[]).map(a=>({...a,mode}));
+    const source=Array.isArray(data[mode])&&data[mode].length?data[mode]:fallback[mode];
+    return(source||[]).filter(a=>!a?.mode||a.mode===mode).map(a=>({...a,mode}));
   }
 
   function accountReturn(a){
