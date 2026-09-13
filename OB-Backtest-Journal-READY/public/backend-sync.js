@@ -1,8 +1,6 @@
 (() => {
   const STORAGE_KEY = 'my_journal_trades_v1';
   const ACCOUNT_STORAGE_KEY = 'my_journal_accounts_v1';
-  const API_PATH = `/api/storage/${encodeURIComponent(STORAGE_KEY)}`;
-  const ACCOUNT_API_PATH = `/api/storage/${encodeURIComponent(ACCOUNT_STORAGE_KEY)}`;
 
   async function readServerState(storageKey = STORAGE_KEY) {
     try {
@@ -20,10 +18,7 @@
   async function writeServerState(value, storageKey = STORAGE_KEY) {
     try {
       const response = await fetch(`/api/storage/${encodeURIComponent(storageKey)}`, {
-        method: 'PUT',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value })
+        method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value })
       });
       if (!response.ok) throw new Error(`Storage write ${response.status}`);
       return true;
@@ -35,9 +30,7 @@
 
   function setPersistenceLabel() {
     document.querySelectorAll('span').forEach(label => {
-      if (label.textContent.includes('LocalStorage Persistent')) {
-        label.innerHTML = '<i class="fa-solid fa-database text-blue-600 mr-1"></i> Cloud Persistent';
-      }
+      if (label.textContent.includes('LocalStorage Persistent')) label.innerHTML = '<i class="fa-solid fa-database text-blue-600 mr-1"></i> Cloud Persistent';
     });
   }
 
@@ -45,25 +38,11 @@
   window.persistAccountState = value => writeServerState(value, ACCOUNT_STORAGE_KEY);
 
   window.onload = async function (...args) {
-    const [serverState, serverAccounts] = await Promise.all([
-      readServerState(STORAGE_KEY),
-      readServerState(ACCOUNT_STORAGE_KEY)
-    ]);
+    const [serverState, serverAccounts] = await Promise.all([readServerState(STORAGE_KEY), readServerState(ACCOUNT_STORAGE_KEY)]);
     const localState = localStorage.getItem(STORAGE_KEY);
     const localAccounts = localStorage.getItem(ACCOUNT_STORAGE_KEY);
-
-    if (serverState) {
-      localStorage.setItem(STORAGE_KEY, serverState);
-    } else if (localState) {
-      await writeServerState(localState, STORAGE_KEY);
-    }
-
-    if (serverAccounts) {
-      localStorage.setItem(ACCOUNT_STORAGE_KEY, serverAccounts);
-    } else if (localAccounts) {
-      await writeServerState(localAccounts, ACCOUNT_STORAGE_KEY);
-    }
-
+    if (serverState) localStorage.setItem(STORAGE_KEY, serverState); else if (localState) await writeServerState(localState, STORAGE_KEY);
+    if (serverAccounts) localStorage.setItem(ACCOUNT_STORAGE_KEY, serverAccounts); else if (localAccounts) await writeServerState(localAccounts, ACCOUNT_STORAGE_KEY);
     if (typeof originalLoad === 'function') originalLoad.apply(this, args);
     setPersistenceLabel();
   };
@@ -89,6 +68,11 @@
       accountEditFix.onload = () => {
         const journalAnalyticsScript = document.createElement('script');
         journalAnalyticsScript.src = '/journal-analytics-ui.js';
+        journalAnalyticsScript.onload = () => {
+          const heatmapScript = document.createElement('script');
+          heatmapScript.src = '/heatmap-calendar-ui.js';
+          document.head.appendChild(heatmapScript);
+        };
         document.head.appendChild(journalAnalyticsScript);
       };
       document.head.appendChild(accountEditFix);
