@@ -64,8 +64,12 @@
     };
   }
 
-  // Load the current UI behavior layer after the original journal code has been defined.
   const uiScript = document.createElement('script');
   uiScript.src = '/ui-rules.js';
+  uiScript.onload = () => {
+    const widgetScript = document.createElement('script');
+    widgetScript.src = '/account-widget-fix.js';
+    document.head.appendChild(widgetScript);
+  };
   document.head.appendChild(uiScript);
 })();
