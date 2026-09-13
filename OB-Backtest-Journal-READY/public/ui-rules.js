@@ -1,9 +1,9 @@
 (() => {
   const ACCOUNT_KEY = 'my_journal_accounts_v1';
   const DEFAULT_ACCOUNTS = {
-    Demo: [{ id: 'demo-1', name: 'Demo 01', balance: 100000 }],
-    Real: [{ id: 'real-1', name: 'Real 01', balance: 100000 }],
-    Funded: [{ id: 'funded-1', name: 'Funded 01', balance: 100000 }]
+    Demo: [{ id: 'demo-1', name: 'Demo 01', balance: 100000, startingBalance: 100000 }],
+    Real: [{ id: 'real-1', name: 'Real 01', balance: 100000, startingBalance: 100000 }],
+    Funded: [{ id: 'funded-1', name: 'Funded 01', balance: 100000, startingBalance: 100000 }]
   };
 
   let accounts = {};
@@ -16,12 +16,27 @@
     });
     Object.keys(accounts).forEach(mode => {
       if (!Array.isArray(accounts[mode])) delete accounts[mode];
-      else accounts[mode].forEach(a => { if (!a.balance) a.balance = 100000; });
+      else accounts[mode].forEach(a => { if (!a.balance) a.balance = 100000; if (!a.startingBalance) a.startingBalance = a.balance; });
     });
     localStorage.setItem(ACCOUNT_KEY, JSON.stringify(accounts));
   }
 
   function saveAccounts() { localStorage.setItem(ACCOUNT_KEY, JSON.stringify(accounts)); }
+
+  function addAccount(mode) {
+    if (mode === 'Backtest') return;
+    const name = prompt(`Account name for ${mode}:`, `${mode} ${(accounts[mode] || []).length + 1}`);
+    if (!name || !name.trim()) { refreshAccountOptionBalances(); return; }
+    const rawBalance = prompt('Starting balance ($):', '100000');
+    const balance = Number(rawBalance);
+    if (!Number.isFinite(balance) || balance <= 0) { alert('Enter a valid positive starting balance.'); refreshAccountOptionBalances(); return; }
+    const account = { id: `${mode.toLowerCase()}-${Date.now()}`, name: name.trim(), balance, startingBalance: balance };
+    accounts[mode].push(account);
+    saveAccounts();
+    activeAccountId = account.id;
+    localStorage.setItem('my_journal_active_account_v1', activeAccountId);
+    renderForAccount();
+  }
 
   function migrateTrades() {
     if (!Array.isArray(window.trades)) return;
@@ -41,15 +56,18 @@
     return list.find(a => a.id === activeAccountId) || list[0] || null;
   }
 
-  function accountTrades(mode, accountId) {
-    return (window.trades || []).filter(t => t.mode === mode && t.accountId === accountId);
-  }
-
   function accountBalance(account) {
     if (!account) return 0;
     const risk = Number(window.riskPercent) || 1;
     const base = Number(account.startingBalance ?? account.balance ?? 100000);
-    const r = accountTrades(window.activeMode, account.id).reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
+    const r = (window.trades || []).filter(t => t.mode === window.activeMode && t.accountId === account.id).reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
+    return base + r * base * (risk / 100);
+  }
+
+  function accountBalanceForMode(account) {
+    const risk = Number(window.riskPercent) || 1;
+    const base = Number(account.startingBalance ?? account.balance ?? 100000);
+    const r = (window.trades || []).filter(t => t.mode === window.activeMode && t.accountId === account.id).reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
     return base + r * base * (risk / 100);
   }
 
@@ -61,13 +79,12 @@
       wrap = document.createElement('div');
       wrap.id = 'accountSelectorWrap';
       wrap.className = 'flex items-center gap-2 w-full sm:w-auto';
-      wrap.innerHTML = `
-        <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Account</span>
-        <select id="accountSelector" class="min-w-[165px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-500"></select>`;
+      wrap.innerHTML = `<span class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Account</span><select id="accountSelector" class="min-w-[165px] bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-500"></select>`;
       const activeWrap = document.querySelector('#activeModeLabel')?.parentElement;
       if (activeWrap?.parentElement) activeWrap.parentElement.insertBefore(wrap, activeWrap);
       else modeBar.parentElement.appendChild(wrap);
       document.getElementById('accountSelector').addEventListener('change', e => {
+        if (e.target.value === '__add_account__') { addAccount(window.activeMode); return; }
         activeAccountId = e.target.value;
         localStorage.setItem('my_journal_active_account_v1', activeAccountId);
         renderForAccount();
@@ -78,22 +95,17 @@
     if (!select || window.activeMode === 'Backtest') return;
     const list = accounts[window.activeMode] || [];
     if (!list.some(a => a.id === activeAccountId)) activeAccountId = list[0]?.id || null;
-    select.innerHTML = list.map(a => `<option value="${a.id}">${a.name} — $${accountBalanceForMode(a).toLocaleString('en-US', {minimumFractionDigits: 2})}</option>`).join('');
+    refreshAccountOptionBalances();
     select.value = activeAccountId || '';
   }
 
-  function accountBalanceForMode(account) {
-    const risk = Number(window.riskPercent) || 1;
-    const base = Number(account.startingBalance ?? account.balance ?? 100000);
-    const r = (window.trades || []).filter(t => t.mode === window.activeMode && t.accountId === account.id).reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
-    return base + r * base * (risk / 100);
-  }
-
-  function renderForAccount() {
-    ensureAccountSelector();
-    if (typeof window.renderAll === 'function') window.renderAll();
-    updateAccountBalanceWidget();
-    refreshAccountOptionBalances();
+  function refreshAccountOptionBalances() {
+    const select = document.getElementById('accountSelector');
+    if (!select || window.activeMode === 'Backtest') return;
+    const list = accounts[window.activeMode] || [];
+    select.innerHTML = list.map(a => `<option value="${a.id}">${a.name} — $${accountBalanceForMode(a).toLocaleString('en-US', {minimumFractionDigits: 2})}</option>`).join('');
+    select.insertAdjacentHTML('beforeend', '<option value="__add_account__">＋ Add account</option>');
+    select.value = activeAccountId || '';
   }
 
   function filterByAccount() {
@@ -103,14 +115,7 @@
   }
 
   function patchAccountFiltering() {
-    const targets = [
-      ['renderTradingConsole', false],
-      ['renderJournalTable', false],
-      ['renderHeatmaps', false],
-      ['renderAnalyticsKPIs', false],
-      ['updateCharts', false]
-    ];
-    targets.forEach(([name]) => {
+    ['renderTradingConsole', 'renderJournalTable', 'renderHeatmaps', 'renderAnalyticsKPIs', 'updateCharts'].forEach(name => {
       const original = window[name];
       if (typeof original !== 'function' || original.__accountPatched) return;
       const patched = function() {
@@ -133,20 +138,17 @@
     const balance = accountBalance(acc);
     const base = Number(acc.startingBalance ?? acc.balance ?? 100000);
     const ret = base ? ((balance - base) / base) * 100 : 0;
-    const display = document.getElementById('accountBalanceDisplay');
-    const badge = document.getElementById('accountReturnBadge');
-    if (display) display.textContent = `$${balance.toLocaleString('en-US', {minimumFractionDigits:2})}`;
-    if (badge) badge.textContent = `${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%`;
+    document.getElementById('accountBalanceDisplay').textContent = `$${balance.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+    document.getElementById('accountReturnBadge').textContent = `${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%`;
     const baseSpan = card.querySelector('.text-blue-200.font-medium.uppercase')?.parentElement?.querySelector('.flex span');
     if (baseSpan) baseSpan.textContent = `Base Capital: $${base.toLocaleString('en-US', {minimumFractionDigits:2})}`;
   }
 
-  function refreshAccountOptionBalances() {
-    const select = document.getElementById('accountSelector');
-    if (!select || window.activeMode === 'Backtest') return;
-    const list = accounts[window.activeMode] || [];
-    select.innerHTML = list.map(a => `<option value="${a.id}">${a.name} — $${accountBalanceForMode(a).toLocaleString('en-US', {minimumFractionDigits:2})}</option>`).join('');
-    select.value = activeAccountId || '';
+  function renderForAccount() {
+    ensureAccountSelector();
+    if (typeof window.renderAll === 'function') window.renderAll();
+    updateAccountBalanceWidget();
+    refreshAccountOptionBalances();
   }
 
   function setSaveEnabled(btn, enabled) {
@@ -164,7 +166,6 @@
     const btn = document.getElementById('drawerSaveBtn');
     if (!btn) return;
     btn.innerHTML = '<span id="drawerSaveBtnLabel">Save</span>';
-    btn.disabled = true;
     const check = () => {
       const t = (window.trades || []).find(x => x.id === window.currentDrawerTradeId);
       if (!t) return setSaveEnabled(btn, false);
@@ -191,36 +192,21 @@
       patched.__patchedRules = true;
       window.openDrawer = patched;
     }
-
     const originalChecklist = window.setChecklistItem;
     if (typeof originalChecklist === 'function' && !originalChecklist.__patchedRules) {
-      const patched = function() {
-        const result = originalChecklist.apply(this, arguments);
-        window.__checkDrawerSaveReady?.();
-        return result;
-      };
+      const patched = function() { const result = originalChecklist.apply(this, arguments); window.__checkDrawerSaveReady?.(); return result; };
       patched.__patchedRules = true;
       window.setChecklistItem = patched;
     }
-
     const originalUpload = window.handleScreenshotUpload;
     if (typeof originalUpload === 'function' && !originalUpload.__patchedRules) {
-      const patched = function() {
-        const result = originalUpload.apply(this, arguments);
-        setTimeout(() => window.__checkDrawerSaveReady?.(), 100);
-        return result;
-      };
+      const patched = function() { const result = originalUpload.apply(this, arguments); setTimeout(() => window.__checkDrawerSaveReady?.(), 100); return result; };
       patched.__patchedRules = true;
       window.handleScreenshotUpload = patched;
     }
-
     const originalRemove = window.removeScreenshot;
     if (typeof originalRemove === 'function' && !originalRemove.__patchedRules) {
-      const patched = function() {
-        const result = originalRemove.apply(this, arguments);
-        setTimeout(() => window.__checkDrawerSaveReady?.(), 0);
-        return result;
-      };
+      const patched = function() { const result = originalRemove.apply(this, arguments); setTimeout(() => window.__checkDrawerSaveReady?.(), 0); return result; };
       patched.__patchedRules = true;
       window.removeScreenshot = patched;
     }
@@ -278,11 +264,7 @@
   function patchIconsAndBacktestUI() {
     document.querySelectorAll('button').forEach(btn => {
       const eye = btn.querySelector('i.fa-eye');
-      if (eye) {
-        eye.classList.remove('fa-eye');
-        eye.classList.add('fa-pen');
-        btn.title = 'Edit journal entry';
-      }
+      if (eye) { eye.classList.remove('fa-eye'); eye.classList.add('fa-pen'); btn.title = 'Edit journal entry'; }
     });
     const label = document.getElementById('drawerSaveBtnLabel');
     if (label) label.textContent = 'Save';
