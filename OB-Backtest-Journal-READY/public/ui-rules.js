@@ -175,7 +175,7 @@
       account.startingBalance = balance;
       account.balance = balance;
       saveAccounts();
-      localStorage.setItem(accountKey(mode)], account.id);
+      localStorage.setItem(accountKey(mode), account.id);
       closeAccountModal();
       showAccountToast('Account updated.');
       renderForAccount();
