@@ -1,13 +1,25 @@
 (() => {
-  const STYLE_ID = 'wallet-account-carousel-style-v5';
+  const STYLE_ID = 'wallet-account-carousel-style-v6';
   const ROOT_ID = 'wallet-account-carousel';
   const ACCOUNT_KEY = 'my_journal_accounts_v1';
+  const MODES = ['Demo', 'Real', 'Funded'];
+
   let bound = false;
   let lastSignature = '';
   let lastMode = '';
-  let suppressUntil = 0;
+  let dragging = false;
+  let animating = false;
+  let dragPointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let lastDragX = 0;
+  let suppressRenderUntil = 0;
+  let pendingIndex = null;
+  let renderTimer = null;
 
-  const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const esc = value => String(value ?? '').replace(/[&<>'\"]/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'
+  }[c]));
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -16,9 +28,9 @@
     s.textContent = `
       #${ROOT_ID}{width:100%;position:relative;overflow:hidden;user-select:none;touch-action:pan-y;margin:0;}
       #${ROOT_ID} .wallet-viewport{width:100%;overflow:hidden;position:relative;padding:4px 0 8px;}
-      #${ROOT_ID} .wallet-track{display:flex;align-items:stretch;gap:10px;will-change:transform;transition:transform .58s cubic-bezier(.22,.9,.25,1);}
+      #${ROOT_ID} .wallet-track{display:flex;align-items:stretch;justify-content:flex-start;gap:10px;will-change:transform;transition:transform .46s cubic-bezier(.22,.86,.24,1);}
       #${ROOT_ID}.dragging .wallet-track{transition:none!important;}
-      #${ROOT_ID} .wallet-card{flex:0 0 78%;min-width:0;height:154px;border-radius:20px;padding:16px 17px 14px;color:#fff;position:relative;overflow:hidden;box-sizing:border-box;opacity:.42;transform:scale(.91);filter:saturate(.72);transition:transform .38s cubic-bezier(.22,.9,.25,1),opacity .32s ease,filter .32s ease,box-shadow .38s ease;box-shadow:0 7px 18px rgba(15,23,42,.10);cursor:grab;}
+      #${ROOT_ID} .wallet-card{flex:0 0 78%;min-width:0;height:154px;border-radius:20px;padding:16px 17px 14px;color:#fff;position:relative;overflow:hidden;box-sizing:border-box;opacity:.42;transform:scale(.91);filter:saturate(.72);transition:transform .34s cubic-bezier(.22,.86,.24,1),opacity .28s ease,filter .28s ease,box-shadow .34s ease;box-shadow:0 7px 18px rgba(15,23,42,.10);cursor:grab;}
       #${ROOT_ID} .wallet-card.active{opacity:1;transform:scale(1);filter:none;box-shadow:0 15px 30px rgba(15,23,42,.23),inset 0 1px 0 rgba(255,255,255,.25);z-index:2;}
       #${ROOT_ID} .wallet-card.demo{background:linear-gradient(135deg,#5f78cf 0%,#4964b9 52%,#3c56a5 100%);}
       #${ROOT_ID} .wallet-card.real{background:linear-gradient(135deg,#55c9a4 0%,#35b990 55%,#21a67d 100%);}
@@ -36,16 +48,16 @@
       #${ROOT_ID} .wallet-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:8px;border-top:1px solid rgba(255,255,255,.18);font-size:8px;color:rgba(255,255,255,.68);}
       #${ROOT_ID} .wallet-return{font-weight:900;color:#a7f3d0;}
       #${ROOT_ID} .wallet-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;padding:0 3px;}
-      #${ROOT_ID} .wallet-portfolio{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;}
+      #${ROOT_ID} .wallet-portfolio{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7f91a8;}
       #${ROOT_ID} .wallet-add{border:0;background:transparent;color:#64748b;padding:4px 7px;border-radius:7px;font-size:10px;font-weight:800;cursor:pointer;transition:background .18s ease,color .18s ease,opacity .18s ease,transform .18s ease;white-space:nowrap;}
       #${ROOT_ID} .wallet-add:hover{background:rgba(37,99,235,.08);color:#2563eb;opacity:1;transform:translateY(-1px);}
-      #${ROOT_ID} .wallet-capital{font-size:10px;font-weight:600;color:#a9b8ca;margin-top:8px;padding:0 3px;}
+      #${ROOT_ID} .wallet-capital{font-size:10px;font-weight:600;color:#9aaac0;margin-top:8px;padding:0 3px;}
       #${ROOT_ID} .wallet-arrow{position:absolute;top:45%;transform:translateY(-50%);z-index:6;width:22px;height:22px;border-radius:999px;border:1px solid rgba(148,163,184,.28);background:rgba(255,255,255,.86);backdrop-filter:blur(7px);color:#64748b;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(15,23,42,.10);opacity:.82;transition:all .18s ease;}
       #${ROOT_ID} .wallet-arrow:hover{opacity:1;color:#2563eb;transform:translateY(-50%) scale(1.06);}
       #${ROOT_ID} .wallet-arrow.left{left:3px;}#${ROOT_ID} .wallet-arrow.right{right:3px;}
       #${ROOT_ID} .wallet-controls{display:flex;align-items:center;justify-content:center;margin-top:0;}
       #${ROOT_ID} .wallet-dots{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:1px;}
-      #${ROOT_ID} .wallet-dot{width:6px;height:6px;border-radius:999px;background:#dbe4f2;transition:all .28s cubic-bezier(.16,1,.3,1);}.wallet-dot.active{width:15px;background:#2563eb;}
+      #${ROOT_ID} .wallet-dot{width:6px;height:6px;border-radius:999px;background:#dbe4f2;transition:all .24s cubic-bezier(.16,1,.3,1);}.wallet-dot.active{width:15px;background:#2563eb;}
       #${ROOT_ID} .wallet-hint{text-align:center;font-size:8px;color:#94a3b8;margin-top:3px;letter-spacing:.03em;}
       @media(max-width:639px){#${ROOT_ID} .wallet-card{flex-basis:82%;height:148px;}}
       @media(min-width:900px){#${ROOT_ID} .wallet-card{flex-basis:76%;}}
@@ -61,7 +73,7 @@
       Real:[{id:'real-1',name:'Real 01',startingBalance:100000,balance:100000}],
       Funded:[{id:'funded-1',name:'Funded 01',startingBalance:100000,balance:100000}]
     };
-    return ['Demo','Real','Funded'].flatMap(mode => (Array.isArray(data[mode]) && data[mode].length ? data[mode] : fallback[mode]).map(a => ({...a,mode})));
+    return MODES.flatMap(mode => (Array.isArray(data[mode]) && data[mode].length ? data[mode] : fallback[mode]).map(a => ({...a,mode})));
   }
 
   function accountReturn(a) {
@@ -73,7 +85,7 @@
     return {balance,base,pct:base ? ((balance-base)/base)*100 : 0};
   }
 
-  function currentIndex(list) {
+  function getActiveIndex(list) {
     const select = document.getElementById('accountSelector');
     const mode = typeof activeMode === 'undefined' ? 'Demo' : activeMode;
     const exact = select ? list.findIndex(a => a.mode === mode && a.id === select.value) : -1;
@@ -82,54 +94,82 @@
     return modeIndex >= 0 ? modeIndex : 0;
   }
 
-  function transform(root,index,drag=0,animate=true) {
-    const viewport=root.querySelector('.wallet-viewport');
-    const track=root.querySelector('.wallet-track');
-    const card=track?.children[0];
-    if(!viewport||!track||!card)return;
-    const width=card.getBoundingClientRect().width;
-    const gap=parseFloat(getComputedStyle(track).gap)||10;
-    const inset=Math.max(0,(viewport.clientWidth-width)/2);
-    track.style.transition=animate?'transform .58s cubic-bezier(.22,.9,.25,1)':'none';
-    track.style.transform=`translate3d(${inset-index*(width+gap)+drag}px,0,0)`;
+  function trackPosition(root,index,drag=0) {
+    const viewport = root.querySelector('.wallet-viewport');
+    const track = root.querySelector('.wallet-track');
+    const card = track?.children[0];
+    if(!viewport || !track || !card) return;
+    const width = card.getBoundingClientRect().width;
+    const gap = parseFloat(getComputedStyle(track).gap) || 10;
+    const inset = Math.max(0,(viewport.clientWidth-width)/2);
+    track.style.transform = `translate3d(${inset-index*(width+gap)+drag}px,0,0)`;
   }
 
-  function activateAccount(item) {
-    if(!item)return;
-    const list=readAccounts();
-    const root=document.getElementById(ROOT_ID);
-    const current=currentIndex(list);
-    const target=list.findIndex(a=>a.mode===item.mode&&a.id===item.id);
-    if(root && target>=0) {
-      transform(root,target,0,true);
-      root.querySelectorAll('.wallet-card').forEach((card,i)=>card.classList.toggle('active',i===target));
-      root.querySelectorAll('.wallet-dot').forEach((dot,i)=>dot.classList.toggle('active',i===target));
-    }
-    suppressUntil=Date.now()+650;
-    if(typeof window.switchMode==='function' && item.mode!==activeMode) window.switchMode(item.mode);
-    const apply=()=>{
+  function setVisualIndex(root,index) {
+    root.querySelectorAll('.wallet-card').forEach((card,i)=>card.classList.toggle('active',i===index));
+    root.querySelectorAll('.wallet-dot').forEach((dot,i)=>dot.classList.toggle('active',i===index));
+  }
+
+  function commitAccount(item) {
+    if (!item) return;
+    const currentMode = typeof activeMode === 'undefined' ? '' : activeMode;
+    if (typeof window.switchMode === 'function' && item.mode !== currentMode) window.switchMode(item.mode);
+    const apply = () => {
       const select=document.getElementById('accountSelector');
       if(!select)return false;
       const option=[...select.options].find(o=>o.value===item.id);
       if(!option)return false;
       select.value=item.id;
       select.dispatchEvent(new Event('change',{bubbles:true}));
-      lastSignature='';
       return true;
     };
-    if(!apply())setTimeout(apply,100);
-    setTimeout(()=>{suppressUntil=0;lastSignature='';render();},670);
+    if(!apply())setTimeout(apply,80);
+  }
+
+  function animateTo(root,targetIndex,commit=true) {
+    const list=readAccounts();
+    if(!list.length)return;
+    const target=((targetIndex%list.length)+list.length)%list.length;
+    const current=getActiveIndex(list);
+    if(target===current && pendingIndex===null){
+      setVisualIndex(root,current);
+      trackPosition(root,current,0);
+      return;
+    }
+    pendingIndex=target;
+    animating=true;
+    root.classList.remove('dragging');
+    setVisualIndex(root,target);
+    trackPosition(root,target,0);
+    suppressRenderUntil=Date.now()+520;
+
+    let finished=false;
+    const finish=()=>{
+      if(finished)return;
+      finished=true;
+      if(!animating || pendingIndex!==target)return;
+      animating=false;
+      pendingIndex=null;
+      suppressRenderUntil=Date.now()+180;
+      if(commit)commitAccount(list[target]);
+      lastSignature='';
+      scheduleRender(220);
+    };
+    const track=root.querySelector('.wallet-track');
+    if(track)track.addEventListener('transitionend',finish,{once:true});
+    setTimeout(finish,500);
   }
 
   function move(delta) {
     const list=readAccounts();
     if(list.length<2)return;
-    const i=currentIndex(list);
-    activateAccount(list[(i+delta+list.length)%list.length]);
+    const root=document.getElementById(ROOT_ID);
+    if(!root||dragging||animating)return;
+    animateTo(root,getActiveIndex(list)+delta,true);
   }
 
   function render() {
-    if(Date.now()<suppressUntil)return;
+    if(dragging||animating||Date.now()<suppressRenderUntil)return;
     const panel=document.getElementById('accountBalanceDisplay')?.closest('.bg-gradient-to-br');
     if(!panel||typeof activeMode==='undefined'||activeMode==='Backtest')return;
     injectStyles();
@@ -137,12 +177,17 @@
     const legacy=document.getElementById('accountCardHeader');if(legacy)legacy.style.display='none';
     const display=document.getElementById('accountBalanceDisplay');if(display)display.style.display='none';
     const badge=document.getElementById('accountReturnBadge');if(badge)badge.style.display='none';
+
     const list=readAccounts();if(!list.length)return;
-    const active=currentIndex(list);
+    const active=getActiveIndex(list);
     const sig=`${activeMode}|${active}|${list.map(a=>`${a.mode}:${a.id}:${a.name}:${a.startingBalance}:${a.balance}`).join(';')}`;
     let root=document.getElementById(ROOT_ID);
     if(!root){root=document.createElement('div');root.id=ROOT_ID;panel.insertBefore(root,panel.firstChild);}
-    if(sig===lastSignature && lastMode===activeMode){transform(root,active,0,true);return;}
+    if(sig===lastSignature&&lastMode===activeMode){
+      setVisualIndex(root,active);
+      trackPosition(root,active,0);
+      return;
+    }
     lastSignature=sig;lastMode=activeMode;
     root.innerHTML=`
       <div class="wallet-viewport">
@@ -156,26 +201,110 @@
       </div>
       <div class="wallet-meta"><span class="wallet-portfolio">Portfolio Balance</span><button type="button" class="wallet-add" id="walletAdd">＋ Add account</button></div>
       <div class="wallet-capital">Base Capital: $${accountReturn(list[active]).base.toLocaleString('en-US',{minimumFractionDigits:0})}</div>
-      ${list.length>1?`<button type="button" class="wallet-arrow left" id="walletPrev" aria-label="Previous account"><i class="fa-solid fa-chevron-left text-[8px]"></i></button><button type="button" class="wallet-arrow right" id="walletNext" aria-label="Next account"><i class="fa-solid fa-chevron-right text-[8px]"></i></button><div class="wallet-controls"><div class="wallet-dots">${list.map((_,i)=>`<span class="wallet-dot ${i===active?'active':''}'></span>`).join('')}</div></div><div class="wallet-hint">Swipe left or right to switch account</div>`:''}
+      ${list.length>1?`<button type="button" class="wallet-arrow left" id="walletPrev" aria-label="Previous account"><i class="fa-solid fa-chevron-left text-[8px]"></i></button><button type="button" class="wallet-arrow right" id="walletNext" aria-label="Next account"><i class="fa-solid fa-chevron-right text-[8px]"></i></button><div class="wallet-controls"><div class="wallet-dots">${list.map((_,i)=>`<span class="wallet-dot ${i===active?'active':''}"></span>`).join('')}</div></div><div class="wallet-hint">Swipe left or right to switch account</div>`:''}
     `;
-    transform(root,active,0,false);
+    trackPosition(root,active,0);
     bind(root);
   }
 
-  function bind(root){
+  function bind(root) {
     if(root.__walletBound)return;
     root.__walletBound=true;
-    let startX=0,startY=0,dragging=false;
-    const begin=e=>{if(e.target.closest('button'))return;const p=e.touches?.[0]||e;startX=p.clientX;startY=p.clientY;dragging=true;root.classList.add('dragging');};
-    const drag=e=>{if(!dragging)return;const p=e.touches?.[0]||e;const dx=p.clientX-startX;const dy=p.clientY-startY;if(Math.abs(dx)>Math.abs(dy)+7){e.preventDefault?.();transform(root,currentIndex(readAccounts()),dx,false);}};
-    const end=e=>{if(!dragging)return;const p=e.changedTouches?.[0]||e;const dx=p.clientX-startX;const dy=p.clientY-startY;dragging=false;root.classList.remove('dragging');const list=readAccounts();const i=currentIndex(list);if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.15)activateAccount(list[(i+(dx<0?1:-1)+list.length)%list.length]);else transform(root,i,0,true);};
-    root.addEventListener('touchstart',begin,{passive:true});root.addEventListener('touchmove',drag,{passive:false});root.addEventListener('touchend',end,{passive:true});
-    root.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')begin(e);});root.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')drag(e);});root.addEventListener('pointerup',e=>{if(e.pointerType==='mouse')end(e);});root.addEventListener('pointercancel',e=>{if(e.pointerType==='mouse')end(e);});
+
+    const begin=e=>{
+      if(e.target.closest('button')||animating)return;
+      dragging=true;
+      dragPointerId=e.pointerId ?? null;
+      startX=e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+      startY=e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+      lastDragX=startX;
+      root.classList.add('dragging');
+      try{if(e.pointerId!=null)root.setPointerCapture(e.pointerId);}catch(_){}
+    };
+
+    const drag=e=>{
+      if(!dragging)return;
+      if(dragPointerId!=null&&e.pointerId!=null&&e.pointerId!==dragPointerId)return;
+      const x=e.clientX ?? e.touches?.[0]?.clientX ?? lastDragX;
+      const y=e.clientY ?? e.touches?.[0]?.clientY ?? startY;
+      const dx=x-startX;
+      const dy=y-startY;
+      lastDragX=x;
+      if(Math.abs(dx)>Math.abs(dy)+5){
+        e.preventDefault?.();
+        const list=readAccounts();
+        trackPosition(root,getActiveIndex(list),dx);
+      }
+    };
+
+    const end=e=>{
+      if(!dragging)return;
+      if(dragPointerId!=null&&e.pointerId!=null&&e.pointerId!==dragPointerId)return;
+      const x=e.clientX ?? e.changedTouches?.[0]?.clientX ?? lastDragX;
+      const y=e.clientY ?? e.changedTouches?.[0]?.clientY ?? startY;
+      const dx=x-startX;
+      const dy=y-startY;
+      dragging=false;
+      root.classList.remove('dragging');
+      try{if(e.pointerId!=null)root.releasePointerCapture(e.pointerId);}catch(_){}
+      dragPointerId=null;
+      const list=readAccounts();
+      const current=getActiveIndex(list);
+      if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.1){
+        animateTo(root,current+(dx<0?1:-1),true);
+      }else{
+        animating=true;
+        trackPosition(root,current,0);
+        setTimeout(()=>{animating=false;},470);
+      }
+    };
+
+    root.addEventListener('pointerdown',begin,{passive:true});
+    root.addEventListener('pointermove',drag,{passive:false});
+    root.addEventListener('pointerup',end,{passive:true});
+    root.addEventListener('pointercancel',end,{passive:true});
+    root.addEventListener('touchstart',e=>{if(!dragging)begin(e);},{passive:true});
+    root.addEventListener('touchmove',e=>{if(dragging)drag(e);},{passive:false});
+    root.addEventListener('touchend',e=>{if(dragging)end(e);},{passive:true});
+
+    root.addEventListener('wheel',e=>{
+      if(animating)return;
+      const horizontal=Math.abs(e.deltaX)>Math.abs(e.deltaY)||e.shiftKey;
+      if(!horizontal)return;
+      e.preventDefault();
+      move(e.deltaX>0||e.shiftKey&&e.deltaY>0?1:-1);
+    },{passive:false});
+
     root.querySelector('#walletPrev')?.addEventListener('click',e=>{e.stopPropagation();move(-1);});
     root.querySelector('#walletNext')?.addEventListener('click',e=>{e.stopPropagation();move(1);});
-    root.querySelector('#walletAdd')?.addEventListener('click',e=>{e.stopPropagation();const select=document.getElementById('accountSelector');if(!select)return;select.value='__add_account__';select.dispatchEvent(new Event('change',{bubbles:true}));});
+    root.querySelector('#walletAdd')?.addEventListener('click',e=>{
+      e.stopPropagation();
+      const select=document.getElementById('accountSelector');
+      if(!select)return;
+      select.value='__add_account__';
+      select.dispatchEvent(new Event('change',{bubbles:true}));
+    });
   }
 
-  function boot(){injectStyles();render();if(!bound){bound=true;window.addEventListener('resize',()=>{const root=document.getElementById(ROOT_ID);if(root)transform(root,currentIndex(readAccounts()),0,false);});setInterval(render,700);}}
-  if(document.readyState==='complete')setTimeout(boot,120);else window.addEventListener('load',()=>setTimeout(boot,120));
+  function scheduleRender(delay=0){
+    clearTimeout(renderTimer);
+    renderTimer=setTimeout(()=>{renderTimer=null;render();},delay);
+  }
+
+  function boot(){
+    injectStyles();
+    render();
+    if(!bound){
+      bound=true;
+      window.addEventListener('resize',()=>{
+        if(dragging||animating)return;
+        const root=document.getElementById(ROOT_ID);
+        if(root)trackPosition(root,getActiveIndex(readAccounts()),0);
+      });
+      setInterval(()=>render(),700);
+    }
+  }
+
+  if(document.readyState==='complete')setTimeout(boot,120);
+  else window.addEventListener('load',()=>setTimeout(boot,120));
 })();
