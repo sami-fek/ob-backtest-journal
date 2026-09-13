@@ -1,430 +1,189 @@
 (() => {
-  const STYLE_ID = 'wallet-account-carousel-style';
+  const STYLE_ID = 'wallet-account-carousel-style-v2';
   const ROOT_ID = 'wallet-account-carousel';
-  let boundSelect = null;
+  const ACCOUNT_KEY = 'my_journal_accounts_v1';
+  let bound = false;
   let lastSignature = '';
+
+  const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent = `
-      /* Wallet-style account cards */
-      #${ROOT_ID} {
-        position:relative;
-        width:100%;
-        overflow:hidden;
-        margin:0;
-        touch-action:pan-y;
-        user-select:none;
-      }
-      #${ROOT_ID} .wallet-viewport {
-        width:100%;
-        overflow:hidden;
-        position:relative;
-      }
-      #${ROOT_ID} .wallet-track {
-        display:flex;
-        align-items:stretch;
-        gap:10px;
-        will-change:transform;
-        padding:2px 0 7px;
-        transition:transform .48s cubic-bezier(.22,.8,.24,1);
-      }
-      #${ROOT_ID}.is-dragging .wallet-track { transition:none; }
-      #${ROOT_ID} .wallet-card {
-        flex:0 0 78%;
-        min-width:0;
-        min-height:126px;
-        border-radius:18px;
-        padding:15px 16px 13px;
-        color:#fff;
-        position:relative;
-        overflow:hidden;
-        background:linear-gradient(135deg,#7186d1 0%,#5d72c3 48%,#5269b9 100%);
-        border:1px solid rgba(255,255,255,.22);
-        box-shadow:0 10px 22px rgba(15,23,42,.22), inset 0 1px 0 rgba(255,255,255,.16);
-        transform:scale(.94);
-        opacity:.62;
-        transition:transform .48s cubic-bezier(.22,.8,.24,1),opacity .36s ease,filter .36s ease;
-        cursor:grab;
-      }
-      #${ROOT_ID}.is-dragging .wallet-card { cursor:grabbing; transition:none; }
-      #${ROOT_ID} .wallet-card.is-active {
-        transform:scale(1);
-        opacity:1;
-        filter:none;
-        box-shadow:0 15px 30px rgba(15,23,42,.30), inset 0 1px 0 rgba(255,255,255,.20);
-      }
-      #${ROOT_ID} .wallet-card::before {
-        content:"";
-        position:absolute;
-        width:155px;
-        height:155px;
-        right:-70px;
-        top:-92px;
-        border-radius:999px;
-        background:rgba(255,255,255,.11);
-        pointer-events:none;
-      }
-      #${ROOT_ID} .wallet-card::after {
-        content:"";
-        position:absolute;
-        width:210px;
-        height:70px;
-        right:-70px;
-        bottom:-38px;
-        border-radius:50%;
-        background:rgba(255,255,255,.055);
-        transform:rotate(-13deg);
-        pointer-events:none;
-      }
-      #${ROOT_ID} .wallet-card-head,
-      #${ROOT_ID} .wallet-card-balance,
-      #${ROOT_ID} .wallet-card-foot { position:relative; z-index:1; }
-      #${ROOT_ID} .wallet-card-head {
-        display:flex;
-        justify-content:space-between;
-        align-items:flex-start;
-        gap:10px;
-      }
-      #${ROOT_ID} .wallet-card-type {
-        font-size:8px;
-        line-height:1;
-        text-transform:uppercase;
-        letter-spacing:.13em;
-        font-weight:800;
-        color:rgba(255,255,255,.72);
-        margin-bottom:6px;
-      }
-      #${ROOT_ID} .wallet-card-name {
-        font-size:12px;
-        line-height:1.1;
-        font-weight:800;
-        letter-spacing:.01em;
-        white-space:nowrap;
-        overflow:hidden;
-        text-overflow:ellipsis;
-      }
-      #${ROOT_ID} .wallet-card-mark {
-        width:25px;
-        height:25px;
-        border-radius:8px;
-        display:grid;
-        place-items:center;
-        color:rgba(255,255,255,.76);
-        background:rgba(255,255,255,.10);
-        border:1px solid rgba(255,255,255,.12);
-        flex:none;
-      }
-      #${ROOT_ID} .wallet-add {
-        appearance:none;
-        border:0;
-        background:transparent;
-        color:rgba(255,255,255,.74);
-        padding:2px 0;
-        font-size:9px;
-        line-height:1;
-        font-weight:800;
-        cursor:pointer;
-        transition:opacity .18s ease,background .18s ease,color .18s ease;
-        border-radius:6px;
-      }
-      #${ROOT_ID} .wallet-add:hover {
-        color:#fff;
-        opacity:1;
-        background:rgba(255,255,255,.12);
-        padding-left:5px;
-        padding-right:5px;
-      }
-      #${ROOT_ID} .wallet-card-balance { margin-top:22px; }
-      #${ROOT_ID} .wallet-balance-label {
-        font-size:8px;
-        color:rgba(255,255,255,.68);
-        text-transform:uppercase;
-        letter-spacing:.10em;
-        font-weight:700;
-        margin-bottom:4px;
-      }
-      #${ROOT_ID} .wallet-balance {
-        font-family:'JetBrains Mono',monospace;
-        font-size:22px;
-        line-height:1;
-        font-weight:900;
-        letter-spacing:-.045em;
-        white-space:nowrap;
-      }
-      #${ROOT_ID} .wallet-card-foot {
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:8px;
-        margin-top:13px;
-        padding-top:8px;
-        border-top:1px solid rgba(255,255,255,.15);
-        font-size:8px;
-        color:rgba(255,255,255,.62);
-      }
-      #${ROOT_ID} .wallet-return { color:#a7f3d0; font-weight:900; }
-      #${ROOT_ID} .wallet-edge-arrow {
-        position:absolute;
-        top:50%;
-        transform:translateY(-50%);
-        width:20px;
-        height:20px;
-        border:1px solid rgba(255,255,255,.22);
-        background:rgba(15,23,42,.18);
-        backdrop-filter:blur(6px);
-        color:rgba(255,255,255,.78);
-        border-radius:999px;
-        display:grid;
-        place-items:center;
-        z-index:5;
-        cursor:pointer;
-        opacity:.72;
-        transition:opacity .18s ease,transform .18s ease,background .18s ease;
-      }
-      #${ROOT_ID} .wallet-edge-arrow:hover { opacity:1; background:rgba(15,23,42,.30); }
-      #${ROOT_ID} .wallet-edge-arrow.left { left:5px; }
-      #${ROOT_ID} .wallet-edge-arrow.right { right:5px; }
-      #${ROOT_ID} .wallet-drag-hint {
-        text-align:center;
-        margin-top:1px;
-        font-size:7px;
-        color:rgba(191,219,254,.65);
-        letter-spacing:.08em;
-        text-transform:uppercase;
-      }
-      @media (max-width:639px) {
-        #${ROOT_ID} .wallet-card { flex-basis:82%; min-height:122px; }
-      }
-      @media (min-width:900px) {
-        #${ROOT_ID} .wallet-card { flex-basis:76%; }
-      }
+    const s = document.createElement('style');
+    s.id = STYLE_ID;
+    s.textContent = `
+      #${ROOT_ID}{width:100%;position:relative;overflow:hidden;user-select:none;touch-action:pan-y;margin:0;}
+      #${ROOT_ID} .wallet-viewport{width:100%;overflow:hidden;position:relative;padding:4px 0 9px;}
+      #${ROOT_ID} .wallet-track{display:flex;align-items:stretch;gap:10px;will-change:transform;transition:transform .48s cubic-bezier(.22,.8,.24,1);}
+      #${ROOT_ID}.dragging .wallet-track{transition:none;}
+      #${ROOT_ID} .wallet-card{flex:0 0 78%;min-width:0;height:154px;border-radius:20px;padding:16px 17px 14px;color:#fff;position:relative;overflow:hidden;box-sizing:border-box;opacity:.48;transform:scale(.92);filter:saturate(.78);transition:transform .42s cubic-bezier(.22,.8,.24,1),opacity .34s ease,filter .34s ease,box-shadow .34s ease;box-shadow:0 7px 18px rgba(15,23,42,.12);cursor:grab;}
+      #${ROOT_ID} .wallet-card.active{opacity:1;transform:scale(1);filter:none;box-shadow:0 15px 30px rgba(15,23,42,.22),inset 0 1px 0 rgba(255,255,255,.25);}
+      #${ROOT_ID} .wallet-card.demo{background:linear-gradient(135deg,#5f78cf 0%,#4964b9 52%,#3c56a5 100%);}
+      #${ROOT_ID} .wallet-card.real{background:linear-gradient(135deg,#55c9a4 0%,#35b990 55%,#21a67d 100%);}
+      #${ROOT_ID} .wallet-card.funded{background:linear-gradient(135deg,#f7bd59 0%,#eea93a 55%,#df9227 100%);}
+      #${ROOT_ID} .wallet-card::before{content:"";position:absolute;width:175px;height:175px;right:-78px;top:-105px;border-radius:999px;background:rgba(255,255,255,.12);pointer-events:none;}
+      #${ROOT_ID} .wallet-card::after{content:"";position:absolute;width:240px;height:80px;right:-70px;bottom:-42px;border-radius:50%;background:rgba(255,255,255,.055);transform:rotate(-12deg);pointer-events:none;}
+      #${ROOT_ID} .wallet-head,#${ROOT_ID} .wallet-body,#${ROOT_ID} .wallet-foot{position:relative;z-index:1;}
+      #${ROOT_ID} .wallet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+      #${ROOT_ID} .wallet-type{font-size:9px;text-transform:uppercase;letter-spacing:.12em;font-weight:800;color:rgba(255,255,255,.72);margin-bottom:5px;}
+      #${ROOT_ID} .wallet-name{font-size:14px;line-height:1.1;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      #${ROOT_ID} .wallet-add{border:0;background:transparent;color:rgba(255,255,255,.82);padding:3px 6px;border-radius:7px;font-size:10px;font-weight:800;cursor:pointer;transition:background .18s ease,opacity .18s ease,color .18s ease;white-space:nowrap;}
+      #${ROOT_ID} .wallet-add:hover{background:rgba(255,255,255,.14);color:#fff;opacity:1;}
+      #${ROOT_ID} .wallet-mark{width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.82);}
+      #${ROOT_ID} .wallet-body{margin-top:22px;}
+      #${ROOT_ID} .wallet-label{font-size:8px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:rgba(255,255,255,.67);margin-bottom:4px;}
+      #${ROOT_ID} .wallet-balance{font-family:'JetBrains Mono',monospace;font-size:25px;line-height:1;font-weight:900;letter-spacing:-.045em;white-space:nowrap;}
+      #${ROOT_ID} .wallet-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:8px;border-top:1px solid rgba(255,255,255,.18);font-size:8px;color:rgba(255,255,255,.68);}
+      #${ROOT_ID} .wallet-return{font-weight:900;color:#a7f3d0;}
+      #${ROOT_ID} .wallet-controls{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:0;}
+      #${ROOT_ID} .wallet-arrow{position:absolute;top:45%;transform:translateY(-50%);z-index:6;width:22px;height:22px;border-radius:999px;border:1px solid rgba(148,163,184,.28);background:rgba(255,255,255,.86);backdrop-filter:blur(7px);color:#64748b;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(15,23,42,.10);opacity:.86;transition:all .18s ease;}
+      #${ROOT_ID} .wallet-arrow:hover{opacity:1;color:#2563eb;transform:translateY(-50%) scale(1.06);}
+      #${ROOT_ID} .wallet-arrow.left{left:3px;}#${ROOT_ID} .wallet-arrow.right{right:3px;}
+      #${ROOT_ID} .wallet-dots{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:1px;}
+      #${ROOT_ID} .wallet-dot{width:6px;height:6px;border-radius:999px;background:#dbe4f2;transition:all .2s ease;}.wallet-dot.active{width:15px;background:#2563eb;}
+      #${ROOT_ID} .wallet-hint{text-align:center;font-size:8px;color:#94a3b8;margin-top:3px;letter-spacing:.03em;}
+      @media(max-width:639px){#${ROOT_ID} .wallet-card{flex-basis:82%;height:148px;}}
+      @media(min-width:900px){#${ROOT_ID} .wallet-card{flex-basis:76%;}}
     `;
-    document.head.appendChild(style);
+    document.head.appendChild(s);
   }
 
-  function getAccounts() {
+  function readAccounts() {
+    let data = {};
+    try { data = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || '{}'); } catch (_) {}
+    const modes = ['Demo','Real','Funded'];
+    const fallback = {
+      Demo:[{id:'demo-1',name:'Demo 01',startingBalance:100000,balance:100000}],
+      Real:[{id:'real-1',name:'Real 01',startingBalance:100000,balance:100000}],
+      Funded:[{id:'funded-1',name:'Funded 01',startingBalance:100000,balance:100000}]
+    };
+    return modes.flatMap(mode => (Array.isArray(data[mode]) && data[mode].length ? data[mode] : fallback[mode]).map(a => ({...a,mode})));
+  }
+
+  function accountReturn(a) {
+    const risk = Number(window.riskPercent) || 1;
+    const base = Number(a.startingBalance ?? a.balance ?? 100000) || 100000;
+    let r = 0;
+    if (Array.isArray(window.trades)) r = window.trades.filter(t => t.mode === a.mode && t.accountId === a.id).reduce((sum,t)=>sum+(Number(t.rMultiple)||0),0);
+    const balance = base + r * base * (risk/100);
+    return {balance,base,pct:base ? ((balance-base)/base)*100 : 0};
+  }
+
+  function currentKey() {
     const select = document.getElementById('accountSelector');
-    if (!select) return [];
-    return [...select.options]
-      .filter(o => o.value && o.value !== '__add_account__')
-      .map(o => {
-        const raw = o.textContent.trim();
-        const parts = raw.split(' — ');
-        return {
-          id: o.value,
-          name: parts[0] || 'Account',
-          balance: parts.slice(1).join(' — ') || '$0.00'
-        };
-      });
+    const mode = typeof activeMode === 'undefined' ? 'Demo' : activeMode;
+    return `${mode}|${select?.value || ''}`;
   }
 
-  function activeIndex(accounts) {
+  function currentIndex(list) {
     const select = document.getElementById('accountSelector');
-    if (!select || !accounts.length) return 0;
-    const index = accounts.findIndex(a => a.id === select.value);
-    return index >= 0 ? index : 0;
+    const mode = typeof activeMode === 'undefined' ? 'Demo' : activeMode;
+    if (!select) return Math.max(0,list.findIndex(a=>a.mode===mode));
+    const exact = list.findIndex(a=>a.mode===mode && a.id===select.value);
+    if (exact >= 0) return exact;
+    const modeIndex = list.findIndex(a=>a.mode===mode);
+    return modeIndex >= 0 ? modeIndex : 0;
   }
 
-  function walletTransform(root, index, dragX = 0, animate = true) {
+  function setAccount(item) {
+    if (!item) return;
+    if (typeof window.switchMode === 'function') window.switchMode(item.mode);
+    const apply = () => {
+      const select = document.getElementById('accountSelector');
+      if (!select) return false;
+      const option = [...select.options].find(o => o.value === item.id);
+      if (!option) return false;
+      select.value = item.id;
+      select.dispatchEvent(new Event('change',{bubbles:true}));
+      lastSignature = '';
+      return true;
+    };
+    if (!apply()) setTimeout(apply,80);
+    setTimeout(render,120);
+  }
+
+  function move(delta) {
+    const list = readAccounts();
+    if (list.length < 2) return;
+    const i = currentIndex(list);
+    const next = (i + delta + list.length) % list.length;
+    setAccount(list[next]);
+  }
+
+  function transform(root,index,drag=0,animate=true) {
     const viewport = root.querySelector('.wallet-viewport');
     const track = root.querySelector('.wallet-track');
     const card = track?.children[0];
     if (!viewport || !track || !card) return;
-    const cardWidth = card.getBoundingClientRect().width;
+    const width = card.getBoundingClientRect().width;
     const gap = parseFloat(getComputedStyle(track).gap) || 10;
-    const sideInset = Math.max(0, (viewport.clientWidth - cardWidth) / 2);
-    if (!animate) track.style.transition = 'none';
-    else track.style.transition = '';
-    track.style.transform = `translate3d(${sideInset - index * (cardWidth + gap) + dragX}px,0,0)`;
-    if (!animate) requestAnimationFrame(() => { track.style.transition = ''; });
-  }
-
-  function selectAccount(index) {
-    const select = document.getElementById('accountSelector');
-    const accounts = getAccounts();
-    if (!select || !accounts.length) return;
-    const next = (index + accounts.length) % accounts.length;
-    if (select.value === accounts[next].id) return;
-    select.value = accounts[next].id;
-    select.dispatchEvent(new Event('change', { bubbles:true }));
+    const centerInset = Math.max(0,(viewport.clientWidth-width)/2);
+    track.style.transition = animate ? '' : 'none';
+    track.style.transform = `translate3d(${centerInset-index*(width+gap)+drag}px,0,0)`;
+    if (!animate) requestAnimationFrame(()=>{track.style.transition='';});
   }
 
   function render() {
-    const select = document.getElementById('accountSelector');
     const panel = document.getElementById('accountBalanceDisplay')?.closest('.bg-gradient-to-br');
-    const wrap = document.getElementById('accountSelectorWrap');
-    if (!select || !panel || typeof activeMode === 'undefined' || activeMode === 'Backtest') return;
-
+    if (!panel || typeof activeMode === 'undefined' || activeMode === 'Backtest') return;
     injectStyles();
-    if (wrap) wrap.style.display = 'none';
-
-    // The account rules layer owns the legacy balance/header elements.
-    // Keep them available for the existing logic but visually replace them with the wallet UI.
+    panel.style.background = 'transparent';
+    panel.style.boxShadow = 'none';
+    panel.style.border = '0';
+    panel.style.padding = '0';
     const legacyHeader = document.getElementById('accountCardHeader');
-    if (legacyHeader) legacyHeader.style.display = 'none';
+    if (legacyHeader) legacyHeader.style.display='none';
+    const display = document.getElementById('accountBalanceDisplay');
+    if (display) display.style.display='none';
+    const badge = document.getElementById('accountReturnBadge');
+    if (badge) badge.style.display='none';
 
-    const accounts = getAccounts();
-    if (!accounts.length) return;
-    const active = activeIndex(accounts);
-    const returnText = document.getElementById('accountReturnBadge')?.textContent || '+0.00%';
-    const signature = `${activeMode}|${select.value}|${accounts.map(a => `${a.id}:${a.name}:${a.balance}`).join('|')}|${returnText}`;
-    if (signature === lastSignature) {
-      const root = document.getElementById(ROOT_ID);
-      if (root) walletTransform(root, active, 0, true);
-      return;
-    }
-    lastSignature = signature;
-
+    const list = readAccounts();
+    if (!list.length) return;
+    const active = currentIndex(list);
+    const sig = `${currentKey()}|${list.map(a=>`${a.mode}:${a.id}:${a.name}:${a.startingBalance}:${a.balance}`).join(';')}`;
     let root = document.getElementById(ROOT_ID);
-    if (!root) {
-      root = document.createElement('div');
-      root.id = ROOT_ID;
-      panel.insertBefore(root, panel.firstChild);
-    }
+    if (!root) { root=document.createElement('div');root.id=ROOT_ID;panel.insertBefore(root,panel.firstChild); }
+    if (sig === lastSignature) { transform(root,active,0,true); return; }
+    lastSignature=sig;
 
     root.innerHTML = `
       <div class="wallet-viewport">
         <div class="wallet-track">
-          ${accounts.map((a, i) => `
-            <article class="wallet-card ${i === active ? 'is-active' : ''}" data-index="${i}" aria-hidden="${i !== active}">
-              <div class="wallet-card-head">
-                <div class="min-w-0">
-                  <div class="wallet-card-type">${escapeHtml(activeMode)} account</div>
-                  <div class="wallet-card-name">${escapeHtml(a.name)}</div>
-                </div>
-                ${i === active ? '<button type="button" class="wallet-add" id="walletAdd">＋ Add account</button>' : '<span class="wallet-card-mark"><i class="fa-solid fa-wallet text-[9px]"></i></span>'}
+          ${list.map((a,i)=>{
+            const p=accountReturn(a);
+            const cls=a.mode.toLowerCase();
+            return `<article class="wallet-card ${cls} ${i===active?'active':''}" data-index="${i}">
+              <div class="wallet-head">
+                <div class="min-w-0"><div class="wallet-type">${esc(a.mode)} account</div><div class="wallet-name">${esc(a.name)}</div></div>
+                ${i===active?'<button type="button" class="wallet-add" id="walletAdd">＋ Add account</button>':'<span class="wallet-mark"><i class="fa-solid fa-wallet text-[9px]"></i></span>'}
               </div>
-              <div class="wallet-card-balance">
-                <div class="wallet-balance-label">Balance</div>
-                <div class="wallet-balance">${escapeHtml(a.balance)}</div>
-              </div>
-              <div class="wallet-card-foot">
-                <span>${i === active ? 'Portfolio balance' : 'Account'}</span>
-                <span class="wallet-return">${i === active ? escapeHtml(returnText) : ''}</span>
-              </div>
-            </article>`).join('')}
+              <div class="wallet-body"><div class="wallet-label">Balance</div><div class="wallet-balance">$${p.balance.toLocaleString('en-US',{minimumFractionDigits:2})}</div></div>
+              <div class="wallet-foot"><span>Base Capital: $${p.base.toLocaleString('en-US',{minimumFractionDigits:0})}</span><span class="wallet-return">${p.pct>=0?'+':''}${p.pct.toFixed(2)}%</span></div>
+            </article>`;
+          }).join('')}
         </div>
       </div>
-      ${accounts.length > 1 ? `
-        <button type="button" class="wallet-edge-arrow left" id="walletPrev" aria-label="Previous account"><i class="fa-solid fa-chevron-left text-[7px]"></i></button>
-        <button type="button" class="wallet-edge-arrow right" id="walletNext" aria-label="Next account"><i class="fa-solid fa-chevron-right text-[7px]"></i></button>
-        <div class="wallet-drag-hint">Swipe to switch account</div>` : ''}
+      ${list.length>1?`<button type="button" class="wallet-arrow left" id="walletPrev" aria-label="Previous account"><i class="fa-solid fa-chevron-left text-[8px]"></i></button><button type="button" class="wallet-arrow right" id="walletNext" aria-label="Next account"><i class="fa-solid fa-chevron-right text-[8px]"></i></button><div class="wallet-controls"><div class="wallet-dots">${list.map((_,i)=>`<span class="wallet-dot ${i===active?'active':''}"></span>`).join('')}</div></div><div class="wallet-hint">Swipe left or right to switch account</div>`:''}
     `;
-
-    walletTransform(root, active, 0, false);
-    bindInteractions(root);
+    transform(root,active,0,false);
+    bind(root);
   }
 
-  function bindInteractions(root) {
+  function bind(root) {
     if (root.__walletBound) return;
-    root.__walletBound = true;
-
-    let startX = 0;
-    let startY = 0;
-    let lastX = 0;
-    let dragging = false;
-    let activeAtStart = 0;
-
-    const begin = e => {
-      if (e.target.closest('button')) return;
-      const p = e.touches?.[0] || e;
-      const accounts = getAccounts();
-      startX = lastX = p.clientX;
-      startY = p.clientY;
-      activeAtStart = activeIndex(accounts);
-      dragging = true;
-      root.classList.add('is-dragging');
-    };
-
-    const move = e => {
-      if (!dragging) return;
-      const p = e.touches?.[0] || e;
-      lastX = p.clientX;
-      const dx = lastX - startX;
-      const dy = p.clientY - startY;
-      if (Math.abs(dx) > Math.abs(dy) + 8) {
-        e.preventDefault?.();
-        walletTransform(root, activeAtStart, dx, false);
-      }
-    };
-
-    const finish = e => {
-      if (!dragging) return;
-      const p = e.changedTouches?.[0] || e;
-      const dx = p.clientX - startX;
-      const dy = p.clientY - startY;
-      dragging = false;
-      root.classList.remove('is-dragging');
-      const accounts = getAccounts();
-      const current = activeIndex(accounts);
-      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.15 && accounts.length > 1) {
-        selectAccount(current + (dx < 0 ? 1 : -1));
-      } else {
-        walletTransform(root, current, 0, true);
-      }
-    };
-
-    root.addEventListener('touchstart', begin, {passive:true});
-    root.addEventListener('touchmove', move, {passive:false});
-    root.addEventListener('touchend', finish, {passive:true});
-    root.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') begin(e); });
-    root.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') move(e); });
-    root.addEventListener('pointerup', e => { if (e.pointerType === 'mouse') finish(e); });
-    root.addEventListener('pointercancel', e => { if (e.pointerType === 'mouse') finish(e); });
-
-    root.querySelector('#walletPrev')?.addEventListener('click', e => {
-      e.stopPropagation();
-      const accounts = getAccounts();
-      selectAccount(activeIndex(accounts) - 1);
-    });
-    root.querySelector('#walletNext')?.addEventListener('click', e => {
-      e.stopPropagation();
-      const accounts = getAccounts();
-      selectAccount(activeIndex(accounts) + 1);
-    });
-    root.querySelector('#walletAdd')?.addEventListener('click', e => {
-      e.stopPropagation();
-      const select = document.getElementById('accountSelector');
-      if (!select) return;
-      select.value = '__add_account__';
-      select.dispatchEvent(new Event('change', { bubbles:true }));
-    });
+    root.__walletBound=true;
+    let startX=0,startY=0,dragging=false;
+    const begin=e=>{ if(e.target.closest('button'))return;const p=e.touches?.[0]||e;startX=p.clientX;startY=p.clientY;dragging=true;root.classList.add('dragging'); };
+    const drag=e=>{if(!dragging)return;const p=e.touches?.[0]||e;const dx=p.clientX-startX;const dy=p.clientY-startY;if(Math.abs(dx)>Math.abs(dy)+7){e.preventDefault?.();transform(root,currentIndex(readAccounts()),dx,false);}};
+    const end=e=>{if(!dragging)return;const p=e.changedTouches?.[0]||e;const dx=p.clientX-startX;const dy=p.clientY-startY;dragging=false;root.classList.remove('dragging');if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.15)move(dx<0?1:-1);else transform(root,currentIndex(readAccounts()),0,true);};
+    root.addEventListener('touchstart',begin,{passive:true});root.addEventListener('touchmove',drag,{passive:false});root.addEventListener('touchend',end,{passive:true});
+    root.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')begin(e);});root.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')drag(e);});root.addEventListener('pointerup',e=>{if(e.pointerType==='mouse')end(e);});root.addEventListener('pointercancel',e=>{if(e.pointerType==='mouse')end(e);});
+    root.querySelector('#walletPrev')?.addEventListener('click',e=>{e.stopPropagation();move(-1);});
+    root.querySelector('#walletNext')?.addEventListener('click',e=>{e.stopPropagation();move(1);});
+    root.querySelector('#walletAdd')?.addEventListener('click',e=>{e.stopPropagation();const select=document.getElementById('accountSelector');if(!select)return;select.value='__add_account__';select.dispatchEvent(new Event('change',{bubbles:true}));});
   }
 
-  function escapeHtml(value) {
-    return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  }
-
-  function bindSelect() {
-    const select = document.getElementById('accountSelector');
-    if (!select || select === boundSelect) return;
-    boundSelect = select;
-    select.addEventListener('change', () => {
-      lastSignature = '';
-      setTimeout(render, 50);
-    });
-  }
-
-  function tick() {
-    bindSelect();
-    render();
-  }
-
-  function boot() {
-    injectStyles();
-    tick();
-    setInterval(tick, 500);
-    window.addEventListener('resize', () => {
-      const root = document.getElementById(ROOT_ID);
-      if (!root) return;
-      const accounts = getAccounts();
-      walletTransform(root, activeIndex(accounts), 0, false);
-    });
-  }
-
-  if (document.readyState === 'complete') setTimeout(boot, 80);
-  else window.addEventListener('load', () => setTimeout(boot, 80), {once:true});
+  function boot(){injectStyles();render();if(!bound){bound=true;window.addEventListener('resize',()=>{const root=document.getElementById(ROOT_ID);if(root)transform(root,currentIndex(readAccounts()),0,false);});setInterval(render,700);}}
+  if(document.readyState==='complete')setTimeout(boot,120);else window.addEventListener('load',()=>setTimeout(boot,120),{once:true});
 })();
