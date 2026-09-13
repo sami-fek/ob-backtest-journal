@@ -63,4 +63,9 @@
       return result;
     };
   }
+
+  // Load the current UI behavior layer after the original journal code has been defined.
+  const uiScript = document.createElement('script');
+  uiScript.src = '/ui-rules.js';
+  document.head.appendChild(uiScript);
 })();
