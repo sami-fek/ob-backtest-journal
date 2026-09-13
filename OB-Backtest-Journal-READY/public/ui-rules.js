@@ -5,9 +5,10 @@
     Real: [{ id: 'real-1', name: 'Real 01', balance: 100000, startingBalance: 100000 }],
     Funded: [{ id: 'funded-1', name: 'Funded 01', balance: 100000, startingBalance: 100000 }]
   };
-
   let accounts = {};
   let activeAccountId = null;
+  let currentDrawerTradeId = null;
+  const CHECKLIST_COUNT = 8;
 
   function loadAccounts() {
     try { accounts = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || '{}'); } catch (_) { accounts = {}; }
@@ -34,14 +35,14 @@
     accounts[mode].push(account);
     saveAccounts();
     activeAccountId = account.id;
-    localStorage.setItem('my_journal_active_account_v1', activeAccountId);
+    localStorage.setItem(`my_journal_active_account_${activeMode}_v1`, activeAccountId);
     renderForAccount();
   }
 
   function migrateTrades() {
-    if (!Array.isArray(window.trades)) return;
+    if (!Array.isArray(trades)) return;
     let changed = false;
-    window.trades.forEach(t => {
+    trades.forEach(t => {
       if (t.mode === 'Backtest') return;
       if (!t.accountId) {
         const first = (accounts[t.mode] || [])[0];
@@ -52,22 +53,22 @@
   }
 
   function getActiveAccount() {
-    const list = accounts[window.activeMode] || [];
+    const list = accounts[activeMode] || [];
     return list.find(a => a.id === activeAccountId) || list[0] || null;
   }
 
   function accountBalance(account) {
     if (!account) return 0;
-    const risk = Number(window.riskPercent) || 1;
+    const risk = Number(riskPercent) || 1;
     const base = Number(account.startingBalance ?? account.balance ?? 100000);
-    const r = (window.trades || []).filter(t => t.mode === window.activeMode && t.accountId === account.id).reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
+    const r = trades.filter(t => t.mode === activeMode && t.accountId === account.id).reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
     return base + r * base * (risk / 100);
   }
 
   function accountBalanceForMode(account) {
-    const risk = Number(window.riskPercent) || 1;
+    const risk = Number(riskPercent) || 1;
     const base = Number(account.startingBalance ?? account.balance ?? 100000);
-    const r = (window.trades || []).filter(t => t.mode === window.activeMode && t.accountId === account.id).reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
+    const r = trades.filter(t => t.mode === activeMode && t.accountId === account.id).reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
     return base + r * base * (risk / 100);
   }
 
@@ -84,16 +85,16 @@
       if (activeWrap?.parentElement) activeWrap.parentElement.insertBefore(wrap, activeWrap);
       else modeBar.parentElement.appendChild(wrap);
       document.getElementById('accountSelector').addEventListener('change', e => {
-        if (e.target.value === '__add_account__') { addAccount(window.activeMode); return; }
+        if (e.target.value === '__add_account__') { addAccount(activeMode); return; }
         activeAccountId = e.target.value;
-        localStorage.setItem('my_journal_active_account_v1', activeAccountId);
+        localStorage.setItem(`my_journal_active_account_${activeMode}_v1`, activeAccountId);
         renderForAccount();
       });
     }
-    wrap.style.display = window.activeMode === 'Backtest' ? 'none' : 'flex';
+    wrap.style.display = activeMode === 'Backtest' ? 'none' : 'flex';
     const select = document.getElementById('accountSelector');
-    if (!select || window.activeMode === 'Backtest') return;
-    const list = accounts[window.activeMode] || [];
+    if (!select || activeMode === 'Backtest') return;
+    const list = accounts[activeMode] || [];
     if (!list.some(a => a.id === activeAccountId)) activeAccountId = list[0]?.id || null;
     refreshAccountOptionBalances();
     select.value = activeAccountId || '';
@@ -101,17 +102,17 @@
 
   function refreshAccountOptionBalances() {
     const select = document.getElementById('accountSelector');
-    if (!select || window.activeMode === 'Backtest') return;
-    const list = accounts[window.activeMode] || [];
+    if (!select || activeMode === 'Backtest') return;
+    const list = accounts[activeMode] || [];
     select.innerHTML = list.map(a => `<option value="${a.id}">${a.name} — $${accountBalanceForMode(a).toLocaleString('en-US', {minimumFractionDigits: 2})}</option>`).join('');
     select.insertAdjacentHTML('beforeend', '<option value="__add_account__">＋ Add account</option>');
     select.value = activeAccountId || '';
   }
 
   function filterByAccount() {
-    if (window.activeMode === 'Backtest') return (window.trades || []).filter(t => t.mode === 'Backtest');
+    if (activeMode === 'Backtest') return trades.filter(t => t.mode === 'Backtest');
     const acc = getActiveAccount();
-    return acc ? (window.trades || []).filter(t => t.mode === window.activeMode && t.accountId === acc.id) : [];
+    return acc ? trades.filter(t => t.mode === activeMode && t.accountId === acc.id) : [];
   }
 
   function patchAccountFiltering() {
@@ -119,9 +120,9 @@
       const original = window[name];
       if (typeof original !== 'function' || original.__accountPatched) return;
       const patched = function() {
-        const all = window.trades;
-        window.trades = filterByAccount();
-        try { return original.apply(this, arguments); } finally { window.trades = all; }
+        const all = trades;
+        trades = filterByAccount();
+        try { return original.apply(this, arguments); } finally { trades = all; }
       };
       patched.__accountPatched = true;
       window[name] = patched;
@@ -131,8 +132,8 @@
   function updateAccountBalanceWidget() {
     const card = document.getElementById('accountBalanceDisplay')?.closest('.glass-card');
     if (!card) return;
-    card.style.display = window.activeMode === 'Backtest' ? 'none' : '';
-    if (window.activeMode === 'Backtest') return;
+    card.style.display = activeMode === 'Backtest' ? 'none' : '';
+    if (activeMode === 'Backtest') return;
     const acc = getActiveAccount();
     if (!acc) return;
     const balance = accountBalance(acc);
@@ -167,10 +168,10 @@
     if (!btn) return;
     btn.innerHTML = '<span id="drawerSaveBtnLabel">Save</span>';
     const check = () => {
-      const t = (window.trades || []).find(x => x.id === window.currentDrawerTradeId);
+      const t = trades.find(x => x.id === currentDrawerTradeId);
       if (!t) return setSaveEnabled(btn, false);
       const checklist = t.checklist || [];
-      const checklistComplete = checklist.length === window.DEFAULT_CHECKLIST.length && checklist.every(s => s === 'pass' || s === 'fail');
+      const checklistComplete = checklist.length === CHECKLIST_COUNT && checklist.every(s => s === 'pass' || s === 'fail');
       const screenshotComplete = Array.isArray(t.screenshots) && t.screenshots.length > 0;
       const noteComplete = document.getElementById('drawerNotesInput')?.value.trim().length > 0;
       setSaveEnabled(btn, checklistComplete && screenshotComplete && noteComplete);
@@ -184,9 +185,10 @@
     const originalOpen = window.openDrawer;
     if (typeof originalOpen === 'function' && !originalOpen.__patchedRules) {
       const patched = function(id) {
+        currentDrawerTradeId = id;
         originalOpen.apply(this, arguments);
-        const t = (window.trades || []).find(x => x.id === id);
-        if (t && window.activeMode !== 'Backtest') t.accountId = t.accountId || activeAccountId;
+        const t = trades.find(x => x.id === id);
+        if (t && activeMode !== 'Backtest') t.accountId = t.accountId || activeAccountId;
         setTimeout(() => { setupRequiredSave(); window.__checkDrawerSaveReady?.(); }, 0);
       };
       patched.__patchedRules = true;
@@ -229,10 +231,10 @@
     const original = window.handleTradeSubmit;
     if (typeof original !== 'function' || original.__accountPatched) return;
     const patched = function(e) {
-      const before = (window.trades || []).length;
+      const before = trades.length;
       const result = original.apply(this, arguments);
-      const created = (window.trades || [])[0];
-      if ((window.trades || []).length > before && created && window.activeMode !== 'Backtest') {
+      const created = trades[0];
+      if (trades.length > before && created && activeMode !== 'Backtest') {
         created.accountId = activeAccountId;
         if (typeof window.saveState === 'function') window.saveState();
       }
@@ -249,7 +251,7 @@
     const patched = function(mode) {
       if (mode !== 'Backtest') {
         const list = accounts[mode] || [];
-        activeAccountId = localStorage.getItem('my_journal_active_account_v1') || list[0]?.id || null;
+        activeAccountId = localStorage.getItem(`my_journal_active_account_${mode}_v1`) || list[0]?.id || null;
       } else activeAccountId = null;
       const result = original.apply(this, arguments);
       ensureAccountSelector();
@@ -273,9 +275,9 @@
   function init() {
     loadAccounts();
     migrateTrades();
-    if (window.activeMode !== 'Backtest') {
-      const list = accounts[window.activeMode] || [];
-      activeAccountId = localStorage.getItem('my_journal_active_account_v1') || list[0]?.id || null;
+    if (activeMode !== 'Backtest') {
+      const list = accounts[activeMode] || [];
+      activeAccountId = localStorage.getItem(`my_journal_active_account_${activeMode}_v1`) || list[0]?.id || null;
     }
     patchTradeSubmit();
     patchDrawer();
@@ -289,5 +291,6 @@
     refreshAccountOptionBalances();
   }
 
-  window.addEventListener('load', () => setTimeout(init, 0));
+  if (document.readyState === 'complete') setTimeout(init, 0);
+  else window.addEventListener('load', () => setTimeout(init, 0), { once: true });
 })();
