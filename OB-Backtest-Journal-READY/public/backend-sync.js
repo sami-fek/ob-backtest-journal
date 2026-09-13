@@ -70,7 +70,7 @@
         journalAnalyticsScript.src = '/journal-analytics-ui.js';
         journalAnalyticsScript.onload = () => {
           const heatmapScript = document.createElement('script');
-          heatmapScript.src = '/heatmap-calendar-ui.js';
+          heatmapScript.src = '/heatmap-no-trades.js';
           document.head.appendChild(heatmapScript);
         };
         document.head.appendChild(journalAnalyticsScript);
