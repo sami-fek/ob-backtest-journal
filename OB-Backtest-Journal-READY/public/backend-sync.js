@@ -86,6 +86,11 @@
     widgetScript.onload = () => {
       const accountEditFix = document.createElement('script');
       accountEditFix.src = '/account-edit-persistence-fix.js';
+      accountEditFix.onload = () => {
+        const journalAnalyticsScript = document.createElement('script');
+        journalAnalyticsScript.src = '/journal-analytics-ui.js';
+        document.head.appendChild(journalAnalyticsScript);
+      };
       document.head.appendChild(accountEditFix);
     };
     document.head.appendChild(widgetScript);
