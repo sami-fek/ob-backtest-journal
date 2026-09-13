@@ -75,7 +75,7 @@
   function position(root,index,animate=true){
     const viewport=root.querySelector('.wallet-viewport'),track=root.querySelector('.wallet-track'),card=track?.children[0];
     if(!viewport||!track||!card)return;
-    const width=card.getBoundingClientRect().width,gap=parseFloat(getComputedStyle(track).gap)||10;
+    const width=card.offsetWidth||card.getBoundingClientRect().width,gap=parseFloat(getComputedStyle(track).gap)||10;
     const inset=Math.max(0,(viewport.clientWidth-width)/2);
     track.style.transition=animate?'transform .55s cubic-bezier(.22,.9,.24,1)':'none';
     track.style.transform=`translate3d(${inset-index*(width+gap)}px,0,0)`;
