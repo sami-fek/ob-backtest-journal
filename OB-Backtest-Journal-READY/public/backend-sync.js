@@ -39,7 +39,9 @@
         const journalAnalyticsScript=document.createElement('script');journalAnalyticsScript.src='/journal-analytics-ui.js';journalAnalyticsScript.onload=()=>{
           const journalHeatmapScript=document.createElement('script');journalHeatmapScript.src='/journal-heatmap.js';journalHeatmapScript.onload=()=>{
             const disciplineMoveScript=document.createElement('script');disciplineMoveScript.src='/discipline-journal-move.js';disciplineMoveScript.onload=()=>{
-              const sizeFix=document.createElement('script');sizeFix.src='/account-widget-size-fix.js';document.head.appendChild(sizeFix);
+              const sizeFix=document.createElement('script');sizeFix.src='/account-widget-size-fix.js';sizeFix.onload=()=>{
+                const aiCoachScript=document.createElement('script');aiCoachScript.src='/ai-coach.js';document.head.appendChild(aiCoachScript);
+              };document.head.appendChild(sizeFix);
             };document.head.appendChild(disciplineMoveScript);
           };document.head.appendChild(journalHeatmapScript);
         };document.head.appendChild(journalAnalyticsScript);
