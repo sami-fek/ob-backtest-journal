@@ -9,8 +9,6 @@
   let accounts = {};
   let activeAccountId = null;
   let currentDrawerTradeId = null;
-  let balanceDragStartX = null;
-  let balanceDragStartY = null;
 
   function loadAccounts() {
     try { accounts = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || '{}'); } catch (_) { accounts = {}; }
@@ -148,8 +146,6 @@
     if (activeMode === 'Backtest') return;
 
     panel.id = 'accountBalanceSwipePanel';
-    panel.style.touchAction = 'pan-y';
-    panel.style.cursor = activeList().length > 1 ? 'grab' : 'default';
     panel.style.position = 'relative';
     panel.classList.add('select-none');
 
@@ -183,47 +179,6 @@
     const baseSpan = panel.querySelector('.text-blue-200.font-medium.uppercase')?.parentElement?.querySelector('.flex span');
     if (baseSpan) baseSpan.textContent = `Base Capital: $${base.toLocaleString('en-US', {minimumFractionDigits:2})}`;
 
-    bindBalanceSwipe(panel);
-  }
-
-  function bindBalanceSwipe(panel) {
-    if (panel.__swipeBound) return;
-    panel.__swipeBound = true;
-
-    const move = direction => {
-      const list = activeList();
-      if (list.length < 2) return;
-      const current = Math.max(0, list.findIndex(a => a.id === activeAccountId));
-      const next = (current + direction + list.length) % list.length;
-      activeAccountId = list[next].id;
-      localStorage.setItem(`my_journal_active_account_${activeMode}_v1`, activeAccountId);
-      renderForAccount();
-    };
-
-    panel.addEventListener('pointerdown', e => {
-      if (e.target.closest('button')) return;
-      balanceDragStartX = e.clientX;
-      balanceDragStartY = e.clientY;
-      panel.setPointerCapture?.(e.pointerId);
-      panel.style.cursor = 'grabbing';
-    });
-    panel.addEventListener('pointerup', e => {
-      if (balanceDragStartX == null) return;
-      const dx = e.clientX - balanceDragStartX;
-      const dy = e.clientY - balanceDragStartY;
-      balanceDragStartX = balanceDragStartY = null;
-      panel.style.cursor = activeList().length > 1 ? 'grab' : 'default';
-      if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.25) move(dx < 0 ? 1 : -1);
-    });
-    panel.addEventListener('pointercancel', () => { balanceDragStartX = balanceDragStartY = null; panel.style.cursor = activeList().length > 1 ? 'grab' : 'default'; });
-
-    let wheelLock = false;
-    panel.addEventListener('wheel', e => {
-      if (Math.abs(e.deltaX) < 12 || wheelLock) return;
-      wheelLock = true;
-      move(e.deltaX > 0 ? 1 : -1);
-      setTimeout(() => { wheelLock = false; }, 350);
-    }, { passive: true });
   }
 
   function filterByAccount() { return accountTrades(); }
