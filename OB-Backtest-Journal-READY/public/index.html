@@ -1,1 +1,32 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MY Journal // Pro OS</title><link rel="stylesheet" href="/ui-v2.css"><script src="/ui-v2.js" defer></script></head><body><main style="max-width:1100px;margin:40px auto;padding:24px"><section class="glass-card" style="padding:32px"><div style="font-size:12px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.08em">MY Journal Pro OS</div><h1 style="font-size:42px;margin:10px 0">Trading Journal & Analytics</h1><p style="color:#64748b;line-height:1.7">The new Pro OS interface is now active. Your trading system, journal, analytics and future MT5 integration will be built into this UI.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:24px"><div class="glass-card" style="padding:18px"><b>Backtest</b><div style="color:#64748b;margin-top:6px">Model A / Model OB</div></div><div class="glass-card" style="padding:18px"><b>Demo</b><div style="color:#64748b;margin-top:6px">Execution tracking</div></div><div class="glass-card" style="padding:18px"><b>Real</b><div style="color:#64748b;margin-top:6px">Live journal</div></div><div class="glass-card" style="padding:18px"><b>Funded</b><div style="color:#64748b;margin-top:6px">Account performance</div></div></div></section></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MY Journal</title>
+<style>html,body{margin:0;min-height:100%;background:#f4f7fb}#boot{font-family:system-ui,sans-serif;padding:40px;color:#475569;text-align:center}</style>
+</head>
+<body>
+<div id="boot">Loading MY Journal…</div>
+<script>
+(async()=>{
+  try{
+    const files=['gemini-ui-1.txt','gemini-ui-2.txt','gemini-ui-3.txt','gemini-ui-4.txt'];
+    const parts=await Promise.all(files.map(f=>fetch('/'+f).then(r=>{if(!r.ok)throw new Error('Missing '+f);return r.text();})));
+    const b64=parts.join('').replace(/\s/g,'');
+    const bin=atob(b64);
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const html=await new Response(stream).text();
+    document.open();
+    document.write(html);
+    document.close();
+  }catch(err){
+    document.getElementById('boot').textContent='MY Journal failed to load: '+err.message;
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>
