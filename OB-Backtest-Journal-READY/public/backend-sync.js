@@ -69,9 +69,9 @@
         const journalAnalyticsScript = document.createElement('script');
         journalAnalyticsScript.src = '/journal-analytics-ui.js';
         journalAnalyticsScript.onload = () => {
-          const heatmapScript = document.createElement('script');
-          heatmapScript.src = '/heatmap-no-trades.js';
-          document.head.appendChild(heatmapScript);
+          const journalHeatmapScript = document.createElement('script');
+          journalHeatmapScript.src = '/journal-heatmap.js';
+          document.head.appendChild(journalHeatmapScript);
         };
         document.head.appendChild(journalAnalyticsScript);
       };
