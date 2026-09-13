@@ -98,6 +98,15 @@
     document.head.appendChild(style);
   }
 
+  function removeOldTradingHeatmaps() {
+    const trading = document.getElementById('pageTrading');
+    if (!trading) return;
+    trading.querySelectorAll('.glass-card').forEach(card => {
+      const text = card.textContent.toLowerCase();
+      if (text.includes('full monthly performance heatmap') || text.includes('p&l calendar heatmap')) card.remove();
+    });
+  }
+
   function build() {
     injectStyles();
     const { y, m, days, firstDay, stats } = monthData();
@@ -123,7 +132,7 @@
       for (let d = start; d < start + 7; d++) {
         if (d >= 1 && d <= days && stats[d]) { weekPnl += stats[d].pnl; weekTrades += stats[d].count; }
       }
-      cells += `<div class="jh-week"><div class="jh-week-label">Week ${r + 1}</div><div class="jh-week-pnl">${money(weekPnl)}</div><div class="jh-week-count">${weekTrades} day${weekTrades === 1 ? '' : 's'}</div></div>`;
+      cells += `<div class="jh-week"><div class="jh-week-label">Week ${r + 1}</div><div class="jh-week-pnl">${money(weekPnl)}</div><div class="jh-week-count">${weekTrades} trade${weekTrades === 1 ? '' : 's'}</div></div>`;
     }
 
     return `<section id="${ROOT_ID}" class="glass-card p-5 mt-5">
@@ -150,6 +159,7 @@
   function mount() {
     const journal = document.getElementById('pageJournal');
     if (!journal) return;
+    removeOldTradingHeatmaps();
     const existing = document.getElementById(ROOT_ID);
     if (existing) existing.outerHTML = build();
     else journal.appendChild(document.createRange().createContextualFragment(build()));
@@ -185,7 +195,6 @@
     patchTab(); patchMode();
     mount();
     window.addEventListener('wallet-accounts-updated', () => setTimeout(mount, 30));
-    setInterval(() => { if (document.getElementById('pageJournal')?.classList.contains('hidden') === false) mount(); }, 1000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
