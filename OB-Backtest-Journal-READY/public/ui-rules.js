@@ -74,6 +74,7 @@
 
   function closeAccountModal() {
     document.getElementById('accountAddModal')?.remove();
+    document.getElementById('accountEditModal')?.remove();
   }
 
   function openAddAccountModal() {
@@ -136,8 +137,56 @@
     setTimeout(() => document.getElementById('newAccountName')?.focus(), 0);
   }
 
+  function openEditAccountModal(accountId) {
+    if (activeMode === 'Backtest') return;
+    const mode = activeMode;
+    const account = (accounts[mode] || []).find(item => item.id === accountId);
+    if (!account) return;
+    closeAccountModal();
+    const overlay = document.createElement('div');
+    overlay.id = 'accountEditModal';
+    overlay.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/30 backdrop-blur-md';
+    overlay.innerHTML = 
+      '<div class="w-full max-w-[480px] rounded-[24px] border border-white/80 bg-white/80 backdrop-blur-2xl shadow-[0_25px_80px_rgba(15,23,42,.22)] overflow-hidden">' +
+        '<div class="p-6 sm:p-7">' +
+          '<div class="flex items-start justify-between gap-4">' +
+            '<div><h3 class="text-xl font-bold tracking-tight text-slate-900">Edit ' + mode + ' account</h3><p class="mt-1 text-xs text-slate-500">Rename the account or change its starting balance.</p></div>' +
+            '<button id="accountEditClose" class="h-9 w-9 rounded-xl bg-white/70 border border-slate-200/80 text-slate-400 hover:text-slate-700 hover:bg-white transition-colors" aria-label="Close">×</button>' +
+          '</div>' +
+          '<div class="mt-6 space-y-4">' +
+            '<label class="block"><span class="block mb-2 text-xs font-bold text-slate-600">Account name</span><input id="editAccountName" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" autocomplete="off"></label>' +
+            '<label class="block"><span class="block mb-2 text-xs font-bold text-slate-600">Starting balance</span><div class="relative"><input id="editAccountBalance" inputmode="decimal" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 pr-14 text-sm font-mono text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"><span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">USD</span></div></label>' +
+          '</div>' +
+          '<div class="mt-7 flex justify-end gap-2"><button id="accountEditCancel" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-white/70 transition-colors">Cancel</button><button id="accountEditSave" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">Save changes</button></div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    document.getElementById('editAccountName').value = account.name || '';
+    document.getElementById('editAccountBalance').value = String(account.startingBalance ?? account.balance ?? 100000);
+    overlay.addEventListener('click', event => { if (event.target === overlay) closeAccountModal(); });
+    document.getElementById('accountEditClose').onclick = closeAccountModal;
+    document.getElementById('accountEditCancel').onclick = closeAccountModal;
+    document.getElementById('accountEditSave').onclick = () => {
+      const name = document.getElementById('editAccountName').value.trim();
+      const balance = Number(document.getElementById('editAccountBalance').value.replace(/,/g, ''));
+      if (!name) { showAccountToast('Enter an account name.'); return; }
+      if (!Number.isFinite(balance) || balance <= 0) { showAccountToast('Enter a valid starting balance.'); return; }
+      account.name = name;
+      account.startingBalance = balance;
+      account.balance = balance;
+      saveAccounts();
+      localStorage.setItem(accountKey(mode)], account.id);
+      closeAccountModal();
+      showAccountToast('Account updated.');
+      renderForAccount();
+      window.dispatchEvent(new CustomEvent('wallet-accounts-updated'));
+    };
+    setTimeout(() => document.getElementById('editAccountName')?.focus(), 0);
+  }
+
   // The wallet widget invokes this bridge for its Add account control.
   window.openAddAccountModal = openAddAccountModal;
+  window.openEditAccountModal = openEditAccountModal;
 
   function ensureBalanceCard() {
     const display = document.getElementById('accountBalanceDisplay');
