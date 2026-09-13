@@ -104,10 +104,7 @@
 
   function currentAccountId(mode) {
     if(mode==='Backtest')return null;
-    try {
-      const raw=localStorage.getItem(`my_journal_active_account_${mode}_v1`);
-      return raw || null;
-    } catch(_){ return null; }
+    try { return localStorage.getItem(`my_journal_active_account_${mode}_v1`) || null; } catch(_){ return null; }
   }
 
   function relevantTrades() {
@@ -120,22 +117,14 @@
   }
 
   function accountContext() {
-    const mode=currentMode();
-    const accountId=currentAccountId(mode);
-    let name='';
-    try {
-      const data=JSON.parse(localStorage.getItem('my_journal_accounts_v1')||'{}');
-      const a=(data[mode]||[]).find(x=>String(x.id)===String(accountId));
-      if(a) name=a.name || '';
-    } catch(_){ }
+    const mode=currentMode(); const accountId=currentAccountId(mode); let name='';
+    try { const data=JSON.parse(localStorage.getItem('my_journal_accounts_v1')||'{}'); const a=(data[mode]||[]).find(x=>String(x.id)===String(accountId)); if(a)name=a.name||''; } catch(_){ }
     return name ? `${mode} · ${name}` : mode;
   }
 
   function compactTrade(t) {
     const checklist=Array.isArray(t.checklist)?t.checklist:[];
-    return {
-      date:t.date||t.createdAt||'', pair:t.pair||'', timeframe:t.timeframe||'', mode:t.mode||'', session:t.session||'', regime:t.regime||'', strategy:t.strategy||'', direction:t.direction||'', result:t.result||'', rMultiple:Number(t.rMultiple||0), riskPercent:t.riskPercent, notes:(t.notes||'').trim(), checklist, screenshots:Array.isArray(t.screenshots)?t.screenshots.length:0
-    };
+    return {date:t.date||t.createdAt||'',pair:t.pair||'',timeframe:t.timeframe||'',mode:t.mode||'',session:t.session||'',regime:t.regime||'',strategy:t.strategy||'',direction:t.direction||'',result:t.result||'',rMultiple:Number(t.rMultiple||0),riskPercent:t.riskPercent,notes:(t.notes||'').trim(),checklist,screenshots:Array.isArray(t.screenshots)?t.screenshots.length:0};
   }
 
   function datasetText(trades) {
@@ -146,13 +135,10 @@
     return `CURRENT JOURNAL CONTEXT\nACCOUNT: ${accountContext()}\nTRADES IN CURRENT VIEW: ${trades.length}\nSUMMARY: ${wins} wins, ${losses} losses, ${r.toFixed(2)}R total (based on recorded R-multiples)\nRECENT/AVAILABLE TRADE DATA (up to 80):\n${JSON.stringify(rows)}`;
   }
 
-  function tradeContext(trade) {
-    return `SELECTED TRADE\n${JSON.stringify(compactTrade(trade))}`;
-  }
+  function tradeContext(trade) { return `SELECTED TRADE\n${JSON.stringify(compactTrade(trade))}`; }
 
   function makeMessages(question, trade) {
-    const trades=relevantTrades();
-    const context=[datasetText(trades), trade ? tradeContext(trade) : 'NO SINGLE TRADE SELECTED'];
+    const context=[datasetText(relevantTrades()), trade ? tradeContext(trade) : 'NO SINGLE TRADE SELECTED'];
     const content=[{type:'text',text:`You are the AI Coach inside a trading journal. Act like a practical conversational coach. Analyze ONLY the supplied journal data and images; do not invent market facts, price levels, or missing trade details. The user may ask about one trade, multiple trades, notes, checklist quality, screenshots/images, performance, patterns, discipline, or any combination. Treat notes and images as first-class evidence, not just the checklist. If the data is insufficient, say exactly what is missing.\n\n${context.join('\n\n')}\n\nUSER QUESTION: ${question}`}];
     currentImages.slice(0,5).forEach(url=>content.push({type:'image_url',image_url:{url}}));
     return [{role:'system',content:'You are a practical trading coach. Maintain natural multi-turn conversation. Do not reveal hidden reasoning.'}, ...chatHistory, {role:'user',content}];
@@ -162,22 +148,18 @@
 
   function openGlobalChat() {
     currentTradeId=null; currentImages=[]; chatHistory=[];
-    const root=ensureChat();
-    root.querySelector('#obChatTitle').textContent='Journal assistant';
+    const root=ensureChat(); root.querySelector('#obChatTitle').textContent='Journal assistant';
     root.querySelector('#obChatContext').textContent=`Context: ${accountContext()} · ${relevantTrades().length} trade${relevantTrades().length===1?'':'s'} available`;
-    root.querySelector('#obChatMessages').innerHTML='';
-    root.querySelector('#obChatImageCount').textContent='';
+    root.querySelector('#obChatMessages').innerHTML=''; root.querySelector('#obChatImageCount').textContent='';
     addMessage('ai', `I’m ready. I can analyze your ${accountContext()} journal using the recorded trade data, notes, checklist, and screenshots. You can also attach an image and ask me about it.`);
     root.classList.remove('hidden'); root.querySelector('#obChatInput').focus();
   }
 
   function openTradeChat(trade) {
     currentTradeId=trade.id; currentImages=[]; chatHistory=[];
-    const root=ensureChat();
-    root.querySelector('#obChatTitle').textContent=`${trade.pair || 'Trade'} · AI Coach`;
+    const root=ensureChat(); root.querySelector('#obChatTitle').textContent=`${trade.pair || 'Trade'} · AI Coach`;
     root.querySelector('#obChatContext').textContent=`Context: ${accountContext()} · selected trade`;
-    root.querySelector('#obChatMessages').innerHTML='';
-    root.querySelector('#obChatImageCount').textContent='';
+    root.querySelector('#obChatMessages').innerHTML=''; root.querySelector('#obChatImageCount').textContent='';
     addMessage('ai', `I’m ready to review this ${trade.pair || 'trade'}. Ask me anything about the setup, execution, notes, checklist, screenshots, risk/reward, or what you could improve.`);
     root.classList.remove('hidden'); root.querySelector('#obChatInput').focus();
   }
@@ -189,8 +171,9 @@
     const trade=currentTradeId!=null?readTrade(currentTradeId):null;
     input.value=''; addMessage('user',question); const pending=addMessage('ai','Thinking…'); busy=true; root.querySelector('#obChatSend').disabled=true;
     try {
-      const hasImages=currentImages.length>0 || !!(trade&&Array.isArray(trade.screenshots)&&trade.screenshots.some(x=>typeof x==='string'&&x.startsWith('data:image/')));
-      if(!currentImages.length && trade?.screenshots) currentImages=trade.screenshots.filter(x=>typeof x==='string'&&x.startsWith('data:image/')).slice(0,5);
+      const hasTradeShots=!!(trade&&Array.isArray(trade.screenshots)&&trade.screenshots.some(x=>typeof x==='string'&&x.startsWith('data:image/')));
+      if(!currentImages.length && hasTradeShots) currentImages=trade.screenshots.filter(x=>typeof x==='string'&&x.startsWith('data:image/')).slice(0,5);
+      const hasImages=currentImages.length>0;
       const model=hasImages?'qwen/qwen3.6-27b':'openai/gpt-oss-20b';
       const messages=makeMessages(question,trade);
       const r=await fetch('/api/ai',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:'groq',model,messages,max_completion_tokens:800,temperature:.3})});
@@ -199,7 +182,6 @@
       pending.textContent=text;
       chatHistory.push({role:'user',content:question},{role:'assistant',content:text});
       if(chatHistory.length>12)chatHistory=chatHistory.slice(-12);
-      currentImages=[]; root.querySelector('#obChatImageCount').textContent='';
     } catch(e){ pending.textContent=e?.message||'Unable to reach the AI right now.'; }
     finally { busy=false;root.querySelector('#obChatSend').disabled=false;input.focus(); }
   }
@@ -207,10 +189,7 @@
   function bindTradeButton() {
     const root=document.getElementById('tradeDrawer'); if(!root)return;
     const btn=[...root.querySelectorAll('button')].find(b=>b.textContent.includes('Analyze with AI'));
-    if(btn&&!btn.dataset.aiCoachBound){
-      btn.dataset.aiCoachBound='1';
-      btn.onclick=e=>{e.preventDefault();e.stopPropagation();const t=readTrade(window.__obJournalOpenTradeId);if(t)openTradeChat(t);};
-    }
+    if(btn&&!btn.dataset.aiCoachBound){ btn.dataset.aiCoachBound='1'; btn.onclick=e=>{e.preventDefault();e.stopPropagation();const t=readTrade(window.__obJournalOpenTradeId);if(t)openTradeChat(t);}; }
   }
 
   function hookDrawer() {
