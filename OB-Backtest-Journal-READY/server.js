@@ -201,12 +201,12 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, storage: useSupabase ? 'supabase' : 'sqlite', ai: { groq: Boolean(process.env.GROQ_API_KEY), gemini: Boolean(process.env.GEMINI_API_KEY), openai: Boolean(process.env.OPENAI_API_KEY), anthropic: Boolean(process.env.ANTHROPIC_API_KEY) }});
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => {
   const indexPath = path.join(__dirname, 'public', 'index.html');
   let html = fs.readFileSync(indexPath, 'utf8');
   if (!html.includes('/backend-sync.js')) html = html.replace('</body>', '  <script src="/backend-sync.js"></script>\n</body>');
   res.type('html').send(html);
 });
+app.use(express.static(path.join(__dirname, 'public')));
 app.use((req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.listen(PORT, () => console.log(`OB Journal running on http://localhost:${PORT}`));
