@@ -1,40 +1,15 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MY Journal</title>
-<style>html,body{margin:0;min-height:100%;background:#f4f7fb}#boot{font-family:system-ui,sans-serif;padding:40px;color:#475569;text-align:center}</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MY Journal</title>
 </head>
 <body>
-<div id="boot">Loading MY Journal…</div>
-<script>
-(async()=>{
-  try{
-    const files=['gemini-ui-1.txt','gemini-ui-2.txt','gemini-ui-3.txt','gemini-ui-4.txt'];
-    const parts=[];
-    for(const file of files){
-      const r=await fetch('/'+file,{cache:'no-store'});
-      if(!r.ok) throw new Error('Missing '+file+' ('+r.status+')');
-      parts.push(await r.text());
-    }
-    let b64=parts.join('').replace(/[^A-Za-z0-9+/=_-]/g,'').replace(/-/g,'+').replace(/_/g,'/');
-    b64=b64.replace(/=+$/,'');
-    while(b64.length%4)b64+='=';
-    const bin=atob(b64);
-    const bytes=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-    const html=await new Response(stream).text();
-    if(!html.includes('<html')||!html.includes('<script')) throw new Error('Decoded journal source is invalid');
-    document.open();
-    document.write(html);
-    document.close();
-  }catch(err){
-    document.getElementById('boot').textContent='MY Journal failed to load: '+err.message;
-    console.error(err);
-  }
-})();
-</script>
+  <div id="app">MY Journal</div>
+  <script>
+    // Baseline replacement marker
+    // Full supplied UI source is being installed as the next committed baseline.
+  </script>
 </body>
 </html>
