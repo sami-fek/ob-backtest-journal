@@ -11,7 +11,6 @@
       #${MODAL_ID}.hidden{display:none}
       #${MODAL_ID} .ai-panel{width:min(720px,100%);max-height:min(82vh,760px);overflow:auto;background:#fff;border:1px solid #e2e8f0;border-radius:20px;box-shadow:0 24px 70px rgba(15,23,42,.18)}
       #${MODAL_ID} .ai-answer{white-space:pre-wrap;font-size:13px;line-height:1.7;color:#334155}
-      #${MODAL_ID} .ai-answer .ai-bullet{display:block}
     `;
     document.head.appendChild(style);
   }
@@ -43,19 +42,25 @@
     return modal;
   }
 
-  function getCurrentTrade() {
+  function getTradeById(id) {
     try {
-      const id = window.__obJournalOpenTradeId;
-      if (id != null && Array.isArray(window.trades)) return window.trades.find(t => String(t.id) === String(id)) || null;
-    } catch (_) {}
-    try {
-      const drawer = document.getElementById('tradeDrawer');
-      const pair = document.getElementById('drawerPair')?.textContent?.trim();
-      if (pair && Array.isArray(window.trades)) {
-        return window.trades.find(t => t.pair === pair && drawer && !drawer.classList.contains('hidden')) || null;
-      }
+      const raw = localStorage.getItem('my_journal_trades_v1');
+      const list = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(list)) return list.find(t => String(t.id) === String(id)) || null;
     } catch (_) {}
     return null;
+  }
+
+  function getCurrentTrade() {
+    const id = window.__obJournalOpenTradeId;
+    if (id != null) return getTradeById(id);
+    try {
+      const pair = document.getElementById('drawerPair')?.textContent?.trim();
+      if (!pair) return null;
+      const raw = localStorage.getItem('my_journal_trades_v1');
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list.find(t => t.pair === pair) || null : null;
+    } catch (_) { return null; }
   }
 
   function buildMessages(trade) {
@@ -74,7 +79,6 @@
       text: `Analyze this single trading journal entry as a direct trading coach. Use only the evidence supplied. Evaluate execution quality, checklist/rule adherence, setup quality, risk/reward, what was done well, what was weak, and one practical improvement. Do not invent price levels or market facts that are not in the evidence.\n\n${evidence}`
     }];
     screenshots.forEach(url => content.push({ type: 'image_url', image_url: { url } }));
-
     return [
       { role: 'system', content: 'You are the AI Coach inside a trading journal. Give concise, evidence-based trade feedback. Do not reveal hidden reasoning.' },
       { role: 'user', content }
@@ -100,13 +104,7 @@
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: 'groq',
-          model,
-          messages: buildMessages(trade),
-          max_completion_tokens: 800,
-          temperature: 0.3
-        })
+        body: JSON.stringify({ provider: 'groq', model, messages: buildMessages(trade), max_completion_tokens: 800, temperature: 0.3 })
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.error?.message || body?.error || `AI request failed (${response.status})`);
@@ -123,8 +121,20 @@
     }
   }
 
+  function hookDrawer() {
+    if (typeof window.openDrawer !== 'function' || window.openDrawer.__obAiWrapped) return;
+    const original = window.openDrawer;
+    const wrapped = function(id) {
+      window.__obJournalOpenTradeId = id;
+      return original.apply(this, arguments);
+    };
+    wrapped.__obAiWrapped = true;
+    window.openDrawer = wrapped;
+  }
+
   function attach() {
     ensureStyle();
+    hookDrawer();
     document.querySelectorAll('#tradeDrawer button').forEach(button => {
       if (button.dataset.aiCoachBound === '1') return;
       if (!button.textContent.includes('Analyze with AI')) return;
