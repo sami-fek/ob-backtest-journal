@@ -71,6 +71,11 @@
         journalAnalyticsScript.onload = () => {
           const journalHeatmapScript = document.createElement('script');
           journalHeatmapScript.src = '/journal-heatmap.js';
+          journalHeatmapScript.onload = () => {
+            const disciplineMoveScript = document.createElement('script');
+            disciplineMoveScript.src = '/discipline-journal-move.js';
+            document.head.appendChild(disciplineMoveScript);
+          };
           document.head.appendChild(journalHeatmapScript);
         };
         document.head.appendChild(journalAnalyticsScript);
