@@ -14,9 +14,9 @@
 
     const patchedOpen = function (...args) {
       const result = originalOpen.apply(this, args);
-
       const saveButton = document.getElementById('accountEditSave');
-      if (!saveButton || saveButton.__persistencePatched) return result;
+      const modal = document.getElementById('accountEditModal');
+      if (!saveButton || !modal || saveButton.__persistencePatched) return result;
 
       const originalClick = saveButton.onclick;
       if (typeof originalClick !== 'function') return result;
@@ -24,22 +24,30 @@
       saveButton.__persistencePatched = true;
       saveButton.onclick = function (event) {
         try {
-          return originalClick.call(this, event);
+          originalClick.call(this, event);
         } catch (error) {
-          // The current edit handler successfully updates the private account state
-          // and localStorage, then hits an old undefined accountKey(mode) reference.
-          // Preserve that existing behavior and only recover from that stale reference.
+          // Keep compatibility with the stale accountKey(mode) reference from an
+          // older edit handler. The account data has already been saved locally.
           if (!(error instanceof ReferenceError) || !String(error.message || '').includes('accountKey')) {
             throw error;
           }
+        }
 
+        // The edit handler closes the modal on a valid save. Ensure that the
+        // modal cannot remain visible after a successful save, including when
+        // the legacy error above interrupts the remainder of that handler.
+        const name = document.getElementById('editAccountName')?.value.trim();
+        const balance = Number((document.getElementById('editAccountBalance')?.value || '').replace(/,/g, ''));
+        const valid = !!name && Number.isFinite(balance) && balance > 0;
+
+        if (valid) {
           persistAccounts();
-          document.getElementById('accountEditModal')?.remove();
-          window.dispatchEvent(new CustomEvent('wallet-accounts-updated'));
+          queueMicrotask(() => {
+            document.getElementById('accountEditModal')?.remove();
+            window.dispatchEvent(new CustomEvent('wallet-accounts-updated'));
+          });
         }
       };
-
-      return result;
     };
 
     patchedOpen.__persistencePatched = true;
