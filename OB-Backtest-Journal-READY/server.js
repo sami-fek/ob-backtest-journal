@@ -105,23 +105,15 @@ const AI_FORMAT_INSTRUCTION = `FINAL ANSWER FORMAT: Return only the useful final
 
 function compactJournalText(text) {
   let out = String(text ?? '');
-
-  // Notes are useful for psychology/execution analysis, but the full 1400-character
-  // note on every trade can push an overall review over Groq's free input-token limit.
-  // Keep enough of every note to detect recurring patterns while protecting the request.
   out = out.replace(/Note:\s*([\s\S]*?)(?=\nScreenshots:)/g, (_, note) => {
     const n = note.trim();
     if (!n || n === '(no note)') return 'Note: (no note)\nScreenshots:';
     return `Note: ${n.slice(0, 500)}${n.length > 500 ? '…' : ''}\nScreenshots:`;
   });
-
-  // Old chat turns are not needed for an overall journal review. Keep the current
-  // journal context and current question intact; only shrink unusually large messages.
   return out;
 }
 
 function estimateInputTokens(messages) {
-  // Conservative estimate for mixed natural language + journal text.
   return Math.ceil(JSON.stringify(messages).length / 3.2);
 }
 
@@ -133,32 +125,19 @@ function compactGroqMessages(messages) {
       m.content = m.content.map(part => part?.type === 'text' ? { ...part, text: compactJournalText(part.text) } : part);
     }
   }
-
-  // Groq's free on-demand tier currently allows about 7000 input tokens/minute.
-  // Target well below that so an overall review remains reliable instead of failing
-  // with HTTP 413. This is a request-size guard, not a journal-data deletion rule.
   const targetTokens = 5800;
   if (estimateInputTokens(cloned) <= targetTokens) return cloned;
-
-  // Remove older conversational turns first. The current journal payload and question
-  // remain the highest-priority context.
   const system = cloned.filter(m => m.role === 'system');
   const nonSystem = cloned.filter(m => m.role !== 'system');
   const current = nonSystem[nonSystem.length - 1];
   const older = nonSystem.slice(0, -1);
   let kept = [...system, current];
-
-  // Keep a small amount of the latest prior exchange for continuity, if it fits.
   for (let i = older.length - 1; i >= 0; i--) {
     const candidate = [older[i], ...kept];
     if (estimateInputTokens(candidate) <= targetTokens) kept = candidate;
     else break;
   }
-
   if (estimateInputTokens(kept) <= targetTokens) return kept;
-
-  // If the journal itself is still large, compact the current text without dropping
-  // the beginning stats or the final user question.
   if (typeof current.content === 'string') {
     let s = current.content;
     const maxChars = 16500;
@@ -167,9 +146,7 @@ function compactGroqMessages(messages) {
       const qi = s.lastIndexOf(questionMarker);
       const question = qi >= 0 ? s.slice(qi) : '';
       const body = qi >= 0 ? s.slice(0, qi) : s;
-      const head = body.slice(0, 5000);
-      const tail = body.slice(-10500);
-      current.content = `${head}\n\n[Middle journal text compacted to stay within Groq input limits.]\n\n${tail}${question}`;
+      current.content = `${body.slice(0, 5000)}\n\n[Middle journal text compacted to stay within Groq input limits.]\n\n${body.slice(-10500)}${question}`;
     }
   } else if (Array.isArray(current.content)) {
     current.content = current.content.map(part => {
@@ -183,7 +160,6 @@ function compactGroqMessages(messages) {
       return { ...part, text: `${body.slice(0, 4500)}\n\n[Middle journal text compacted to stay within Groq input limits.]\n\n${body.slice(-9000)}${question}` };
     });
   }
-
   return kept;
 }
 
@@ -193,43 +169,27 @@ app.post('/api/ai', async (req, res) => {
   const key = envKey(provider);
   if (!cfg || !key) return res.status(503).json({ error: `Server AI provider "${provider}" is not configured. Add its API key to Render environment variables.` });
   if (!model || !Array.isArray(messages)) return res.status(400).json({ error: 'model and messages are required' });
-
   try {
     const safeMaxTokens = Math.min(Math.max(Number(max_completion_tokens) || 800, 100), 800);
-
     const safeMessages = messages.map(m => ({ ...m }));
     const systemIndex = safeMessages.findIndex(m => m.role === 'system');
     if (systemIndex >= 0) {
-      safeMessages[systemIndex] = {
-        ...safeMessages[systemIndex],
-        content: `${safeMessages[systemIndex].content || ''}\n\n${AI_FORMAT_INSTRUCTION}`
-      };
+      safeMessages[systemIndex] = { ...safeMessages[systemIndex], content: `${safeMessages[systemIndex].content || ''}\n\n${AI_FORMAT_INSTRUCTION}` };
     } else {
       safeMessages.unshift({ role: 'system', content: AI_FORMAT_INSTRUCTION });
     }
-
     const finalMessages = provider === 'groq' ? compactGroqMessages(safeMessages) : safeMessages;
     const payload = { model, messages: finalMessages, max_completion_tokens: safeMaxTokens, temperature };
-
     if (provider === 'groq') {
       payload.include_reasoning = false;
       if (model.startsWith('qwen/')) payload.reasoning_effort = 'none';
       else if (model.startsWith('openai/gpt-oss-')) payload.reasoning_effort = 'low';
     }
-
-    const upstream = await fetch(cfg.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, ...cfg.headers },
-      body: JSON.stringify(payload)
-    });
+    const upstream = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}`, ...cfg.headers }, body: JSON.stringify(payload) });
     const text = await upstream.text();
     let body = text;
     try { body = JSON.parse(text); } catch {}
-
-    if (upstream.ok && body?.choices?.[0]?.message?.content) {
-      body.choices[0].message.content = cleanAiAnswer(body.choices[0].message.content);
-    }
-
+    if (upstream.ok && body?.choices?.[0]?.message?.content) body.choices[0].message.content = cleanAiAnswer(body.choices[0].message.content);
     return res.status(upstream.status).json(body);
   } catch (err) {
     console.error('AI upstream request failed:', err);
@@ -238,14 +198,15 @@ app.post('/api/ai', async (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, storage: useSupabase ? 'supabase' : 'sqlite', ai: {
-    groq: Boolean(process.env.GROQ_API_KEY),
-    gemini: Boolean(process.env.GEMINI_API_KEY),
-    openai: Boolean(process.env.OPENAI_API_KEY),
-    anthropic: Boolean(process.env.ANTHROPIC_API_KEY)
-  }});
+  res.json({ ok: true, storage: useSupabase ? 'supabase' : 'sqlite', ai: { groq: Boolean(process.env.GROQ_API_KEY), gemini: Boolean(process.env.GEMINI_API_KEY), openai: Boolean(process.env.OPENAI_API_KEY), anthropic: Boolean(process.env.ANTHROPIC_API_KEY) }});
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (req, res) => {
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  let html = fs.readFileSync(indexPath, 'utf8');
+  if (!html.includes('/backend-sync.js')) html = html.replace('</body>', '  <script src="/backend-sync.js"></script>\n</body>');
+  res.type('html').send(html);
+});
 app.use((req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.listen(PORT, () => console.log(`OB Journal running on http://localhost:${PORT}`));
