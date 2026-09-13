@@ -29,6 +29,9 @@
       #${ROOT_ID} .wallet-type{font-size:9px;text-transform:uppercase;letter-spacing:.12em;font-weight:800;color:rgba(255,255,255,.72);margin-bottom:5px;}
       #${ROOT_ID} .wallet-name{font-size:14px;line-height:1.1;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       #${ROOT_ID} .wallet-mark{width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.82);}
+      #${ROOT_ID} .wallet-head-actions{display:flex;align-items:center;gap:6px;position:relative;z-index:2;}
+      #${ROOT_ID} .wallet-edit{width:27px;height:27px;border:0;border-radius:8px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);display:grid;place-items:center;cursor:pointer;transition:background .18s ease,color .18s ease,transform .18s ease;}
+      #${ROOT_ID} .wallet-edit:hover{background:rgba(255,255,255,.24);color:#fff;transform:translateY(-1px);}
       #${ROOT_ID} .wallet-body{margin-top:22px;}
       #${ROOT_ID} .wallet-label{font-size:8px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;color:rgba(255,255,255,.67);margin-bottom:4px;}
       #${ROOT_ID} .wallet-balance{font-family:'JetBrains Mono',monospace;font-size:25px;line-height:1;font-weight:900;letter-spacing:-.045em;white-space:nowrap;}
@@ -134,7 +137,7 @@
     if(!root){root=document.createElement('div');root.id=ROOT_ID;panel.insertBefore(root,panel.firstChild);}
     if(sig===lastSignature&&lastMode===mode)return;
     lastSignature=sig;lastMode=mode;
-    root.innerHTML=`<div class="wallet-viewport"><div class="wallet-track">${list.map((item,i)=>{const p=accountReturn(item);return `<article class="wallet-card ${item.mode.toLowerCase()} ${i===active?'active':''}" data-index="${i}"><div class="wallet-head"><div class="min-w-0"><div class="wallet-type">${esc(item.mode)} account</div><div class="wallet-name">${esc(item.name)}</div></div><span class="wallet-mark"><i class="fa-solid fa-wallet text-[9px]"></i></span></div><div class="wallet-body"><div class="wallet-label">Balance</div><div class="wallet-balance">$${p.balance.toLocaleString('en-US',{minimumFractionDigits:2})}</div></div><div class="wallet-foot"><span>Account balance</span><span class="wallet-return">${p.pct>=0?'+':''}${p.pct.toFixed(2)}%</span></div></article>`;}).join('')}</div></div><div class="wallet-meta"><span class="wallet-portfolio">Portfolio Balance</span><button type="button" class="wallet-add" id="walletAdd">＋ Add account</button></div><div class="wallet-capital">Base Capital: $${accountReturn(list[active]).base.toLocaleString('en-US',{minimumFractionDigits:0})}</div>${list.length>1?`<button type="button" class="wallet-arrow left" id="walletPrev" aria-label="Previous account"><i class="fa-solid fa-chevron-left text-[8px]"></i></button><button type="button" class="wallet-arrow right" id="walletNext" aria-label="Next account"><i class="fa-solid fa-chevron-right text-[8px]"></i></button><div class="wallet-controls"><div class="wallet-dots">${list.map((_,i)=>`<span class="wallet-dot ${i===active?'active':''}"></span>`).join('')}</div></div>`:''}`;
+    root.innerHTML=`<div class="wallet-viewport"><div class="wallet-track">${list.map((item,i)=>{const p=accountReturn(item);return `<article class="wallet-card ${item.mode.toLowerCase()} ${i===active?'active':''}" data-index="${i}"><div class="wallet-head"><div class="min-w-0"><div class="wallet-type">${esc(item.mode)} account</div><div class="wallet-name">${esc(item.name)}</div></div><div class="wallet-head-actions"><button type="button" class="wallet-edit" data-index="${i}" aria-label="Edit ${esc(item.name)}"><i class="fa-solid fa-ellipsis-vertical text-[10px]"></i></button><span class="wallet-mark"><i class="fa-solid fa-wallet text-[9px]"></i></span></div></div><div class="wallet-body"><div class="wallet-label">Balance</div><div class="wallet-balance">$${p.balance.toLocaleString('en-US',{minimumFractionDigits:2})}</div></div><div class="wallet-foot"><span>Account balance</span><span class="wallet-return">${p.pct>=0?'+':''}${p.pct.toFixed(2)}%</span></div></article>`;}).join('')}</div></div><div class="wallet-meta"><span class="wallet-portfolio">Portfolio Balance</span><button type="button" class="wallet-add" id="walletAdd">＋ Add account</button></div><div class="wallet-capital">Base Capital: $${accountReturn(list[active]).base.toLocaleString('en-US',{minimumFractionDigits:0})}</div>${list.length>1?`<button type="button" class="wallet-arrow left" id="walletPrev" aria-label="Previous account"><i class="fa-solid fa-chevron-left text-[8px]"></i></button><button type="button" class="wallet-arrow right" id="walletNext" aria-label="Next account"><i class="fa-solid fa-chevron-right text-[8px]"></i></button><div class="wallet-controls"><div class="wallet-dots">${list.map((_,i)=>`<span class="wallet-dot ${i===active?'active':''}"></span>`).join('')}</div></div>`:''}`;
     position(root,active,false);bind(root);
   }
 
@@ -143,6 +146,7 @@
     root.__walletBound=true;
     root.querySelector('#walletPrev')?.addEventListener('click',e=>{e.stopPropagation();move(-1);});
     root.querySelector('#walletNext')?.addEventListener('click',e=>{e.stopPropagation();move(1);});
+    root.querySelectorAll('.wallet-edit').forEach(button=>button.addEventListener('click',e=>{e.stopPropagation();const item=readAccounts()[Number(button.dataset.index)];if(item&&typeof window.openEditAccountModal==='function')window.openEditAccountModal(item.id);}));
     root.querySelector('#walletAdd')?.addEventListener('click',e=>{
       e.stopPropagation();
       const mode=getMode();
@@ -157,6 +161,7 @@
     injectStyles();render();
     window.addEventListener('resize',()=>{if(animating)return;const root=document.getElementById(ROOT_ID);if(root)position(root,currentIndex(readAccounts()),false);});
     setInterval(render,700);
+    window.addEventListener('wallet-accounts-updated',()=>{lastSignature='';render();});
   }
   if(document.readyState==='complete')setTimeout(boot,120);else window.addEventListener('load',()=>setTimeout(boot,120));
 })();
