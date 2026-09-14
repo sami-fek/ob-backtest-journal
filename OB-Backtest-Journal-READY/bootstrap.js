@@ -15,6 +15,7 @@ const route = `
 app.get('/', (req, res, next) => {
   try {
     const htmlPath = path.join(__dirname, 'public', 'index.html');
+    if (!fs.existsSync(htmlPath)) return next();
     let html = fs.readFileSync(htmlPath, 'utf8');
     const featurePaths = [
       path.join(__dirname, 'public', 'trade-model.js'),
@@ -36,7 +37,7 @@ app.get('/', (req, res, next) => {
       path.join(__dirname, 'public', 'ui-refresh.js'),
       path.join(__dirname, 'public', 'simple-checklist.js'),
       path.join(__dirname, 'public', 'simple-journal-shell.js')
-    ];
+    ].filter(p => fs.existsSync(p));
     const feature = featurePaths.map(p => fs.readFileSync(p, 'utf8')).join('\\n');
     const closingScript = '</script>';
     const at = html.lastIndexOf(closingScript);
