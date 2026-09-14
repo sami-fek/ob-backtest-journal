@@ -85,7 +85,8 @@
     '/mt5-balance-overlay.js',
     '/ui-save-gate-fix.js',
     '/ui-navigation-fix.js',
-    '/ui-stability-fix.js'
+    '/ui-stability-fix.js',
+    '/ui-carousel-stability.js'
   ];
 
   let scriptIndex = 0;
@@ -102,7 +103,5 @@
     document.head.appendChild(script);
   };
 
-  hydrateStorage().finally(() => {
-    loadNext();
-  });
+  hydrateStorage().finally(loadNext);
 })();
