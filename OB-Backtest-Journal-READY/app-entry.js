@@ -50,7 +50,21 @@ app.use(async (req, res) => {
     const contentType = upstream.headers.get('content-type'); if (contentType) res.setHeader('content-type', contentType);
     const cookies = upstream.headers.getSetCookie?.() || (upstream.headers.get('set-cookie') ? [upstream.headers.get('set-cookie')] : []);
     if (cookies.length) res.setHeader('set-cookie', cookies);
-    res.send(Buffer.from(await upstream.arrayBuffer()));
+
+    const bytes = Buffer.from(await upstream.arrayBuffer());
+    if (contentType?.toLowerCase().includes('text/html')) {
+      let html = bytes.toString('utf8');
+      // The Next-Gen index is intentionally kept as the UI source of truth.
+      // Load the previously built feature layer after the page so it can wire
+      // accounts, heatmap, discipline, MT5 UI, and navigation without replacing
+      // or reconstructing the existing HTML.
+      if (!html.includes('src="/backend-sync.js"')) {
+        html = html.replace(/<\/body>\s*<\/html>\s*$/i, '  <script src="/backend-sync.js"></script>\n</body>\n</html>');
+      }
+      res.send(html);
+    } else {
+      res.send(bytes);
+    }
   } catch (error) {
     console.error('[Gateway] upstream request failed:', error);
     res.status(502).json({ error: 'Application upstream unavailable', details: error.message });
