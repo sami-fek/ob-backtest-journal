@@ -80,7 +80,8 @@
     '/mt5-balance-overlay.js',
     '/ui-save-gate-fix.js',
     '/ui-navigation-fix.js',
-    '/ui-layout-restore.js'
+    '/ui-layout-restore.js',
+    '/ui-stability-fix.js'
   ];
 
   let scriptIndex = 0;
