@@ -79,7 +79,8 @@
     '/mt5-integration-ui.js',
     '/mt5-balance-overlay.js',
     '/ui-save-gate-fix.js',
-    '/ui-navigation-fix.js'
+    '/ui-navigation-fix.js',
+    '/ui-layout-restore.js'
   ];
 
   let scriptIndex = 0;
