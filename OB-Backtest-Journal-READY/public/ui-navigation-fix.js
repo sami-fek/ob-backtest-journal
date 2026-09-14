@@ -1,6 +1,7 @@
 (() => {
   const TABS = ['home', 'trading', 'journal', 'analytics', 'accounts', 'settings'];
   const STYLE_ID = 'ob-navigation-fix-style';
+  const STATE_KEY = 'ob_ui_state_v1';
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -14,9 +15,28 @@
     document.head.appendChild(style);
   }
 
+  function readState() {
+    try { return JSON.parse(localStorage.getItem(STATE_KEY) || '{}') || {}; }
+    catch (_) { return {}; }
+  }
+
+  function validTab(tab) { return TABS.includes(String(tab || '').toLowerCase()); }
+
   function tabFromLocation() {
     const raw = window.location.hash.replace(/^#/, '').trim().toLowerCase();
-    return TABS.includes(raw) ? raw : null;
+    return validTab(raw) ? raw : null;
+  }
+
+  function tabFromState() {
+    const tab = readState().tab;
+    return validTab(tab) ? String(tab).toLowerCase() : null;
+  }
+
+  function saveTab(tab) {
+    if (!validTab(tab)) return;
+    const state = readState();
+    state.tab = String(tab).toLowerCase();
+    localStorage.setItem(STATE_KEY, JSON.stringify(state));
   }
 
   function animatePage(tab) {
@@ -35,37 +55,42 @@
     if (typeof original !== 'function' || original.__obNavigationPatched) return;
 
     const apply = tab => {
-      if (!TABS.includes(tab)) tab = 'home';
+      if (!validTab(tab)) tab = 'home';
       const result = original.call(window, tab);
+      saveTab(tab);
       animatePage(tab);
       return result;
     };
 
     const patched = function(tab, options = {}) {
-      if (!TABS.includes(tab)) tab = 'home';
+      if (!validTab(tab)) tab = 'home';
       const internal = options && options.__obInternal === true;
       if (!internal) {
-        const current = tabFromLocation();
-        if (current !== tab) window.history.pushState({ obTab: tab }, '', `#${tab}`);
+        saveTab(tab);
+        if (window.location.hash !== `#${tab}`) {
+          window.history.pushState({ obTab: tab }, '', `#${tab}`);
+        }
       }
       return apply(tab);
     };
     patched.__obNavigationPatched = true;
     window.switchTab = patched;
 
-    const initial = tabFromLocation();
-    if (initial) {
-      setTimeout(() => apply(initial), 0);
-    } else {
-      window.history.replaceState({ obTab: 'home' }, '', '#home');
-    }
+    const initial = tabFromLocation() || tabFromState() || 'home';
+    window.history.replaceState({ obTab: initial }, '', `#${initial}`);
+    setTimeout(() => apply(initial), 0);
 
     const syncFromLocation = () => {
-      const tab = tabFromLocation();
+      const tab = tabFromLocation() || tabFromState();
       if (tab) apply(tab);
     };
     window.addEventListener('popstate', syncFromLocation);
     window.addEventListener('hashchange', syncFromLocation);
+
+    document.addEventListener('click', event => {
+      const button = event.target.closest?.('[id^="navBtn-"]');
+      if (button) saveTab(button.id.slice('navBtn-'.length));
+    }, true);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
