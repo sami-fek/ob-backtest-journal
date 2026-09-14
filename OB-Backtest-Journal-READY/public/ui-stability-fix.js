@@ -2,39 +2,44 @@
   const STATE_KEY = 'ob_ui_state_v1';
   const TABS = new Set(['home', 'trading', 'journal', 'analytics', 'accounts', 'settings']);
   const MODES = new Set(['Backtest', 'Demo', 'Real', 'Funded']);
+  const ACCOUNT_KEY = mode => `my_journal_active_account_${mode}_v1`;
   let restoring = false;
   let layoutTimer = null;
+  let layoutObserver = null;
 
   const readState = () => {
     try { return JSON.parse(localStorage.getItem(STATE_KEY) || '{}') || {}; }
     catch (_) { return {}; }
   };
-  const writeState = patch => {
-    const next = { ...readState(), ...patch };
-    localStorage.setItem(STATE_KEY, JSON.stringify(next));
-  };
-  const hashTab = () => {
-    const value = window.location.hash.replace(/^#/, '').trim().toLowerCase();
-    return TABS.has(value) ? value : null;
-  };
+  const writeState = patch => localStorage.setItem(STATE_KEY, JSON.stringify({ ...readState(), ...patch }));
+  const validTab = tab => TABS.has(String(tab || '').toLowerCase());
   const modeNow = () => {
-    try { return MODES.has(activeMode) ? activeMode : null; }
-    catch (_) { return null; }
+    try { return MODES.has(activeMode) ? activeMode : null; } catch (_) { return null; }
   };
-  const accountKey = mode => `my_journal_active_account_${mode}_v1`;
+  const tabFromHash = () => {
+    const tab = window.location.hash.replace(/^#/, '').trim().toLowerCase();
+    return validTab(tab) ? tab : null;
+  };
+  const currentVisibleTab = () => {
+    for (const tab of TABS) {
+      const page = document.getElementById(`page${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+      if (!page) continue;
+      const style = window.getComputedStyle(page);
+      if (style.display !== 'none' && !page.hidden && page.getBoundingClientRect().height > 0) return tab;
+    }
+    return null;
+  };
 
   function persistUiState(tab = null, mode = null) {
-    const currentMode = mode && MODES.has(mode) ? mode : modeNow();
-    const currentTab = tab && TABS.has(tab) ? tab : hashTab() || readState().tab || 'home';
-    const patch = { tab: currentTab, mode: currentMode || readState().mode || 'Real' };
-    if (patch.mode !== 'Backtest') {
-      const id = localStorage.getItem(accountKey(patch.mode));
-      if (id) patch.accountIds = { ...(readState().accountIds || {}), [patch.mode]: id };
+    const nextTab = validTab(tab) ? String(tab).toLowerCase() : tabFromHash() || currentVisibleTab() || readState().tab || 'home';
+    const nextMode = MODES.has(mode) ? mode : modeNow() || readState().mode || 'Real';
+    const next = { tab: nextTab, mode: nextMode, accountIds: { ...(readState().accountIds || {}) } };
+    if (nextMode !== 'Backtest') {
+      const accountId = localStorage.getItem(ACCOUNT_KEY(nextMode));
+      if (accountId) next.accountIds[nextMode] = accountId;
     }
-    writeState(patch);
-    if (TABS.has(currentTab) && window.location.hash !== `#${currentTab}`) {
-      window.history.replaceState({ obTab: currentTab }, '', `#${currentTab}`);
-    }
+    writeState(next);
+    if (window.location.hash !== `#${nextTab}`) window.history.replaceState({ obTab: nextTab }, '', `#${nextTab}`);
   }
 
   function hookNavigation() {
@@ -49,7 +54,6 @@
       wrappedTab.__obStabilityWrapped = true;
       window.switchTab = wrappedTab;
     }
-
     const originalMode = window.switchMode;
     if (typeof originalMode === 'function' && !originalMode.__obStabilityWrapped) {
       const wrappedMode = function(mode, ...args) {
@@ -65,67 +69,76 @@
 
   function restoreUiState() {
     const state = readState();
-    const tab = hashTab() || (TABS.has(state.tab) ? state.tab : 'home');
+    const tab = tabFromHash() || (validTab(state.tab) ? state.tab : 'home');
     const mode = MODES.has(state.mode) ? state.mode : modeNow() || 'Real';
     restoring = true;
     try {
-      if (mode !== 'Backtest') {
-        const savedAccount = state.accountIds?.[mode];
-        if (savedAccount) localStorage.setItem(accountKey(mode), savedAccount);
-      }
+      if (mode !== 'Backtest' && state.accountIds?.[mode]) localStorage.setItem(ACCOUNT_KEY(mode), state.accountIds[mode]);
       if (typeof window.switchMode === 'function') window.switchMode(mode);
       if (typeof window.switchTab === 'function') window.switchTab(tab);
-      persistUiState(tab, mode);
+      window.history.replaceState({ obTab: tab }, '', `#${tab}`);
     } finally {
       restoring = false;
     }
-    scheduleLayout();
+    persistUiState(tab, mode);
   }
 
-  function cardContaining(root, needle) {
+  function findCard(root, needle) {
     const target = String(needle).toLowerCase();
     return [...root.querySelectorAll('.glass-card')].find(card => card.textContent.toLowerCase().includes(target)) || null;
   }
 
-  function restoreTradingLayout() {
-    const trading = document.getElementById('pageTrading');
-    if (!trading) return;
-    const heatmap = trading.querySelector('#calendarHeatmapGrid')?.closest('.glass-card');
-    const account = trading.querySelector('#accountBalanceDisplay')?.closest('.glass-card');
-    const oldRow = document.getElementById('ob-trading-pnl-account-row');
-    if (!heatmap || !account) return;
-
-    const parent = heatmap.parentElement;
-    if (parent && parent !== account.parentElement && parent.classList.contains('grid')) parent.appendChild(account);
-    oldRow?.remove();
+  function findHeatmapCard(trading) {
+    return trading.querySelector('#calendarHeatmapGrid')?.closest('.glass-card') || null;
   }
 
-  function restoreJournalLayout() {
+  function findAccountCard(trading) {
+    return trading.querySelector('#accountBalanceDisplay')?.closest('.glass-card') || null;
+  }
+
+  function moveTradingCards() {
+    const trading = document.getElementById('pageTrading');
+    if (!trading) return;
+    const heatmap = findHeatmapCard(trading);
+    const account = findAccountCard(trading);
+    const logTrade = findCard(trading, 'log a trade');
+    if (!heatmap || !account || !logTrade) return;
+
+    let row = document.getElementById('ob-trading-pnl-account-row');
+    if (!row) {
+      row = document.createElement('div');
+      row.id = 'ob-trading-pnl-account-row';
+    }
+    if (row.parentElement !== trading || logTrade.nextElementSibling !== row) {
+      trading.insertBefore(row, logTrade.nextSibling);
+    }
+    if (heatmap.parentElement !== row) row.appendChild(heatmap);
+    if (account.parentElement !== row) row.appendChild(account);
+  }
+
+  function moveJournalCards() {
     const journal = document.getElementById('pageJournal');
     if (!journal) return;
-    const equity = cardContaining(journal, 'Cumulative Equity Growth (Net R)');
-    const discipline = cardContaining(journal, 'Discipline & Rules Status');
-    if (!equity || !discipline) return;
+    const equity = findCard(journal, 'cumulative equity growth (net r)');
+    const discipline = findCard(journal, 'discipline & rules status');
+    const table = journal.querySelector('#journalTableBody')?.closest('.glass-card');
+    if (!equity || !discipline || !table) return;
 
     let row = document.getElementById('ob-journal-equity-discipline-row');
     if (!row) {
       row = document.createElement('div');
       row.id = 'ob-journal-equity-discipline-row';
-      const table = journal.querySelector('#journalTableBody')?.closest('.glass-card');
-      if (table?.parentElement === journal) {
-        if (table.nextSibling) journal.insertBefore(row, table.nextSibling);
-        else journal.appendChild(row);
-      } else {
-        journal.appendChild(row);
-      }
     }
+    if (row.parentElement !== journal || table.nextElementSibling !== row) {
+      journal.insertBefore(row, table.nextSibling);
+    }
+    if (equity.parentElement !== row) row.appendChild(equity);
+    if (discipline.parentElement !== row) row.appendChild(discipline);
+  }
 
-    const oldRow = document.getElementById('ob-journal-insights-row');
-    if (oldRow && oldRow !== row) oldRow.remove();
-    [equity, discipline].forEach(card => {
-      card.classList.remove('lg:col-span-2', 'lg:col-span-3', 'w-full');
-      if (card.parentElement !== row) row.appendChild(card);
-    });
+  function cleanConflicts() {
+    document.querySelectorAll('#pageTrading #ob-journal-equity-discipline-row, #pageJournal #ob-trading-pnl-account-row').forEach(el => el.remove());
+    document.querySelectorAll('#pageAnalytics #journalPnlHeatmap').forEach(el => el.remove());
   }
 
   function ensureStyles() {
@@ -133,32 +146,37 @@
     const style = document.createElement('style');
     style.id = 'ob-ui-stability-style';
     style.textContent = `
+      #ob-trading-pnl-account-row{display:grid!important;grid-template-columns:minmax(0,2fr) minmax(300px,1fr)!important;gap:24px!important;align-items:start!important;width:100%!important;margin:20px 0!important}
+      #ob-trading-pnl-account-row>.glass-card{min-width:0!important;width:auto!important;margin:0!important}
       #ob-journal-equity-discipline-row{display:grid!important;grid-template-columns:minmax(0,2fr) minmax(300px,1fr)!important;gap:20px!important;align-items:start!important;width:100%!important;margin:20px 0!important}
       #ob-journal-equity-discipline-row>.glass-card{min-width:0!important;width:auto!important;margin:0!important}
-      #ob-trading-pnl-account-row{display:none!important}
-      @media(max-width:900px){#ob-journal-equity-discipline-row{grid-template-columns:1fr!important}}
+      @media(max-width:900px){#ob-trading-pnl-account-row,#ob-journal-equity-discipline-row{grid-template-columns:1fr!important}}
     `;
     document.head.appendChild(style);
   }
 
   function layout() {
     ensureStyles();
-    restoreTradingLayout();
-    restoreJournalLayout();
+    cleanConflicts();
+    moveTradingCards();
+    moveJournalCards();
   }
 
   function scheduleLayout() {
     clearTimeout(layoutTimer);
-    layoutTimer = setTimeout(layout, 30);
-    [120, 350, 800, 1500, 2500].forEach(ms => setTimeout(layout, ms));
+    layoutTimer = setTimeout(layout, 20);
   }
 
   function boot() {
+    ensureStyles();
     hookNavigation();
-    window.addEventListener('wallet-accounts-updated', () => { persistUiState(); scheduleLayout(); });
-    window.addEventListener('resize', scheduleLayout);
     restoreUiState();
-    scheduleLayout();
+    layout();
+    [100, 300, 700, 1400, 2500].forEach(ms => setTimeout(layout, ms));
+    window.addEventListener('resize', scheduleLayout);
+    window.addEventListener('wallet-accounts-updated', () => { persistUiState(); scheduleLayout(); });
+    layoutObserver = new MutationObserver(() => scheduleLayout());
+    layoutObserver.observe(document.body, { childList: true, subtree: true });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
