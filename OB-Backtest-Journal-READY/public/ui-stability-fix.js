@@ -111,9 +111,13 @@
     if (!row) {
       row = document.createElement('div');
       row.id = 'ob-journal-equity-discipline-row';
-      const anchor = journal.querySelector('#journalTableBody')?.closest('.glass-card') || journal.querySelector(`.${'journal-analytics-mode-menu'}`) || journal.firstElementChild;
-      if (anchor?.parentElement === journal) journal.insertBefore(row, anchor);
-      else journal.insertBefore(row, journal.firstElementChild);
+      const table = journal.querySelector('#journalTableBody')?.closest('.glass-card');
+      if (table?.parentElement === journal) {
+        if (table.nextSibling) journal.insertBefore(row, table.nextSibling);
+        else journal.appendChild(row);
+      } else {
+        journal.appendChild(row);
+      }
     }
 
     const oldRow = document.getElementById('ob-journal-insights-row');
