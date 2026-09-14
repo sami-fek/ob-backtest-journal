@@ -37,12 +37,12 @@ function requireMode(value) {
 }
 function requireLogin(value) {
   const loginValue = text(value, 32);
-  if (!/^\\d{3,32}$/.test(loginValue)) throw new Mt5Error(400, 'MT5_LOGIN_INVALID', 'login must contain 3 to 32 digits');
+  if (!/^\d{3,32}$/.test(loginValue)) throw new Mt5Error(400, 'MT5_LOGIN_INVALID', 'login must contain 3 to 32 digits');
   return loginValue;
 }
 function requireServer(value) {
   const serverValue = text(value, 128);
-  if (!serverValue || /[\\u0000-\\u001f\\u007f]/.test(serverValue)) throw new Mt5Error(400, 'MT5_SERVER_INVALID', 'server is required and contains invalid characters');
+  if (!serverValue || /[\u0000-\u001f\u007f]/.test(serverValue)) throw new Mt5Error(400, 'MT5_SERVER_INVALID', 'server is required and contains invalid characters');
   return serverValue;
 }
 function optionalLogin(value) { return value == null || value === '' ? null : requireLogin(value); }
