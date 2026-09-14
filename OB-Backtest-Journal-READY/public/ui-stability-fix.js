@@ -86,14 +86,8 @@
     const target = String(needle).toLowerCase();
     return [...root.querySelectorAll('.glass-card')].find(card => card.textContent.toLowerCase().includes(target)) || null;
   }
-
-  function findHeatmapCard(trading) {
-    return trading.querySelector('#calendarHeatmapGrid')?.closest('.glass-card') || null;
-  }
-
-  function findAccountCard(trading) {
-    return trading.querySelector('#accountBalanceDisplay')?.closest('.glass-card') || null;
-  }
+  function findHeatmapCard(trading) { return trading.querySelector('#calendarHeatmapGrid')?.closest('.glass-card') || null; }
+  function findAccountCard(trading) { return trading.querySelector('#accountBalanceDisplay')?.closest('.glass-card') || null; }
 
   function moveTradingCards() {
     const trading = document.getElementById('pageTrading');
@@ -102,12 +96,8 @@
     const account = findAccountCard(trading);
     const logTrade = findCard(trading, 'log a trade');
     if (!heatmap || !account || !logTrade) return;
-
     let row = document.getElementById('ob-trading-pnl-account-row');
-    if (!row) {
-      row = document.createElement('div');
-      row.id = 'ob-trading-pnl-account-row';
-    }
+    if (!row) { row = document.createElement('div'); row.id = 'ob-trading-pnl-account-row'; }
     if (row.parentElement !== trading || logTrade.nextElementSibling !== row) trading.insertBefore(row, logTrade.nextSibling);
     if (heatmap.parentElement !== row) row.appendChild(heatmap);
     if (account.parentElement !== row) row.appendChild(account);
@@ -120,19 +110,26 @@
     const discipline = findCard(journal, 'discipline & rules status');
     const table = journal.querySelector('#journalTableBody')?.closest('.glass-card');
     if (!equity || !discipline || !table) return;
-
     let row = document.getElementById('ob-journal-equity-discipline-row');
-    if (!row) {
-      row = document.createElement('div');
-      row.id = 'ob-journal-equity-discipline-row';
-    }
+    if (!row) { row = document.createElement('div'); row.id = 'ob-journal-equity-discipline-row'; }
     if (row.parentElement !== journal || table.nextElementSibling !== row) journal.insertBefore(row, table.nextSibling);
     if (equity.parentElement !== row) row.appendChild(equity);
     if (discipline.parentElement !== row) row.appendChild(discipline);
   }
 
   function cleanConflicts() {
-    document.querySelectorAll('#pageTrading #ob-journal-equity-discipline-row, #pageJournal #ob-trading-pnl-account-row').forEach(el => el.remove());
+    const trading = document.getElementById('pageTrading');
+    const journal = document.getElementById('pageJournal');
+    const wrongJournalRow = trading?.querySelector('#ob-journal-equity-discipline-row');
+    if (wrongJournalRow && journal) {
+      [...wrongJournalRow.children].forEach(card => journal.appendChild(card));
+      wrongJournalRow.remove();
+    }
+    const wrongTradingRow = journal?.querySelector('#ob-trading-pnl-account-row');
+    if (wrongTradingRow && trading) {
+      [...wrongTradingRow.children].forEach(card => trading.appendChild(card));
+      wrongTradingRow.remove();
+    }
     document.querySelectorAll('#pageAnalytics #journalPnlHeatmap').forEach(el => el.remove());
   }
 
@@ -150,17 +147,8 @@
     document.head.appendChild(style);
   }
 
-  function layout() {
-    ensureStyles();
-    cleanConflicts();
-    moveTradingCards();
-    moveJournalCards();
-  }
-
-  function scheduleLayout() {
-    clearTimeout(layoutTimer);
-    layoutTimer = setTimeout(layout, 20);
-  }
+  function layout() { ensureStyles(); cleanConflicts(); moveTradingCards(); moveJournalCards(); }
+  function scheduleLayout() { clearTimeout(layoutTimer); layoutTimer = setTimeout(layout, 20); }
 
   function boot() {
     ensureStyles();
@@ -170,9 +158,6 @@
     [100, 300, 700, 1400, 2500].forEach(ms => setTimeout(layout, ms));
     window.addEventListener('resize', scheduleLayout);
     window.addEventListener('wallet-accounts-updated', () => { persistUiState(); scheduleLayout(); });
-
-    // The original index.html also has its own window.onload/loadState handler.
-    // Re-apply the saved UI state after that handler, even if this script loaded late.
     [0, 100, 350, 800, 1500, 2500].forEach(ms => setTimeout(() => {
       hookNavigation();
       restoreUiState();
