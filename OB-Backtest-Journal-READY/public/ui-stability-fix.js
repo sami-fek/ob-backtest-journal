@@ -5,7 +5,6 @@
   const ACCOUNT_KEY = mode => `my_journal_active_account_${mode}_v1`;
   let restoring = false;
   let layoutTimer = null;
-  let layoutObserver = null;
 
   const readState = () => {
     try { return JSON.parse(localStorage.getItem(STATE_KEY) || '{}') || {}; }
@@ -109,9 +108,7 @@
       row = document.createElement('div');
       row.id = 'ob-trading-pnl-account-row';
     }
-    if (row.parentElement !== trading || logTrade.nextElementSibling !== row) {
-      trading.insertBefore(row, logTrade.nextSibling);
-    }
+    if (row.parentElement !== trading || logTrade.nextElementSibling !== row) trading.insertBefore(row, logTrade.nextSibling);
     if (heatmap.parentElement !== row) row.appendChild(heatmap);
     if (account.parentElement !== row) row.appendChild(account);
   }
@@ -129,9 +126,7 @@
       row = document.createElement('div');
       row.id = 'ob-journal-equity-discipline-row';
     }
-    if (row.parentElement !== journal || table.nextElementSibling !== row) {
-      journal.insertBefore(row, table.nextSibling);
-    }
+    if (row.parentElement !== journal || table.nextElementSibling !== row) journal.insertBefore(row, table.nextSibling);
     if (equity.parentElement !== row) row.appendChild(equity);
     if (discipline.parentElement !== row) row.appendChild(discipline);
   }
@@ -175,8 +170,13 @@
     [100, 300, 700, 1400, 2500].forEach(ms => setTimeout(layout, ms));
     window.addEventListener('resize', scheduleLayout);
     window.addEventListener('wallet-accounts-updated', () => { persistUiState(); scheduleLayout(); });
-    layoutObserver = new MutationObserver(() => scheduleLayout());
-    layoutObserver.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        hookNavigation();
+        restoreUiState();
+        layout();
+      }, 0);
+    }, { once: true });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
