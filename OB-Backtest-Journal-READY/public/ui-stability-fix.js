@@ -170,13 +170,14 @@
     [100, 300, 700, 1400, 2500].forEach(ms => setTimeout(layout, ms));
     window.addEventListener('resize', scheduleLayout);
     window.addEventListener('wallet-accounts-updated', () => { persistUiState(); scheduleLayout(); });
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        hookNavigation();
-        restoreUiState();
-        layout();
-      }, 0);
-    }, { once: true });
+
+    // The original index.html also has its own window.onload/loadState handler.
+    // Re-apply the saved UI state after that handler, even if this script loaded late.
+    [0, 100, 350, 800, 1500, 2500].forEach(ms => setTimeout(() => {
+      hookNavigation();
+      restoreUiState();
+      layout();
+    }, ms));
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
