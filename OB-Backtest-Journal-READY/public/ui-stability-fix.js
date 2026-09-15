@@ -62,15 +62,40 @@
     persistUiState(tab, mode);
   }
   function findCard(root, needle) { const target = String(needle).toLowerCase(); return [...root.querySelectorAll('.glass-card')].find(card => card.textContent.toLowerCase().includes(target)) || null; }
+
+  // STEP 1: keep the existing Heatmap + Account cards together. Do not recreate
+  // or relocate the cards; only mark their existing parent so scoped CSS controls it.
+  function stabilizeTradingPnlRow() {
+    const trading = document.getElementById('pageTrading');
+    if (!trading) return;
+    const heatmap = trading.querySelector('#calendarHeatmapGrid')?.closest('.glass-card');
+    const account = trading.querySelector('#accountBalanceDisplay')?.closest('.glass-card');
+    if (!heatmap || !account) return;
+    const parent = heatmap.parentElement;
+    if (parent && account.parentElement === parent) parent.id = 'ob-trading-pnl-account-row';
+  }
+
+  // STEP 2: move the existing Equity + Discipline cards from Trading to Journal,
+  // then keep them in a single 2fr / 1fr row directly below the Journal table.
   function moveJournalCards() {
-    const journal = document.getElementById('pageJournal'); if (!journal) return;
-    const equity = findCard(journal, 'cumulative equity growth (net r)'), discipline = findCard(journal, 'discipline & rules status'), table = journal.querySelector('#journalTableBody')?.closest('.glass-card');
+    const journal = document.getElementById('pageJournal');
+    const trading = document.getElementById('pageTrading');
+    if (!journal) return;
+
+    let equity = findCard(journal, 'cumulative equity growth (net r)');
+    let discipline = findCard(journal, 'discipline & rules status');
+    if (!equity && trading) equity = findCard(trading, 'cumulative equity growth (net r)');
+    if (!discipline && trading) discipline = findCard(trading, 'discipline & rules status');
+    const table = journal.querySelector('#journalTableBody')?.closest('.glass-card');
     if (!equity || !discipline || !table) return;
-    let row = document.getElementById('ob-journal-equity-discipline-row'); if (!row) { row = document.createElement('div'); row.id = 'ob-journal-equity-discipline-row'; }
+
+    let row = document.getElementById('ob-journal-equity-discipline-row');
+    if (!row) { row = document.createElement('div'); row.id = 'ob-journal-equity-discipline-row'; }
     if (row.parentElement !== journal || table.nextElementSibling !== row) journal.insertBefore(row, table.nextSibling);
     if (equity.parentElement !== row) row.appendChild(equity);
     if (discipline.parentElement !== row) row.appendChild(discipline);
   }
+
   function cleanConflicts() {
     const trading = document.getElementById('pageTrading'), journal = document.getElementById('pageJournal');
     const wrongJournalRow = trading?.querySelector('#ob-journal-equity-discipline-row');
@@ -83,7 +108,7 @@
     if (document.getElementById('ob-ui-stability-style')) return;
     const style = document.createElement('style'); style.id = 'ob-ui-stability-style'; style.textContent = `#ob-journal-equity-discipline-row{display:grid!important;grid-template-columns:minmax(0,2fr) minmax(300px,1fr)!important;gap:20px!important;align-items:start!important;width:100%!important;margin:20px 0!important}#ob-journal-equity-discipline-row>.glass-card{min-width:0!important;width:auto!important;margin:0!important}@media(max-width:900px){#ob-journal-equity-discipline-row{grid-template-columns:1fr!important}}`; document.head.appendChild(style);
   }
-  function layout() { ensureStyles(); cleanConflicts(); moveJournalCards(); }
+  function layout() { ensureStyles(); cleanConflicts(); stabilizeTradingPnlRow(); moveJournalCards(); }
   function scheduleLayout() { clearTimeout(layoutTimer); layoutTimer = setTimeout(layout, 20); }
   function boot() {
     ensureStyles(); hookNavigation(); restoreUiState(); layout(); [100,300,700,1400,2500].forEach(ms => setTimeout(layout, ms));
