@@ -693,10 +693,9 @@
         console.warn('restoreTabNow failed:', e);
         const h = document.getElementById('pageHome');
         if (h) h.classList.remove('hidden');
-            } finally {
-        // Do NOT remove ob-booting here. Leave it on until the feature
-        // scripts have all finished loading (backend-sync.js removes it).
-        // Fallback: if backend-sync.js never fires, reveal after 4s.
+      } finally {
+        // Do NOT remove ob-booting here. backend-sync.js removes it after all
+        // feature scripts finish loading. Fallback reveals after 4s.
         setTimeout(() => {
           document.documentElement.classList.remove('ob-booting');
         }, 4000);
@@ -772,6 +771,7 @@
       return {
         id: String(t.id ?? ('tr-' + Date.now())),
         mode: t.mode || t.accountType || 'Backtest',
+        accountId: t.accountId || null,
         date: t.date || '', pair: t.pair || '',
         timeframe: t.timeframe || t.tf || '15M',
         regime: t.regime || '',
@@ -779,7 +779,21 @@
         result, rMultiple: signedR({ ...t, result }), strategy,
         notes: t.notes || '',
         checklist: Array.isArray(t.checklist) ? t.checklist : [],
-        screenshots: Array.isArray(t.screenshots) ? t.screenshots : []
+        screenshots: Array.isArray(t.screenshots) ? t.screenshots : [],
+        // MT5 fields preserved
+        mt5Ticket: t.mt5Ticket || null,
+        mt5AccountId: t.mt5AccountId || null,
+        source: t.source || null,
+        pnl: typeof t.pnl === 'number' ? t.pnl : null,
+        entryPrice: typeof t.entryPrice === 'number' ? t.entryPrice : null,
+        exitPrice: typeof t.exitPrice === 'number' ? t.exitPrice : null,
+        sl: typeof t.sl === 'number' ? t.sl : null,
+        tp: typeof t.tp === 'number' ? t.tp : null,
+        volume: typeof t.volume === 'number' ? t.volume : null,
+        openTime: t.openTime || null,
+        closeTime: t.closeTime || null,
+        commission: typeof t.commission === 'number' ? t.commission : null,
+        swap: typeof t.swap === 'number' ? t.swap : null
       };
     }
     function checklistFor(strategy) { return CHECKLISTS[strategy] || CHECKLISTS['Model OB']; }
@@ -994,6 +1008,11 @@
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50 transition-colors cursor-pointer";
         tr.onclick = (e) => { if (!e.target.closest('button')) openDrawer(t.id); };
+        const pnlIsSet = typeof t.pnl === 'number' && t.pnl !== 0;
+        const valueIsPositive = pnlIsSet ? t.pnl >= 0 : t.rMultiple >= 0;
+        const pnlCell = pnlIsSet
+          ? ((t.pnl >= 0 ? '+' : '') + '$' + Math.abs(t.pnl).toFixed(2))
+          : ((t.rMultiple >= 0 ? '+' : '') + t.rMultiple.toFixed(1) + ' R');
         tr.innerHTML = `
           <td class="py-3 px-3 text-slate-500">${t.date}</td>
           <td class="py-3 px-3 font-bold text-slate-900">${t.pair}</td>
@@ -1001,7 +1020,7 @@
           <td class="py-3 px-3 text-slate-600">${t.regime}</td>
           <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.direction === 'LONG' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${t.direction}</span></td>
           <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.result === 'Win' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : (t.result === 'Loss' ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-slate-100 text-slate-600')}">${t.result}</span></td>
-          <td class="py-3 px-3 text-right font-bold ${t.rMultiple >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${t.rMultiple >= 0 ? '+' : ''}${t.rMultiple.toFixed(1)} R</td>
+          <td class="py-3 px-3 text-right font-bold ${valueIsPositive ? 'text-emerald-600' : 'text-rose-600'}">${pnlCell}</td>
           <td class="py-3 px-3 text-center">${(() => {
             const chk = t.checklist || [];
             const hasFail = chk.some(s => s === 'fail');
@@ -1042,6 +1061,11 @@
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50 transition-colors cursor-pointer";
         tr.onclick = (e) => { if (!e.target.closest('button')) openDrawer(t.id); };
+        const pnlIsSet = typeof t.pnl === 'number' && t.pnl !== 0;
+        const valueIsPositive = pnlIsSet ? t.pnl >= 0 : t.rMultiple >= 0;
+        const pnlCell = pnlIsSet
+          ? ((t.pnl >= 0 ? '+' : '') + '$' + Math.abs(t.pnl).toFixed(2))
+          : ((t.rMultiple >= 0 ? '+' : '') + t.rMultiple.toFixed(1) + ' R');
         tr.innerHTML = `
           <td class="py-3.5 px-4 text-slate-500">${t.date}</td>
           <td class="py-3.5 px-4 font-bold text-slate-900">${t.pair}</td>
@@ -1050,7 +1074,7 @@
           <td class="py-3.5 px-4 text-blue-600 font-semibold">${t.strategy}</td>
           <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.direction === 'LONG' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${t.direction}</span></td>
           <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.result === 'Win' ? 'bg-emerald-100 text-emerald-800' : (t.result === 'Loss' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600')}">${t.result}</span></td>
-          <td class="py-3.5 px-4 text-right font-bold ${t.rMultiple >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${t.rMultiple >= 0 ? '+' : ''}${t.rMultiple.toFixed(1)} R</td>
+          <td class="py-3.5 px-4 text-right font-bold ${valueIsPositive ? 'text-emerald-600' : 'text-rose-600'}">${pnlCell}</td>
           <td class="py-3.5 px-4 text-center">${(() => {
             const steps = checklistFor(t.strategy);
             const chk = t.checklist || [];
@@ -1097,7 +1121,10 @@
       modeTrades.forEach(t => {
         if (t.date && t.date.startsWith(monthKey)) {
           const dayNum = parseInt(t.date.split('-')[2], 10);
-          const dollars = t.rMultiple * (initialCapital * (riskPercent / 100));
+          // PATCH A: MT5 trades carry their own $ P&L. Use it directly.
+          const dollars = (typeof t.pnl === 'number' && t.pnl !== 0)
+            ? t.pnl
+            : t.rMultiple * (initialCapital * (riskPercent / 100));
           if (!daysMap[dayNum]) daysMap[dayNum] = 0;
           daysMap[dayNum] += dollars;
           monthNet += dollars;
@@ -1489,7 +1516,7 @@
       if (!t) return;
       const btn = document.getElementById('drawerAiBtnLabel');
       if (btn) btn.textContent = 'Analyzing…';
-      const prompt = `You are a practical trading coach. Analyze this one journaled trade. Separate result (win/loss/BE) from discipline (clean/violation/pending). Be concise.\nTrade: ${JSON.stringify({ mode: t.mode, date: t.date, pair: t.pair, timeframe: t.timeframe, regime: t.regime, direction: t.direction, result: t.result, rMultiple: t.rMultiple, strategy: t.strategy, notes: t.notes, checklist: t.checklist })}`;
+      const prompt = `You are a practical trading coach. Analyze this one journaled trade. Separate result (win/loss/BE) from discipline (clean/violation/pending). Be concise.\nTrade: ${JSON.stringify({ mode: t.mode, date: t.date, pair: t.pair, timeframe: t.timeframe, regime: t.regime, direction: t.direction, result: t.result, rMultiple: t.rMultiple, pnl: t.pnl, strategy: t.strategy, notes: t.notes, checklist: t.checklist })}`;
       try {
         const res = await fetch('/api/ai', {
           method: 'POST', credentials: 'same-origin',
