@@ -38,7 +38,6 @@
     });
   }
 
-  // Only hydrate the accounts key. Trades are owned by index.html via 'ob-trades'.
   async function hydrateAccounts() {
     const serverAccounts = await readServerState(ACCOUNT_STORAGE_KEY);
     const localAccounts = localStorage.getItem(ACCOUNT_STORAGE_KEY);
@@ -46,10 +45,8 @@
     else if (localAccounts) void writeServerState(localAccounts, ACCOUNT_STORAGE_KEY);
   }
 
-  // Expose a safe persist hook for accounts only.
   window.persistAccountState = value => writeServerState(value, ACCOUNT_STORAGE_KEY);
 
-  // Chain onto window.onload WITHOUT touching trades.
   const originalLoad = window.onload;
   window.onload = async function(...args) {
     await hydrateAccounts();
@@ -57,8 +54,12 @@
     setPersistenceLabel();
   };
 
-  const scripts = [
-    '/ui-stability-fix.js',
+  // ---- Load order ----
+  // 1. ui-stability-fix.js runs FIRST and alone, so it can install its
+  //    switchTab/switchMode wrappers before anything else touches them.
+  // 2. Everything else loads in PARALLEL (no onload chaining).
+  const FIRST = '/ui-stability-fix.js';
+  const REST = [
     '/ui-rules.js',
     '/account-widget-fix.js',
     '/account-edit-persistence-fix.js',
@@ -73,18 +74,26 @@
     '/ui-navigation-fix.js',
     '/ui-carousel-stability.js'
   ];
-  let scriptIndex = 0;
-  const loadNext = () => {
-    if (scriptIndex >= scripts.length) return;
-    const src = scripts[scriptIndex++];
+
+  function inject(src, onDone) {
     const script = document.createElement('script');
     script.src = src;
-    script.onload = loadNext;
+    script.async = true;
+    script.onload = () => onDone && onDone();
     script.onerror = () => {
       console.warn(`[OB Journal] UI feature script failed to load: ${src}`);
-      loadNext();
+      onDone && onDone();
     };
     document.head.appendChild(script);
-  };
-  hydrateAccounts().finally(loadNext);
+  }
+
+  function loadRest() {
+    REST.forEach(src => inject(src)); // parallel — do not chain
+  }
+
+  // Kick off accounts hydration in parallel with everything else.
+  hydrateAccounts().finally(() => {});
+
+  // Load the first script alone, then fire the rest all at once.
+  inject(FIRST, loadRest);
 })();
