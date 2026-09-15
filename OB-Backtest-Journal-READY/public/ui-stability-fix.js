@@ -32,7 +32,6 @@
     return null;
   };
 
-  // Write state. Only called on real user actions or after a restore.
   function persistUiState(tab = null, mode = null) {
     const nextTab = validTab(tab) ? String(tab).toLowerCase()
                    : tabFromHash() || currentVisibleTab() || readState().tab || 'home';
@@ -48,8 +47,6 @@
     }
   }
 
-  // Wrap switchTab / switchMode once. Every user action writes state.
-  // Restores do NOT write state (they short-circuit via `restoring`).
   function hookNavigation() {
     const originalTab = window.switchTab;
     if (typeof originalTab === 'function' && !originalTab.__obStabilityWrapped) {
@@ -75,13 +72,12 @@
     }
   }
 
-  // Restore state ONCE on boot. Never re-applied afterwards.
   function restoreUiStateOnce() {
     const state = readState();
+    // Priority: URL hash > saved state > 'home'
     const tab = tabFromHash() || (validTab(state.tab) ? state.tab : 'home');
     const mode = MODES.has(state.mode) ? state.mode : (modeNow() || 'Real');
 
-    // Restore account for the active mode before switching mode.
     if (mode !== 'Backtest' && state.accountIds && state.accountIds[mode]) {
       try { localStorage.setItem(ACCOUNT_KEY(mode), state.accountIds[mode]); } catch (_) {}
     }
@@ -98,7 +94,6 @@
     } finally {
       restoring = false;
     }
-    // Persist the resolved state so a subsequent reload is consistent.
     persistUiState(tab, mode);
   }
 
@@ -108,9 +103,6 @@
       .find(card => card.textContent.toLowerCase().includes(target)) || null;
   }
 
-  // Move equity + discipline into the static Journal row.
-  // Searches the whole document because the two cards may start on Trading
-  // in some build orders. Idempotent.
   function moveJournalCards() {
     const row = document.getElementById('ob-journal-equity-discipline-row');
     if (!row) return;
@@ -121,7 +113,6 @@
     if (discipline.parentElement !== row) row.appendChild(discipline);
   }
 
-  // Safety net only. Never creates either row.
   function cleanConflicts() {
     const trading = document.getElementById('pageTrading');
     const journal = document.getElementById('pageJournal');
@@ -146,15 +137,8 @@
     document.head.appendChild(style);
   }
 
-  function layout() {
-    ensureStyles();
-    cleanConflicts();
-    moveJournalCards();
-  }
-  function scheduleLayout() {
-    clearTimeout(layoutTimer);
-    layoutTimer = setTimeout(layout, 20);
-  }
+  function layout() { ensureStyles(); cleanConflicts(); moveJournalCards(); }
+  function scheduleLayout() { clearTimeout(layoutTimer); layoutTimer = setTimeout(layout, 20); }
 
   function boot() {
     if (booted) return;
@@ -163,17 +147,18 @@
     ensureStyles();
     hookNavigation();
 
-    // Restore ONCE. This is the only call to restoreUiState.
-    restoreUiStateOnce();
-
-    // Initial layout pass and a few layout-only re-passes (no state restore).
-    layout();
-    [100, 300, 700, 1400, 2500].forEach(ms => setTimeout(layout, ms));
+    // Give other scripts (journal-analytics-ui, ui-rules, account-widget-fix)
+    // a tick to install their own switchTab/switchMode wrappers before we
+    // restore. Otherwise our wrap gets wrapped-over and doesn't fire on
+    // the first user click.
+    setTimeout(() => {
+      hookNavigation();
+      restoreUiStateOnce();
+      layout();
+      [100, 300, 700, 1400, 2500].forEach(ms => setTimeout(layout, ms));
+    }, 0);
 
     window.addEventListener('resize', scheduleLayout);
-
-    // Account changes must not re-apply tab state. We only write the current
-    // tab/mode, and re-run layout. No restore.
     window.addEventListener('wallet-accounts-updated', () => {
       if (!restoring) persistUiState();
       scheduleLayout();
