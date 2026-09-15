@@ -693,8 +693,13 @@
         console.warn('restoreTabNow failed:', e);
         const h = document.getElementById('pageHome');
         if (h) h.classList.remove('hidden');
-      } finally {
-        document.documentElement.classList.remove('ob-booting');
+            } finally {
+        // Do NOT remove ob-booting here. Leave it on until the feature
+        // scripts have all finished loading (backend-sync.js removes it).
+        // Fallback: if backend-sync.js never fires, reveal after 4s.
+        setTimeout(() => {
+          document.documentElement.classList.remove('ob-booting');
+        }, 4000);
       }
     })();
 
