@@ -139,7 +139,7 @@
   <main class="max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 flex-1">
 
     <!-- PAGE 1: HOME -->
-    <section id="pageHome" class="space-y-10 animate-fade-in">
+        <section id="pageHome" class="space-y-10 hidden animate-fade-in">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-4 lg:pt-8">
         <div class="lg:col-span-6 space-y-6">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
@@ -671,37 +671,82 @@
   restoreSavedTab();
 };
 
-function restoreSavedTab() {
-  try {
-    const hashTab = window.location.hash.replace(/^#/, '').trim().toLowerCase();
-    const validTabs = ['home','trading','journal','analytics','accounts','settings'];
-    const saved = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}');
-    const tab = validTabs.includes(hashTab) ? hashTab
-              : validTabs.includes(saved.tab) ? saved.tab
-              : 'home';
-    const mode = ['Backtest','Demo','Real','Funded'].includes(saved.mode) ? saved.mode : null;
-    if (mode && mode !== activeMode) {
-      try { switchMode(mode); } catch (_) {}
-    }
-    if (tab !== activeTab) {
-      try { switchTab(tab); } catch (_) {}
-    }
-    // Keep URL and state in sync.
-    try { window.history.replaceState({ obTab: tab }, '', '#' + tab); } catch (_) {}
-  } catch (e) {
-    console.warn('restoreSavedTab failed:', e);
-  }
-}
+    // ---- TAB RESTORE ----
+    // Runs as early as possible (DOMContentLoaded) so the browser never paints
+    // the wrong page. Falls back to window.load if DOMContentLoaded already fired.
+    function restoreSavedTabEarly() {
+      try {
+        const hashTab = window.location.hash.replace(/^#/, '').trim().toLowerCase();
+        const validTabs = ['home','trading','journal','analytics','accounts','settings'];
+        const saved = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}');
+        const tab = validTabs.includes(hashTab) ? hashTab
+                  : validTabs.includes(saved.tab) ? saved.tab
+                  : 'home';
+        const mode = ['Backtest','Demo','Real','Funded'].includes(saved.mode) ? saved.mode : null;
 
-// Also restore on pagehide so the very latest tab is saved before unload.
-window.addEventListener('pagehide', () => {
-  try {
-    const state = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}');
-    state.tab = activeTab;
-    state.mode = activeMode;
-    localStorage.setItem('ob_ui_state_v1', JSON.stringify(state));
-  } catch (_) {}
-});
+        // Hide every page first so nothing paints.
+        validTabs.forEach(t => {
+          const p = document.getElementById('page' + t.charAt(0).toUpperCase() + t.slice(1));
+          if (p) p.classList.add('hidden');
+        });
+
+        // Reveal the target page directly — bypass switchTab's animation timing.
+        const targetPage = document.getElementById('page' + tab.charAt(0).toUpperCase() + tab.slice(1));
+        if (targetPage) targetPage.classList.remove('hidden');
+
+        // Also update navbar highlight directly.
+        validTabs.forEach(t => {
+          const b = document.getElementById('navBtn-' + t);
+          if (!b) return;
+          if (t === tab) b.className = "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 nav-pill-active";
+          else b.className = "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900";
+        });
+
+        // Sync JS state variables so the rest of the app agrees.
+        try { activeTab = tab; } catch (_) {}
+        if (mode) { try { activeMode = mode; } catch (_) {} }
+        const modeLabel = document.getElementById('activeModeLabel');
+        if (modeLabel && mode) modeLabel.textContent = mode.toUpperCase() + ' ACCOUNT';
+        validTabs.forEach(m => {
+          if (!['Backtest','Demo','Real','Funded'].includes(m)) return;
+        });
+        ['Backtest','Demo','Real','Funded'].forEach(m => {
+          const btn = document.getElementById('modeBtn-' + m);
+          if (!btn) return;
+          if (m === (mode || activeMode)) btn.className = "px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center mode-pill-active";
+          else btn.className = "px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center hover:bg-slate-200 text-slate-700";
+        });
+
+        try { window.history.replaceState({ obTab: tab }, '', '#' + tab); } catch (_) {}
+      } catch (e) {
+        console.warn('restoreSavedTabEarly failed:', e);
+        const home = document.getElementById('pageHome');
+        if (home) home.classList.remove('hidden');
+      }
+    }
+
+    // Run it as soon as the DOM is parsed — before any other script can interfere.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', restoreSavedTabEarly, { once: true });
+    } else {
+      restoreSavedTabEarly();
+    }
+
+    window.onload = async function() {
+      await loadState();
+      initDateInputs();
+      initCharts();
+      renderAll();
+    };
+
+    window.addEventListener('pagehide', () => {
+      try {
+        const state = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}');
+        state.tab = activeTab;
+        state.mode = activeMode;
+        localStorage.setItem('ob_ui_state_v1', JSON.stringify(state));
+      } catch (_) {}
+    });
         // Mark the body as "booting" immediately so nothing paints during load.
     document.body.classList.add('ob-booting');
 
