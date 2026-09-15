@@ -6,6 +6,7 @@
   let restoring = false;
   let layoutTimer = null;
   let booted = false;
+  let traceUntil = 0;
 
   const readState = () => {
     try { return JSON.parse(localStorage.getItem(STATE_KEY) || '{}') || {}; }
@@ -47,11 +48,18 @@
     }
   }
 
+  // DIAGNOSTIC WRAP
   function hookNavigation() {
     const originalTab = window.switchTab;
     if (typeof originalTab === 'function' && !originalTab.__obStabilityWrapped) {
       const wrappedTab = function (tab, ...args) {
+        const stack = (Date.now() < traceUntil) ? (new Error()).stack : null;
         const result = originalTab.call(this, tab, ...args);
+        if (stack) {
+          console.log('[OB-TRACE] switchTab("' + tab + '") called. restoring=' + restoring);
+          console.log(stack.split('\n').slice(1, 5).join('\n'));
+          setTimeout(() => console.log('[OB-TRACE] after call, visible tab:', currentVisibleTab()), 50);
+        }
         if (!restoring) persistUiState(tab, null);
         scheduleLayout();
         return result;
@@ -74,9 +82,10 @@
 
   function restoreUiStateOnce() {
     const state = readState();
-    // Priority: URL hash > saved state > 'home'
     const tab = tabFromHash() || (validTab(state.tab) ? state.tab : 'home');
     const mode = MODES.has(state.mode) ? state.mode : (modeNow() || 'Real');
+
+    console.log('[OB-TRACE] restoreUiStateOnce starting. tab=' + tab + ' mode=' + mode + ' hash=' + window.location.hash);
 
     if (mode !== 'Backtest' && state.accountIds && state.accountIds[mode]) {
       try { localStorage.setItem(ACCOUNT_KEY(mode), state.accountIds[mode]); } catch (_) {}
@@ -95,6 +104,18 @@
       restoring = false;
     }
     persistUiState(tab, mode);
+    console.log('[OB-TRACE] restoreUiStateOnce done. visible tab:', currentVisibleTab());
+
+    // Watch for 3 seconds — log what happens
+    traceUntil = Date.now() + 3000;
+    const tick = () => {
+      if (Date.now() > traceUntil) return;
+      const v = currentVisibleTab();
+      const s = readState().tab;
+      if (v !== tab) console.log('[OB-TRACE] MISMATCH @ ' + (Date.now() - (traceUntil - 3000)) + 'ms: visible=' + v + ' saved=' + s + ' expected=' + tab);
+      setTimeout(tick, 100);
+    };
+    setTimeout(tick, 100);
   }
 
   function findCard(root, needle) {
@@ -144,14 +165,13 @@
     if (booted) return;
     booted = true;
 
+    console.log('[OB-TRACE] boot at ' + document.readyState + ', switchTab exists=' + (typeof window.switchTab === 'function'));
+
     ensureStyles();
     hookNavigation();
 
-    // Give other scripts (journal-analytics-ui, ui-rules, account-widget-fix)
-    // a tick to install their own switchTab/switchMode wrappers before we
-    // restore. Otherwise our wrap gets wrapped-over and doesn't fire on
-    // the first user click.
     setTimeout(() => {
+      console.log('[OB-TRACE] pre-restore: switchTab wrapped=' + !!window.switchTab.__obStabilityWrapped + ' switchTab source=' + String(window.switchTab).slice(0, 80));
       hookNavigation();
       restoreUiStateOnce();
       layout();
