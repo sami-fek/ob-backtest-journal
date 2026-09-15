@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MY Journal // Next-Gen Trading Operating System</title>
 
+  <script>document.documentElement.classList.add('ob-booting');</script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -31,9 +33,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
+    html.ob-booting { visibility: hidden; }
     body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; }
-        /* Hide the app until the tab restore has run, to prevent a Home flash on load. */
-    body.ob-booting { visibility: hidden; }
 
     .glass-card {
       background: rgba(255, 255, 255, 0.92);
@@ -79,7 +80,6 @@
     .chk-btn-fail.active { background:#dc2626; border-color:#dc2626; color:#fff; box-shadow:0 2px 8px rgba(220,38,38,0.28); }
     .screenshot-thumb { width:100%; height:80px; object-fit:cover; border-radius:10px; border:1px solid #e2e8f0; }
 
-    /* Step 1: Trading Heatmap + Account Balance row */
     #ob-trading-pnl-account-row {
       display: grid !important;
       grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important;
@@ -91,7 +91,6 @@
       #ob-trading-pnl-account-row { grid-template-columns: 1fr !important; }
     }
 
-    /* Step 2: Journal Equity Growth + Discipline row */
     #ob-journal-equity-discipline-row {
       display: grid !important;
       grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important;
@@ -139,7 +138,7 @@
   <main class="max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 flex-1">
 
     <!-- PAGE 1: HOME -->
-        <section id="pageHome" class="space-y-10 hidden animate-fade-in">
+    <section id="pageHome" class="space-y-10 hidden animate-fade-in">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-4 lg:pt-8">
         <div class="lg:col-span-6 space-y-6">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
@@ -288,7 +287,6 @@
         </form>
       </div>
 
-      <!-- KPI CARDS -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="glass-card p-4 space-y-1"><div class="text-xs font-semibold uppercase tracking-wider text-slate-400">TRADES</div><div id="kpiTradesCount" class="text-2xl font-extrabold font-mono text-slate-900">0</div><div class="text-[11px] text-slate-500">Total executions</div></div>
         <div class="glass-card p-4 space-y-1"><div class="text-xs font-semibold uppercase tracking-wider text-slate-400">WIN RATE %</div><div id="kpiWinRate" class="text-2xl font-extrabold font-mono text-slate-900">0.0%</div><div id="kpiWinLossBreakdown" class="text-[11px] text-slate-500">0 W / 0 L / 0 BE</div></div>
@@ -296,9 +294,7 @@
         <div class="glass-card p-4 space-y-1"><div class="text-xs font-semibold uppercase tracking-wider text-slate-400">NET R</div><div id="kpiNetR" class="text-2xl font-extrabold font-mono text-emerald-600">+0.00 R</div><div id="kpiNetDollar" class="text-[11px] text-slate-500">+$0.00 Net P&L</div></div>
       </div>
 
-      <!-- HEATMAP | ACCOUNT ROW (now directly under KPI cards) -->
       <div id="ob-trading-pnl-account-row">
-
         <div class="glass-card p-5 space-y-4">
           <div class="flex items-center justify-between border-b border-slate-100 pb-2">
             <div>
@@ -338,10 +334,8 @@
           </div>
           <button onclick="switchTab('analytics')" class="w-full py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs rounded-xl transition-colors text-center">View Analytics Breakdown</button>
         </div>
-
       </div>
 
-      <!-- EXECUTION LOG (now after Heatmap | Account row) -->
       <div class="glass-card p-5 space-y-4">
         <div class="flex flex-col lg:flex-row justify-between items-center gap-3">
           <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -371,9 +365,6 @@
           </table>
         </div>
       </div>
-
-      <!-- MT5 Open Positions anchor: inserted AFTER this point by mt5-integration-ui.js -->
-
     </section>
 
     <!-- PAGE 3: JOURNAL -->
@@ -401,9 +392,7 @@
         </div>
       </div>
 
-      <!-- STEP 2: Equity + Discipline side-by-side -->
       <div id="ob-journal-equity-discipline-row">
-
         <div class="glass-card p-5 space-y-3">
           <div class="flex items-center justify-between border-b border-slate-100 pb-2">
             <div>
@@ -439,10 +428,8 @@
           </div>
           <button onclick="switchTab('journal')" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-xl transition-colors text-center">Review Rule Inspector <i class="fa-solid fa-arrow-right text-[10px] ml-1"></i></button>
         </div>
-
       </div>
 
-      <!-- DETAILED TRADE JOURNAL -->
       <div class="glass-card overflow-hidden">
         <div class="p-4 border-b border-slate-100 flex items-center justify-between">
           <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-book-open text-blue-600"></i>Detailed Trade Journal</h3>
@@ -459,7 +446,6 @@
           </table>
         </div>
       </div>
-
     </section>
 
     <!-- PAGE 4: ANALYTICS -->
@@ -663,74 +649,54 @@
     let chartTimeframeInstance = null;
     let chartRegimeInstance = null;
 
-    window.onload = async function() {
-  await loadState();
-  initDateInputs();
-  initCharts();
-  renderAll();
-  restoreSavedTab();
-};
-
-    // ---- TAB RESTORE ----
-    // Runs as early as possible (DOMContentLoaded) so the browser never paints
-    // the wrong page. Falls back to window.load if DOMContentLoaded already fired.
-    function restoreSavedTabEarly() {
+    // ---- EARLY TAB RESTORE ----
+    (function restoreTabNow() {
       try {
-        const hashTab = window.location.hash.replace(/^#/, '').trim().toLowerCase();
         const validTabs = ['home','trading','journal','analytics','accounts','settings'];
-        const saved = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}');
+        const validModes = ['Backtest','Demo','Real','Funded'];
+        const hashTab = window.location.hash.replace(/^#/, '').trim().toLowerCase();
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}') || {}; } catch (_) {}
         const tab = validTabs.includes(hashTab) ? hashTab
                   : validTabs.includes(saved.tab) ? saved.tab
                   : 'home';
-        const mode = ['Backtest','Demo','Real','Funded'].includes(saved.mode) ? saved.mode : null;
+        const mode = validModes.includes(saved.mode) ? saved.mode
+                   : (validModes.includes(activeMode) ? activeMode : 'Real');
 
-        // Hide every page first so nothing paints.
+        activeTab = tab;
+        activeMode = mode;
+
         validTabs.forEach(t => {
           const p = document.getElementById('page' + t.charAt(0).toUpperCase() + t.slice(1));
           if (p) p.classList.add('hidden');
+          const b = document.getElementById('navBtn-' + t);
+          if (b) b.className = (t === tab)
+            ? "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 nav-pill-active"
+            : "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900";
         });
 
-        // Reveal the target page directly — bypass switchTab's animation timing.
         const targetPage = document.getElementById('page' + tab.charAt(0).toUpperCase() + tab.slice(1));
         if (targetPage) targetPage.classList.remove('hidden');
 
-        // Also update navbar highlight directly.
-        validTabs.forEach(t => {
-          const b = document.getElementById('navBtn-' + t);
-          if (!b) return;
-          if (t === tab) b.className = "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 nav-pill-active";
-          else b.className = "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900";
-        });
-
-        // Sync JS state variables so the rest of the app agrees.
-        try { activeTab = tab; } catch (_) {}
-        if (mode) { try { activeMode = mode; } catch (_) {} }
-        const modeLabel = document.getElementById('activeModeLabel');
-        if (modeLabel && mode) modeLabel.textContent = mode.toUpperCase() + ' ACCOUNT';
-        validTabs.forEach(m => {
-          if (!['Backtest','Demo','Real','Funded'].includes(m)) return;
-        });
-        ['Backtest','Demo','Real','Funded'].forEach(m => {
+        validModes.forEach(m => {
           const btn = document.getElementById('modeBtn-' + m);
           if (!btn) return;
-          if (m === (mode || activeMode)) btn.className = "px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center mode-pill-active";
-          else btn.className = "px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center hover:bg-slate-200 text-slate-700";
+          btn.className = (m === mode)
+            ? "px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center mode-pill-active"
+            : "px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center hover:bg-slate-200 text-slate-700";
         });
+        const modeLabel = document.getElementById('activeModeLabel');
+        if (modeLabel) modeLabel.textContent = mode.toUpperCase() + ' ACCOUNT';
 
         try { window.history.replaceState({ obTab: tab }, '', '#' + tab); } catch (_) {}
       } catch (e) {
-        console.warn('restoreSavedTabEarly failed:', e);
-        const home = document.getElementById('pageHome');
-        if (home) home.classList.remove('hidden');
+        console.warn('restoreTabNow failed:', e);
+        const h = document.getElementById('pageHome');
+        if (h) h.classList.remove('hidden');
+      } finally {
+        document.documentElement.classList.remove('ob-booting');
       }
-    }
-
-    // Run it as soon as the DOM is parsed — before any other script can interfere.
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', restoreSavedTabEarly, { once: true });
-    } else {
-      restoreSavedTabEarly();
-    }
+    })();
 
     window.onload = async function() {
       await loadState();
@@ -747,20 +713,6 @@
         localStorage.setItem('ob_ui_state_v1', JSON.stringify(state));
       } catch (_) {}
     });
-        // Mark the body as "booting" immediately so nothing paints during load.
-    document.body.classList.add('ob-booting');
-
-    // Reveal the app once the tab restore has had a chance to run.
-    // ui-stability-fix.js runs first in the feature layer and calls switchTab,
-    // which will be visible to us after a tick.
-    (function revealWhenReady() {
-      const reveal = () => document.body.classList.remove('ob-booting');
-      // Reveal after the first animation frame post-load, or 1200ms hard cap.
-      window.addEventListener('load', () => {
-        requestAnimationFrame(reveal);
-      }, { once: true });
-      setTimeout(reveal, 1200);
-    })();
 
     async function storageGet(key) {
       try {
@@ -886,6 +838,12 @@
           page.classList.add('hidden');
         }
       });
+      try {
+        const state = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}');
+        state.tab = tab;
+        localStorage.setItem('ob_ui_state_v1', JSON.stringify(state));
+      } catch (_) {}
+      try { window.history.replaceState({ obTab: tab }, '', '#' + tab); } catch (_) {}
       if (tab === 'trading' || tab === 'analytics') setTimeout(() => updateCharts(), 50);
     }
 
@@ -893,10 +851,16 @@
       activeMode = mode;
       ['Backtest','Demo','Real','Funded'].forEach(m => {
         const btn = document.getElementById(`modeBtn-${m}`);
+        if (!btn) return;
         if (m === mode) btn.className = "px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center mode-pill-active";
         else btn.className = "px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center hover:bg-slate-200 text-slate-700";
       });
       document.getElementById('activeModeLabel').textContent = `${mode.toUpperCase()} ACCOUNT`;
+      try {
+        const state = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}');
+        state.mode = mode;
+        localStorage.setItem('ob_ui_state_v1', JSON.stringify(state));
+      } catch (_) {}
       renderAll();
     }
 
