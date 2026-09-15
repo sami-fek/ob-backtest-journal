@@ -1,5 +1,5 @@
-// Step 1 UI only: place the existing Trading P&L heatmap and Account Balance widget
-// directly below Log A Trade, side-by-side. No internal widget markup or logic is changed.
+// Step 1 UI only: move the existing Trading P&L heatmap + Account Balance row
+// directly below Log A Trade. The two widgets keep their original internal markup and logic.
 (() => {
   const STYLE_ID = 'ob-trading-layout-step1-style';
   let timer = null;
@@ -15,16 +15,15 @@
     style.textContent = `
       #ob-trading-pnl-account-row {
         display: grid !important;
-        grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr) !important;
+        grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr) !important;
         gap: 24px !important;
         align-items: start !important;
         width: 100% !important;
         margin: 20px 0 !important;
       }
       #ob-trading-pnl-account-row > .glass-card {
-        display: block !important;
         min-width: 0 !important;
-        width: 100% !important;
+        width: auto !important;
         margin: 0 !important;
       }
       @media (max-width: 900px) {
@@ -36,55 +35,54 @@
     `;
   }
 
-  function cardFrom(root, selector, fallbackText) {
-    const node = root.querySelector(selector);
-    if (node) return node.closest('.glass-card') || node;
-    const needle = String(fallbackText || '').toLowerCase();
-    return [...root.querySelectorAll('.glass-card')].find(card =>
-      String(card.textContent || '').toLowerCase().includes(needle)
+  function findLogTradeCard(trading) {
+    const form = trading.querySelector('#tradeForm');
+    if (form) return form.closest('.glass-card') || form;
+    return [...trading.querySelectorAll('.glass-card')].find(card =>
+      /log a trade/i.test(card.textContent || '')
     ) || null;
   }
 
-  function moveTradingCards() {
+  function findPnlAccountRow(trading) {
+    const heatmapGrid = trading.querySelector('#calendarHeatmapGrid');
+    if (!heatmapGrid) return null;
+    // This is the original parent containing both existing cards.
+    return heatmapGrid.closest('.grid.grid-cols-1.lg\\:grid-cols-3')
+      || heatmapGrid.closest('.grid');
+  }
+
+  function moveTradingRow() {
     const trading = document.getElementById('pageTrading');
     if (!trading) return false;
 
-    const heatmap = cardFrom(trading, '#calendarHeatmapGrid', 'p&l calendar heatmap');
-    const account = cardFrom(trading, '#accountBalanceDisplay', 'account balance widget');
-    const tradeForm = trading.querySelector('#tradeForm');
-    const logTrade = tradeForm?.closest('.glass-card') || cardFrom(trading, null, 'log a trade');
-    if (!heatmap || !account || !logTrade || heatmap === account) return false;
+    const logTrade = findLogTradeCard(trading);
+    const row = findPnlAccountRow(trading);
+    if (!logTrade || !row) return false;
 
-    let row = document.getElementById('ob-trading-pnl-account-row');
-    if (!row) {
-      row = document.createElement('div');
-      row.id = 'ob-trading-pnl-account-row';
-    }
+    row.id = 'ob-trading-pnl-account-row';
 
-    // Insert immediately after Log A Trade. This is the only structural move in Step 1.
+    // Move the ORIGINAL row as a unit. Do not pull the widgets out of it.
     if (row.parentElement !== trading || row.previousElementSibling !== logTrade) {
       trading.insertBefore(row, logTrade.nextSibling);
     }
 
-    // The two existing cards become direct grid children.
-    if (heatmap.parentElement !== row) row.appendChild(heatmap);
-    if (account.parentElement !== row) row.appendChild(account);
+    // Force the existing row to remain a two-column layout at desktop widths.
+    ensureStyles();
     return true;
   }
 
   function run() {
-    ensureStyles();
-    moveTradingCards();
+    moveTradingRow();
   }
 
   function schedule() {
     clearTimeout(timer);
-    timer = setTimeout(run, 40);
+    timer = setTimeout(run, 60);
   }
 
   function boot() {
     run();
-    [100, 300, 700, 1400, 2500].forEach(ms => setTimeout(run, ms));
+    [150, 500, 1200, 2500].forEach(ms => setTimeout(run, ms));
     window.addEventListener('resize', schedule);
 
     if (typeof window.switchTab === 'function' && !window.switchTab.__obTradingStep1Wrapped) {
