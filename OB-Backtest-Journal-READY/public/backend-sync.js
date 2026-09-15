@@ -94,6 +94,24 @@
   // Kick off accounts hydration in parallel with everything else.
   hydrateAccounts().finally(() => {});
 
-  // Load the first script alone, then fire the rest all at once.
-  inject(FIRST, loadRest);
+    // Load the first script alone, then fire the rest all at once.
+  // When ALL scripts have loaded, reveal the page.
+  let pending = REST.length;
+  const onOneDone = () => {
+    pending -= 1;
+    if (pending <= 0) {
+      // One more frame to let scripts finish their initial render.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.documentElement.classList.remove('ob-booting');
+        });
+      });
+    }
+  };
+
+  function loadRestAndReveal() {
+    REST.forEach(src => inject(src, onOneDone));
+  }
+
+  inject(FIRST, loadRestAndReveal);
 })();
