@@ -3,23 +3,28 @@
 (() => {
   const STYLE_ID = 'ob-trading-layout-step1-style';
   let timer = null;
+  let observer = null;
 
   function ensureStyles() {
-    if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
+    let style = document.getElementById(STYLE_ID);
+    if (!style) {
+      style = document.createElement('style');
+      style.id = STYLE_ID;
+      document.head.appendChild(style);
+    }
     style.textContent = `
       #ob-trading-pnl-account-row {
         display: grid !important;
-        grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr) !important;
+        grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr) !important;
         gap: 24px !important;
         align-items: start !important;
         width: 100% !important;
         margin: 20px 0 !important;
       }
       #ob-trading-pnl-account-row > .glass-card {
+        display: block !important;
         min-width: 0 !important;
-        width: auto !important;
+        width: 100% !important;
         margin: 0 !important;
       }
       @media (max-width: 900px) {
@@ -29,33 +34,39 @@
         }
       }
     `;
-    document.head.appendChild(style);
   }
 
-  function findCard(root, selector, text) {
-    const bySelector = root.querySelector(selector);
-    if (bySelector) return bySelector.closest('.glass-card') || bySelector;
-    const needle = String(text || '').toLowerCase();
-    return [...root.querySelectorAll('.glass-card')]
-      .find(card => card.textContent.toLowerCase().includes(needle)) || null;
+  function cardFrom(root, selector, fallbackText) {
+    const node = root.querySelector(selector);
+    if (node) return node.closest('.glass-card') || node;
+    const needle = String(fallbackText || '').toLowerCase();
+    return [...root.querySelectorAll('.glass-card')].find(card =>
+      String(card.textContent || '').toLowerCase().includes(needle)
+    ) || null;
   }
 
   function moveTradingCards() {
     const trading = document.getElementById('pageTrading');
     if (!trading) return false;
 
-    const heatmap = findCard(trading, '#calendarHeatmapGrid', 'p&l calendar heatmap');
-    const account = findCard(trading, '#accountBalanceDisplay', 'account balance');
-    const logTrade = findCard(trading, '#tradeForm', 'log a trade');
-    if (!heatmap || !account || !logTrade) return false;
+    const heatmap = cardFrom(trading, '#calendarHeatmapGrid', 'p&l calendar heatmap');
+    const account = cardFrom(trading, '#accountBalanceDisplay', 'account balance widget');
+    const tradeForm = trading.querySelector('#tradeForm');
+    const logTrade = tradeForm?.closest('.glass-card') || cardFrom(trading, null, 'log a trade');
+    if (!heatmap || !account || !logTrade || heatmap === account) return false;
 
     let row = document.getElementById('ob-trading-pnl-account-row');
-    if (!row) row = document.createElement('div');
-    row.id = 'ob-trading-pnl-account-row';
+    if (!row) {
+      row = document.createElement('div');
+      row.id = 'ob-trading-pnl-account-row';
+    }
 
-    if (row.parentElement !== trading || logTrade.nextElementSibling !== row) {
+    // Insert immediately after Log A Trade. This is the only structural move in Step 1.
+    if (row.parentElement !== trading || row.previousElementSibling !== logTrade) {
       trading.insertBefore(row, logTrade.nextSibling);
     }
+
+    // The two existing cards become direct grid children.
     if (heatmap.parentElement !== row) row.appendChild(heatmap);
     if (account.parentElement !== row) row.appendChild(account);
     return true;
@@ -68,13 +79,14 @@
 
   function schedule() {
     clearTimeout(timer);
-    timer = setTimeout(run, 30);
+    timer = setTimeout(run, 40);
   }
 
   function boot() {
     run();
     [100, 300, 700, 1400, 2500].forEach(ms => setTimeout(run, ms));
     window.addEventListener('resize', schedule);
+
     if (typeof window.switchTab === 'function' && !window.switchTab.__obTradingStep1Wrapped) {
       const original = window.switchTab;
       const wrapped = function (...args) {
@@ -84,6 +96,14 @@
       };
       wrapped.__obTradingStep1Wrapped = true;
       window.switchTab = wrapped;
+    }
+
+    if (!observer) {
+      observer = new MutationObserver(() => schedule());
+      observer.observe(document.getElementById('pageTrading') || document.body, {
+        childList: true,
+        subtree: true
+      });
     }
   }
 
