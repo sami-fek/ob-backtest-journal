@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 
 const ACCOUNT_STORAGE_KEY = 'my_journal_accounts_v1';
+const TRADES_STORAGE_KEY = 'ob-trades';
 const TOKEN_SESSION = '__mt5_bridge_tokens_v2';
 const LINK_PREFIX = 'mt5_link:';
 const STATE_PREFIX = 'mt5_state:';
@@ -9,6 +10,7 @@ const TOKEN_PREFIX = 'mt5_token_hash:';
 const MODES = new Set(['Demo', 'Real', 'Funded']);
 const MAX_POSITIONS = 1000;
 const MAX_HISTORY = 5000;
+const MAX_JOURNAL_TRADES = 5000;
 
 const key = (prefix, id) => prefix + id;
 const now = () => new Date().toISOString();
@@ -20,6 +22,36 @@ const number = (value, fallback = 0) => {
   return Number.isFinite(n) ? Math.max(-1e15, Math.min(1e15, n)) : fallback;
 };
 const tokenHash = token => crypto.createHash('sha256').update(token).digest('hex');
+
+const CHECKLISTS = {
+  'Model A': [
+    'Higher-timeframe bias identified',
+    'Liquidity identified',
+    'Liquidity sweep occurred',
+    'BOS confirmed',
+    'Pullback / entry into the defined zone',
+    'Invalidation defined before entry',
+    'SL at/beyond invalidation',
+    'TP at next liquidity / structural target',
+    'Minimum 1:2 RR'
+  ],
+  'Model OB': [
+    'Bias identified',
+    'Liquidity identified',
+    'Liquidity sweep occurred',
+    'Aggressive displacement (not a slow grind)',
+    'Displacement created a clear FVG',
+    'Displacement broke the most recent relevant high/low',
+    'BOS confirmed',
+    'Valid OB = last opposing candle immediately before displacement',
+    'Precise invalidation defined before entry',
+    'Retracement into OB/FVG POI',
+    'Entry on retracement (no candle confirmation required)',
+    'SL at/beyond invalidation',
+    'TP at next liquidity / structural target',
+    'Minimum 1:2 RR (1:3 / 1:4 only for A+ setups)'
+  ]
+};
 
 class Mt5Error extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
@@ -171,13 +203,93 @@ function mergeHistory(existingValue, incoming) {
   return [...byTicket.values()].slice(-MAX_HISTORY);
 }
 
+// ---- journal conversion ----
+
+function dateOnly(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
+
+function resultFromProfit(profit) {
+  const p = Number(profit) || 0;
+  if (p > 0.005) return 'Win';
+  if (p < -0.005) return 'Loss';
+  return 'BE';
+}
+
+function directionFromMT5(direction) {
+  const d = String(direction || '').toLowerCase();
+  if (d === 'buy') return 'LONG';
+  if (d === 'sell') return 'SHORT';
+  return 'LONG';
+}
+
+function buildJournalTradeFromClosed(closed, info, account) {
+  const strategy = 'Model OB';
+  const steps = CHECKLISTS[strategy] || CHECKLISTS['Model OB'];
+  const profit = Number(closed.profit || 0) + Number(closed.swap || 0) + Number(closed.commission || 0);
+  const closeDate = dateOnly(closed.closeTime) || dateOnly(closed.openTime) || dateOnly(new Date().toISOString());
+  return {
+    id: 'mt5-' + closed.ticket,
+    mt5Ticket: String(closed.ticket),
+    mt5AccountId: info.accountId,
+    source: 'mt5',
+    mode: info.mode,
+    accountId: info.accountId,
+    date: closeDate,
+    pair: closed.symbol || '',
+    timeframe: '',
+    regime: '',
+    direction: directionFromMT5(closed.direction || closed.type),
+    result: resultFromProfit(profit),
+    rMultiple: 0,
+    pnl: Number(profit.toFixed(2)),
+    entryPrice: Number(closed.openPrice || 0),
+    exitPrice: Number(closed.closePrice || 0),
+    sl: Number(closed.sl || 0),
+    tp: Number(closed.tp || 0),
+    volume: Number(closed.volume || 0),
+    openTime: closed.openTime || '',
+    closeTime: closed.closeTime || '',
+    commission: Number(closed.commission || 0),
+    swap: Number(closed.swap || 0),
+    strategy,
+    notes: '',
+    checklist: steps.map(() => 'notset'),
+    screenshots: []
+  };
+}
+
+function mergeJournalTrades(existingValue, incomingClosed, info, account) {
+  const existing = parseJson(existingValue);
+  const journal = Array.isArray(existing) ? existing : [];
+  const seenTickets = new Set();
+  for (const t of journal) {
+    if (t?.mt5Ticket) seenTickets.add(String(t.mt5Ticket));
+  }
+  const additions = [];
+  for (const closed of incomingClosed) {
+    const normalized = normalizeClosedTrade(closed);
+    if (!normalized) continue;
+    if (seenTickets.has(normalized.ticket)) continue;
+    seenTickets.add(normalized.ticket);
+    additions.push(buildJournalTradeFromClosed(normalized, info, account));
+  }
+  if (!additions.length) return { journal, added: 0 };
+  // Newest first
+  const merged = [...additions, ...journal].slice(0, MAX_JOURNAL_TRADES);
+  return { journal: merged, added: additions.length };
+}
+
 export function registerMt5Routes(app, storage) {
   const { getSessionId, getStoredValue, setStoredValue, deleteStoredValue } = storage;
 
   async function readToken(token) {
     const hash = tokenHash(token);
     const info = parseJson(await getStoredValue(TOKEN_SESSION, key(TOKEN_PREFIX, hash)));
-    if (!info?.sessionId || !info.accountId || info.status === 'revoked') throw new Mt5Error(401, 'MT5_TOKEN_INVALID', 'bridge token is invalid or revoked');
+    if (!info?.sessionId || !info?.accountId || info.status === 'revoked') throw new Mt5Error(401, 'MT5_TOKEN_INVALID', 'bridge token is invalid or revoked');
     const link = parseJson(await getStoredValue(info.sessionId, key(LINK_PREFIX, info.accountId)));
     if (!link || link.tokenHash !== hash || link.status === 'revoked') throw new Mt5Error(401, 'MT5_LINK_REVOKED', 'MT5 link is no longer active');
     return { hash, info, link };
@@ -229,17 +341,47 @@ export function registerMt5Routes(app, storage) {
       const serverValue = optionalServer(source.server);
       if (loginValue && loginValue !== info.login) throw new Mt5Error(403, 'MT5_LOGIN_MISMATCH', 'login does not match the linked account');
       if (serverValue && serverValue !== info.server) throw new Mt5Error(403, 'MT5_SERVER_MISMATCH', 'server does not match the linked account');
+
       const state = normalizeState(source, info);
       await setStoredValue(info.sessionId, key(STATE_PREFIX, info.accountId), JSON.stringify(state));
-      const rawClosed = Array.isArray(source.closedTrades) ? source.closedTrades : (Array.isArray(source.history) ? source.history : []);
+
+      const rawClosed = Array.isArray(source.closedTrades) ? source.closedTrades
+                      : (Array.isArray(source.history) ? source.history : []);
+
+      let addedToJournal = 0;
+
       if (rawClosed.length) {
+        // 1. Merge into MT5 history store (dedup by ticket)
         const history = mergeHistory(await getStoredValue(info.sessionId, key(HISTORY_PREFIX, info.accountId)), rawClosed);
         await setStoredValue(info.sessionId, key(HISTORY_PREFIX, info.accountId), JSON.stringify(history));
+
+        // 2. Merge into journal trades store (dedup by mt5Ticket)
+        try {
+          const accountRecord = getAccountRecord(await getStoredValue(info.sessionId, ACCOUNT_STORAGE_KEY), info.accountId, info.mode);
+          const existingJournal = await getStoredValue(info.sessionId, TRADES_STORAGE_KEY);
+          const { journal, added } = mergeJournalTrades(existingJournal, rawClosed, info, accountRecord);
+          if (added > 0) {
+            await setStoredValue(info.sessionId, TRADES_STORAGE_KEY, JSON.stringify(journal));
+            addedToJournal = added;
+          }
+        } catch (e) {
+          // Account record may have been deleted; log but don't fail the sync.
+          console.warn('[MT5 ' + id + '] journal conversion skipped:', e?.message || e);
+        }
       }
+
       link.lastSyncAt = state.syncedAt;
       link.status = 'synced';
       await setStoredValue(info.sessionId, key(LINK_PREFIX, info.accountId), JSON.stringify(link));
-      return res.json({ ok: true, accountId: info.accountId, mode: info.mode, syncedAt: state.syncedAt, positionCount: state.positions.length });
+
+      return res.json({
+        ok: true,
+        accountId: info.accountId,
+        mode: info.mode,
+        syncedAt: state.syncedAt,
+        positionCount: state.positions.length,
+        journalAdded: addedToJournal
+      });
     } catch (error) {
       return fail(res, id, error, 500, 'MT5_SYNC_FAILED', 'MT5 sync failed');
     }
