@@ -32,6 +32,8 @@
 
   <style>
     body { font-family: 'Inter', sans-serif; background-color: #f4f7fb; color: #0f172a; }
+        /* Hide the app until the tab restore has run, to prevent a Home flash on load. */
+    body.ob-booting { visibility: hidden; }
 
     .glass-card {
       background: rgba(255, 255, 255, 0.92);
