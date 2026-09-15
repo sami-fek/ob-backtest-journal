@@ -107,10 +107,16 @@
     if(!root||target<0)return;
     const from=currentIndex(list);if(target===from)return;
     animating=true;suppressRenderUntil=Date.now()+750;
+    root.dataset.animating='1';
     setVisualIndex(root,target);position(root,target,true);
     setTimeout(()=>{
       commitAccount(item);
-      setTimeout(()=>{animating=false;suppressRenderUntil=0;lastSignature='';render();},120);
+      setTimeout(()=>{
+        animating=false;suppressRenderUntil=0;lastSignature='';
+        const r=document.getElementById(ROOT_ID);
+        if(r)delete r.dataset.animating;
+        render();
+      },120);
     },560);
   }
 
@@ -168,7 +174,7 @@
       const wrapped=function(...a){const r=sm.apply(this,a);lastSignature='';render();return r;};
       wrapped.__walletNoTimerWrapped=true;window.switchMode=wrapped;
     }
-    // One settle pass after hydration and after any late layout.
+    // One settle pass after hydration.
     setTimeout(()=>{lastSignature='';render();},900);
   }
   if(document.readyState==='complete')setTimeout(boot,120);else window.addEventListener('load',()=>setTimeout(boot,120));
