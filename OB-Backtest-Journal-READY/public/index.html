@@ -669,6 +669,20 @@
       initCharts();
       renderAll();
     };
+        // Mark the body as "booting" immediately so nothing paints during load.
+    document.body.classList.add('ob-booting');
+
+    // Reveal the app once the tab restore has had a chance to run.
+    // ui-stability-fix.js runs first in the feature layer and calls switchTab,
+    // which will be visible to us after a tick.
+    (function revealWhenReady() {
+      const reveal = () => document.body.classList.remove('ob-booting');
+      // Reveal after the first animation frame post-load, or 1200ms hard cap.
+      window.addEventListener('load', () => {
+        requestAnimationFrame(reveal);
+      }, { once: true });
+      setTimeout(reveal, 1200);
+    })();
 
     async function storageGet(key) {
       try {
