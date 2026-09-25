@@ -239,7 +239,7 @@
           <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-pen-to-square text-blue-600"></i>LOG A TRADE</h2>
           <span class="text-xs text-slate-400">Quick execution logging widget</span>
         </div>
-        <form id="tradeForm" onsubmit="handleTradeSubmit(event)" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-9 gap-3 text-xs">
+        <form id="tradeForm" onsubmit="handleTradeSubmit(event)" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-10 gap-3 text-xs">
           <div><label class="block text-slate-500 mb-1 font-medium">Date</label><input type="date" id="formDate" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-mono text-slate-800 focus:outline-none focus:border-blue-500"></div>
           <div><label class="block text-slate-500 mb-1 font-medium">Pair / Ticker</label>
             <select id="formPair" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500">
@@ -254,6 +254,11 @@
           <div><label class="block text-slate-500 mb-1 font-medium">Market Regime</label>
             <select id="formRegime" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 focus:outline-none focus:border-blue-500">
               <option value="Trending">Trending</option><option value="Ranging">Ranging</option><option value="Reversal">Reversal</option>
+            </select>
+          </div>
+          <div><label class="block text-slate-500 mb-1 font-medium">Session</label>
+            <select id="formSession" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 focus:outline-none focus:border-blue-500">
+              <option value="London">London</option><option value="New York">New York</option><option value="London/NY">London/NY</option><option value="Asia">Asia</option><option value="Other">Other</option>
             </select>
           </div>
           <div>
@@ -351,6 +356,9 @@
             <select id="filterRegimeConsole" onchange="renderTradingConsole()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-700 focus:outline-none">
               <option value="ALL">All Regimes</option><option value="Trending">Trending</option><option value="Ranging">Ranging</option><option value="Reversal">Reversal</option>
             </select>
+            <select id="filterSessionConsole" onchange="renderTradingConsole()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-700 focus:outline-none">
+              <option value="ALL">All Sessions</option><option value="London">London</option><option value="New York">New York</option><option value="London/NY">London/NY</option><option value="Asia">Asia</option><option value="Other">Other</option>
+            </select>
             <button onclick="copyTableCSV()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl transition-colors flex items-center gap-1.5"><i class="fa-solid fa-copy"></i> Copy CSV</button>
           </div>
         </div>
@@ -384,6 +392,9 @@
           </select>
           <select id="journalRegimeFilter" onchange="renderJournalTable()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none">
             <option value="ALL">All Regimes</option><option value="Trending">Trending</option><option value="Ranging">Ranging</option><option value="Reversal">Reversal</option>
+          </select>
+          <select id="journalSessionFilter" onchange="renderJournalTable()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none">
+            <option value="ALL">All Sessions</option><option value="London">London</option><option value="New York">New York</option><option value="London/NY">London/NY</option><option value="Asia">Asia</option><option value="Other">Other</option>
           </select>
           <select id="journalResultFilter" onchange="renderJournalTable()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none">
             <option value="ALL">All Outcomes</option><option value="Win">Winners 🟢</option><option value="Loss">Losses 🔴</option><option value="BE">Breakeven</option>
@@ -439,7 +450,7 @@
           <table class="w-full text-left border-collapse text-xs">
             <thead>
               <tr class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider">
-                <th class="py-3.5 px-4">Date</th><th class="py-3.5 px-4">Pair</th><th class="py-3.5 px-4">Timeframe</th><th class="py-3.5 px-4">Regime</th><th class="py-3.5 px-4">Strategy Model</th><th class="py-3.5 px-4">Direction</th><th class="py-3.5 px-4">Result</th><th class="py-3.5 px-4 text-right">R-Multiple</th><th class="py-3.5 px-4 text-center">Checklist Confluence</th><th class="py-3.5 px-4 text-center">Inspect</th>
+                <th class="py-3.5 px-4">Date</th><th class="py-3.5 px-4">Pair</th><th class="py-3.5 px-4">Timeframe</th><th class="py-3.5 px-4">Regime</th><th class="py-3.5 px-4">Session</th><th class="py-3.5 px-4">Strategy Model</th><th class="py-3.5 px-4">Direction</th><th class="py-3.5 px-4">Result</th><th class="py-3.5 px-4 text-right">R-Multiple</th><th class="py-3.5 px-4 text-center">Checklist Confluence</th><th class="py-3.5 px-4 text-center">Inspect</th>
               </tr>
             </thead>
             <tbody id="journalTableBody" class="divide-y divide-slate-100 font-mono"></tbody>
@@ -535,8 +546,13 @@
           <div class="flex flex-wrap items-center gap-3">
             <button onclick="exportDataJSON()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-md shadow-blue-500/20"><i class="fa-solid fa-download mr-1.5"></i> Export Backup (JSON)</button>
             <button onclick="exportTableCSV()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all"><i class="fa-solid fa-file-csv mr-1.5"></i> Export Trades (CSV)</button>
+            <label class="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5">
+              <i class="fa-solid fa-upload"></i> Import Backup (JSON)
+              <input type="file" id="importBackupInput" accept=".json,application/json" class="hidden" onchange="importDataJSON(event)">
+            </label>
             <button onclick="resetToDemoData()" class="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold rounded-xl transition-all ml-auto"><i class="fa-solid fa-trash mr-1.5"></i> Clear All Trades</button>
           </div>
+          <div id="importStatusMsg" class="hidden mt-2 text-xs font-semibold rounded-xl px-4 py-2.5"></div>
         </div>
       </div>
     </section>
@@ -775,6 +791,7 @@
         date: t.date || '', pair: t.pair || '',
         timeframe: t.timeframe || t.tf || '15M',
         regime: t.regime || '',
+        session: t.session || '',
         direction: directionRaw === 'SHORT' ? 'SHORT' : 'LONG',
         result, rMultiple: signedR({ ...t, result }), strategy,
         notes: t.notes || '',
@@ -920,6 +937,7 @@
         pair: document.getElementById('formPair').value,
         timeframe: document.getElementById('formTimeframe').value,
         regime: document.getElementById('formRegime').value,
+        session: document.getElementById('formSession').value,
         direction: document.getElementById('formDirection').value,
         result: document.getElementById('formResult').value,
         rMultiple: parseFloat(document.getElementById('formRMultiple').value) || 0,
@@ -949,11 +967,13 @@
       const pairFilter = document.getElementById('filterPairConsole').value;
       const tfFilter = document.getElementById('filterTFConsole').value;
       const regimeFilter = document.getElementById('filterRegimeConsole').value;
+      const sessionFilterConsole = document.getElementById('filterSessionConsole')?.value || 'ALL';
       const filtered = modeTrades.filter(t => {
         const mP = pairFilter === 'ALL' || t.pair === pairFilter;
         const mT = tfFilter === 'ALL' || t.timeframe === tfFilter;
         const mR = regimeFilter === 'ALL' || t.regime === regimeFilter;
-        return mP && mT && mR;
+        const mSes = sessionFilterConsole === 'ALL' || (t.session || '') === sessionFilterConsole;
+        return mP && mT && mR && mSes;
       });
 
       let totalR = 0, wins = 0, losses = 0, bes = 0;
@@ -1042,14 +1062,16 @@
       const pair = document.getElementById('journalPairFilter').value;
       const tf = document.getElementById('journalTFFilter').value;
       const regime = document.getElementById('journalRegimeFilter').value;
+      const session = document.getElementById('journalSessionFilter')?.value || 'ALL';
       const result = document.getElementById('journalResultFilter').value;
       const filtered = trades.filter(t => {
         const mS = !search || t.pair.toLowerCase().includes(search) || t.notes.toLowerCase().includes(search) || t.strategy.toLowerCase().includes(search);
         const mP = pair === 'ALL' || t.pair === pair;
         const mT = tf === 'ALL' || t.timeframe === tf;
         const mR = regime === 'ALL' || t.regime === regime;
+        const mSes = session === 'ALL' || (t.session || '') === session;
         const mO = result === 'ALL' || t.result === result;
-        return mS && mP && mT && mR && mO;
+        return mS && mP && mT && mR && mSes && mO;
       });
       const tbody = document.getElementById('journalTableBody');
       tbody.innerHTML = '';
@@ -1071,6 +1093,7 @@
           <td class="py-3.5 px-4 font-bold text-slate-900">${t.pair}</td>
           <td class="py-3.5 px-4 text-slate-600">${t.timeframe}</td>
           <td class="py-3.5 px-4 text-slate-600">${t.regime}</td>
+          <td class="py-3.5 px-4 text-slate-600">${t.session || '—'}</td>
           <td class="py-3.5 px-4 text-blue-600 font-semibold">${t.strategy}</td>
           <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.direction === 'LONG' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${t.direction}</span></td>
           <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.result === 'Win' ? 'bg-emerald-100 text-emerald-800' : (t.result === 'Loss' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600')}">${t.result}</span></td>
@@ -1097,6 +1120,8 @@
       document.getElementById('journalTFFilter').value = 'ALL';
       document.getElementById('journalRegimeFilter').value = 'ALL';
       document.getElementById('journalResultFilter').value = 'ALL';
+      const sessionEl = document.getElementById('journalSessionFilter');
+      if (sessionEl) sessionEl.value = 'ALL';
       renderJournalTable();
     }
 
@@ -1274,7 +1299,7 @@
       document.getElementById('drawerPair').textContent = t.pair;
       document.getElementById('drawerTFLabel').textContent = t.timeframe;
       document.getElementById('drawerRegimeLabel').textContent = t.regime;
-      document.getElementById('drawerSubtitle').textContent = `${t.date} — ${t.direction.charAt(0) + t.direction.slice(1).toLowerCase()} — ${t.result} — ${t.rMultiple >= 0 ? '+' : ''}${t.rMultiple.toFixed(2)}R`;
+      document.getElementById('drawerSubtitle').textContent = `${t.date} — ${t.direction.charAt(0) + t.direction.slice(1).toLowerCase()} — ${t.result} — ${t.rMultiple >= 0 ? '+' : ''}${t.rMultiple.toFixed(2)}R${t.session ? ' — ' + t.session : ''}`;
       renderDrawerChecklist(t);
       renderDrawerScreenshots(t);
       document.getElementById('drawerNotesInput').value = t.notes || '';
@@ -1562,8 +1587,86 @@
       dl.click();
       dl.remove();
     }
+
+    function importDataJSON(event) {
+      const file = event.target.files?.[0];
+      // Reset input so the same file can be re-selected if needed
+      event.target.value = '';
+      const msgEl = document.getElementById('importStatusMsg');
+
+      function showMsg(text, isError) {
+        if (!msgEl) return;
+        msgEl.textContent = text;
+        msgEl.className = `mt-2 text-xs font-semibold rounded-xl px-4 py-2.5 ${isError
+          ? 'bg-rose-50 text-rose-700 border border-rose-200'
+          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`;
+        msgEl.classList.remove('hidden');
+        clearTimeout(msgEl._timer);
+        msgEl._timer = setTimeout(() => msgEl.classList.add('hidden'), 6000);
+      }
+
+      if (!file) return;
+      if (!file.name.endsWith('.json') && file.type !== 'application/json') {
+        return showMsg('Please select a .json backup file.', true);
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => showMsg('Could not read the file.', true);
+      reader.onload = async (e) => {
+        let parsed;
+        try {
+          parsed = JSON.parse(e.target.result);
+        } catch (_) {
+          return showMsg('Invalid JSON — the file could not be parsed.', true);
+        }
+
+        // Accept either a plain array of trades or an object with a `trades` key
+        const incoming = Array.isArray(parsed) ? parsed
+                       : (Array.isArray(parsed?.trades) ? parsed.trades : null);
+
+        if (!incoming) {
+          return showMsg('Unrecognised backup format. Expected a JSON array of trades.', true);
+        }
+
+        if (incoming.length === 0) {
+          return showMsg('The backup file contains no trades.', true);
+        }
+
+        // Validate a sample of the entries — each must look like a trade object
+        const sample = incoming.slice(0, 10);
+        const looksValid = sample.every(t => t && typeof t === 'object' && (t.date || t.pair || t.result));
+        if (!looksValid) {
+          return showMsg('File contents do not look like trade records. Import cancelled.', true);
+        }
+
+        // Confirm before overwriting
+        const existing = trades.length;
+        const msg = existing > 0
+          ? `This will MERGE ${incoming.length} imported trade${incoming.length > 1 ? 's' : ''} with your ${existing} existing trade${existing > 1 ? 's' : ''}. Duplicate IDs will be skipped.\n\nContinue?`
+          : `Import ${incoming.length} trade${incoming.length > 1 ? 's' : ''} from backup?`;
+        if (!confirm(msg)) return;
+
+        // Normalize all incoming trades
+        const normalised = incoming.map(normalizeTrade).filter(Boolean);
+
+        // Merge: existing trades by ID, then add new ones (dedup by id)
+        const existingIds = new Set(trades.map(t => t.id));
+        const toAdd = normalised.filter(t => !existingIds.has(t.id));
+        const skipped = normalised.length - toAdd.length;
+
+        // Prepend new trades (newest-first convention)
+        trades = [...toAdd, ...trades];
+        await saveState();
+        renderAll();
+
+        const note = skipped > 0 ? ` (${skipped} duplicate${skipped > 1 ? 's' : ''} skipped)` : '';
+        showMsg(`✓ Imported ${toAdd.length} trade${toAdd.length !== 1 ? 's' : ''}${note}. Total: ${trades.length}.`, false);
+      };
+      reader.readAsText(file);
+    }
+
     function exportTableCSV() {
-      const csvContent = "data:text/csv;charset=utf-8,ID,Mode,Date,Pair,Timeframe,Regime,Direction,Result,RMultiple,Strategy\n" + trades.map(t => `${t.id},${t.mode},${t.date},${t.pair},${t.timeframe},${t.regime},${t.direction},${t.result},${t.rMultiple},"${t.strategy}"`).join("\n");
+      const csvContent = "data:text/csv;charset=utf-8,ID,Mode,Date,Pair,Timeframe,Regime,Session,Direction,Result,RMultiple,Strategy\n" + trades.map(t => `${t.id},${t.mode},${t.date},${t.pair},${t.timeframe},${t.regime},${t.session || ''},${t.direction},${t.result},${t.rMultiple},"${t.strategy}"`).join("\n");
       const dl = document.createElement('a');
       dl.setAttribute("href", encodeURI(csvContent));
       dl.setAttribute("download", `MY_Journal_Export_${Date.now()}.csv`);

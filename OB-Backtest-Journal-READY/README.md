@@ -40,7 +40,18 @@ The integration is intentionally read-only:
 
 `MT5 Terminal -> OB_Journal_Bridge.mq5 -> /api/mt5/sync -> Supabase-backed storage -> website`
 
-The backend never receives an MT5 password and the EA contains no trade execution calls. It reads account information and open positions, then sends a JSON snapshot. Repeated snapshots replace the latest state; positions are deduplicated by ticket. Closed trades sent later through the sync payload are stored once per ticket and can be read from `GET /api/mt5/history?accountId=...`.
+The backend never receives an MT5 password and the EA contains no trade execution calls. It reads account information, open positions, and closed trade history from the last `InpHistoryDays` days (default 90), then sends a JSON snapshot. Repeated snapshots replace the latest open-position state; closed trades are deduplicated by position ID so re-sending the same history is safe.
+
+### EA inputs
+
+| Input | Default | Description |
+|---|---|---|
+| `InpEndpoint` | Render URL | Full URL of `/api/mt5/sync` |
+| `InpBridgeToken` | *(required)* | Token from the journal link flow |
+| `InpSyncSeconds` | `5` | How often the EA sends a snapshot |
+| `InpTimeoutMilliseconds` | `10000` | HTTP timeout per request |
+| `InpHistoryDays` | `90` | Days of closed-trade history to include |
+| `InpMaxClosedTrades` | `500` | Maximum closed trades per sync payload |
 
 ### API endpoints
 

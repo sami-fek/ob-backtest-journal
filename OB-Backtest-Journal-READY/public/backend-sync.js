@@ -72,7 +72,10 @@
     '/mt5-balance-overlay.js',
     '/ui-save-gate-fix.js',
     '/ui-navigation-fix.js',
-    '/ui-carousel-stability.js'
+    '/ui-carousel-stability.js',
+    '/discipline-engine.js',
+    '/analytics-advanced.js',
+    '/mt5-r-assign.js'
   ];
 
   function inject(src, onDone) {
