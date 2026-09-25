@@ -26,8 +26,6 @@ const tokenHash = token => crypto.createHash('sha256').update(token).digest('hex
 const CHECKLISTS = {
   'Model A': [
     'Higher-timeframe bias identified',
-    'Liquidity identified',
-    'Liquidity sweep occurred',
     'BOS confirmed',
     'Pullback / entry into the defined zone',
     'Invalidation defined before entry',
@@ -37,8 +35,6 @@ const CHECKLISTS = {
   ],
   'Model OB': [
     'Bias identified',
-    'Liquidity identified',
-    'Liquidity sweep occurred',
     'Aggressive displacement (not a slow grind)',
     'Displacement created a clear FVG',
     'Displacement broke the most recent relevant high/low',
