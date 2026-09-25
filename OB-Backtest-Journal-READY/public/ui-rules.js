@@ -5,7 +5,7 @@
     Real: [{ id: 'real-1', name: 'Real 01', balance: 100000, startingBalance: 100000 }],
     Funded: [{ id: 'funded-1', name: 'Funded 01', balance: 100000, startingBalance: 100000 }]
   };
-  const CHECKLIST_COUNT = 8;
+  // CHECKLIST_COUNT is no longer used for gating — Save is always available once the drawer is open.
   let accounts = {};
   let activeAccountId = null;
   let currentDrawerTradeId = null;
@@ -271,18 +271,21 @@
   function setupRequiredSave() {
     const btn = document.getElementById('drawerSaveBtn');
     if (!btn) return;
-    btn.innerHTML = '<span id="drawerSaveBtnLabel">Save</span>';
+    // Save is always available once a trade is open in the drawer.
+    // Remove the old strict gate (checklist + screenshot + note requirement)
+    // that was permanently blocking saves due to the wrong CHECKLIST_COUNT.
+    btn.disabled = false;
+    btn.classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-300', 'text-slate-500');
+    btn.classList.add('bg-emerald-600', 'text-white');
     const check = () => {
-      const t = Array.isArray(trades) ? trades.find(x => x.id === currentDrawerTradeId) : null;
-      if (!t) return setSaveEnabled(btn, false);
-      const checklist = t.checklist || [];
-      const checklistComplete = checklist.length === CHECKLIST_COUNT && checklist.every(s => s === 'pass' || s === 'fail');
-      const screenshotComplete = Array.isArray(t.screenshots) && t.screenshots.length > 0;
-      const noteComplete = document.getElementById('drawerNotesInput')?.value.trim().length > 0;
-      setSaveEnabled(btn, checklistComplete && screenshotComplete && noteComplete);
+      // Keep the global hook alive so other scripts don't break, but always enable.
+      const btn2 = document.getElementById('drawerSaveBtn');
+      if (!btn2) return;
+      btn2.disabled = false;
+      btn2.classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-300', 'text-slate-500');
+      btn2.classList.add('bg-emerald-600', 'text-white');
     };
     window.__checkDrawerSaveReady = check;
-    document.getElementById('drawerNotesInput')?.addEventListener('input', check);
     check();
   }
 
@@ -323,7 +326,7 @@
     const original = window.saveDrawer;
     if (typeof original !== 'function' || original.__requiredPatched) return;
     const patched = function() {
-      if (document.getElementById('drawerSaveBtn')?.disabled) return;
+      // No disabled-check guard — let the save always go through.
       const result = original.apply(this, arguments);
       setTimeout(() => { setupRequiredSave(); window.__checkDrawerSaveReady?.(); }, 0);
       return result;

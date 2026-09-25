@@ -1303,6 +1303,7 @@
       renderDrawerChecklist(t);
       renderDrawerScreenshots(t);
       document.getElementById('drawerNotesInput').value = t.notes || '';
+      document.getElementById('drawerNotesInput').oninput = () => saveDrawerNotes();
       document.getElementById('drawerDeleteBtn').onclick = () => { deleteTrade(t.id); closeDrawer(); };
       const drawer = document.getElementById('tradeDrawer');
       drawer.classList.remove('hidden');
@@ -1375,16 +1376,17 @@
       renderJournalTable();
       const btn = document.getElementById('drawerSaveBtn');
       const label = document.getElementById('drawerSaveBtnLabel');
-      btn.classList.replace('bg-emerald-600', 'bg-emerald-500');
-      btn.classList.replace('hover:bg-emerald-700', 'hover:bg-emerald-500');
-      label.textContent = 'Saved ✓';
-      btn.disabled = true;
-      setTimeout(() => {
-        btn.classList.replace('bg-emerald-500', 'bg-emerald-600');
-        btn.classList.replace('hover:bg-emerald-500', 'hover:bg-emerald-700');
-        label.textContent = 'Save Changes';
-        btn.disabled = false;
-      }, 1500);
+      if (btn && label) {
+        const prevClass = btn.className;
+        btn.classList.remove('bg-emerald-600');
+        btn.classList.add('bg-emerald-500');
+        label.textContent = 'Saved ✓';
+        setTimeout(() => {
+          btn.classList.remove('bg-emerald-500');
+          btn.classList.add('bg-emerald-600');
+          label.textContent = 'Save Changes';
+        }, 1200);
+      }
     }
     function saveDrawerNotes() {
       if (!currentDrawerTradeId) return;
