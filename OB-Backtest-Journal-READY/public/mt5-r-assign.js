@@ -233,6 +233,12 @@
 
     // Wire the Calculate button
     document.getElementById('rp-calc-btn').onclick = () => calculateAndApply(trade);
+
+    // Auto-calculate immediately if all price levels are already present
+    // (common for MT5 trades that have entry, exit, and SL from the EA)
+    if (trade.entryPrice > 0 && trade.exitPrice > 0 && trade.sl > 0 && trade.entryPrice !== trade.sl) {
+      calculateAndApply(trade);
+    }
   }
 
   // ─── R calculation ────────────────────────────────────────────────────────────

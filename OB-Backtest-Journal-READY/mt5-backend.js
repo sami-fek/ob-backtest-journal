@@ -227,6 +227,20 @@ function buildJournalTradeFromClosed(closed, info, account) {
   const steps = CHECKLISTS[strategy] || CHECKLISTS['Model OB'];
   const profit = Number(closed.profit || 0) + Number(closed.swap || 0) + Number(closed.commission || 0);
   const closeDate = dateOnly(closed.closeTime) || dateOnly(closed.openTime) || dateOnly(new Date().toISOString());
+
+  // Auto-calculate R-multiple when price levels are available
+  let rMultiple = 0;
+  const entry = Number(closed.openPrice  || 0);
+  const exit  = Number(closed.closePrice || 0);
+  const sl    = Number(closed.sl         || 0);
+  const dir   = directionFromMT5(closed.direction || closed.type);
+
+  if (entry > 0 && exit > 0 && sl > 0 && entry !== sl) {
+    const riskPerUnit = Math.abs(entry - sl);
+    const gainPerUnit = dir === 'LONG' ? (exit - entry) : (entry - exit);
+    rMultiple = Math.round((gainPerUnit / riskPerUnit) * 100) / 100;
+  }
+
   return {
     id: 'mt5-' + closed.ticket,
     mt5Ticket: String(closed.ticket),
@@ -238,13 +252,14 @@ function buildJournalTradeFromClosed(closed, info, account) {
     pair: closed.symbol || '',
     timeframe: '',
     regime: '',
-    direction: directionFromMT5(closed.direction || closed.type),
+    session: '',
+    direction: dir,
     result: resultFromProfit(profit),
-    rMultiple: 0,
+    rMultiple,
     pnl: Number(profit.toFixed(2)),
-    entryPrice: Number(closed.openPrice || 0),
-    exitPrice: Number(closed.closePrice || 0),
-    sl: Number(closed.sl || 0),
+    entryPrice: entry,
+    exitPrice: exit,
+    sl: sl,
     tp: Number(closed.tp || 0),
     volume: Number(closed.volume || 0),
     openTime: closed.openTime || '',
@@ -406,6 +421,57 @@ export function registerMt5Routes(app, storage) {
       return res.json({ ok: true, linked: true, accountId, closedTrades: parseJson(await getStoredValue(sessionId, key(HISTORY_PREFIX, accountId))) || [] });
     } catch (error) {
       return fail(res, id, error, 500, 'MT5_HISTORY_FAILED', 'MT5 history read failed');
+    }
+  });
+
+  // GET /api/mt5/status — returns ALL linked accounts for this session in one call.
+  // Used by the frontend status panel to render the full integration overview
+  // without needing to know account IDs in advance.
+  app.get('/api/mt5/status', async (req, res) => {
+    const id = requestId(); res.setHeader('X-Request-Id', id);
+    try {
+      const sessionId = getSessionId(req, res);
+      const accountsRaw = await getStoredValue(sessionId, ACCOUNT_STORAGE_KEY);
+      const accountsData = parseJson(accountsRaw) || {};
+
+      // Collect all account IDs across all modes
+      const allAccounts = [];
+      for (const [mode, list] of Object.entries(accountsData)) {
+        if (!Array.isArray(list)) continue;
+        for (const acc of list) {
+          if (acc?.id) allAccounts.push({ id: String(acc.id), name: acc.name || acc.id, mode });
+        }
+      }
+
+      // For each account, read link + state
+      const results = await Promise.all(allAccounts.map(async acc => {
+        const link  = parseJson(await getStoredValue(sessionId, key(LINK_PREFIX,  acc.id)));
+        const state = parseJson(await getStoredValue(sessionId, key(STATE_PREFIX, acc.id)));
+        if (!link || link.status === 'revoked') {
+          return { accountId: acc.id, accountName: acc.name, mode: acc.mode, linked: false };
+        }
+        return {
+          accountId:    acc.id,
+          accountName:  acc.name,
+          mode:         acc.mode,
+          linked:       true,
+          login:        link.login,
+          server:       link.server,
+          label:        link.label,
+          linkedAt:     link.linkedAt,
+          lastSyncAt:   link.lastSyncAt,
+          syncStatus:   link.status,
+          balance:      state?.balance ?? null,
+          equity:       state?.equity  ?? null,
+          currency:     state?.currency ?? null,
+          positionCount: state ? (state.positions?.length ?? 0) : null,
+          syncedAt:     state?.syncedAt ?? null
+        };
+      }));
+
+      return res.json({ ok: true, accounts: results });
+    } catch (error) {
+      return fail(res, id, error, 500, 'MT5_STATUS_FAILED', 'MT5 status read failed');
     }
   });
 

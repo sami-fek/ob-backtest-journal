@@ -201,6 +201,115 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, storage: useSupabase ? 'supabase' : 'sqlite', ai: { groq: Boolean(process.env.GROQ_API_KEY), gemini: Boolean(process.env.GEMINI_API_KEY), openai: Boolean(process.env.OPENAI_API_KEY), anthropic: Boolean(process.env.ANTHROPIC_API_KEY) }});
 });
 
+// ─── Trade enforcement API ────────────────────────────────────────────────────
+// Server-side daily trade limit.  The limit is read from the session's settings
+// (falling back to DAILY_TRADE_LIMIT).  Backtest mode is exempt.
+const TRADES_KEY        = 'ob-trades';
+const SETTINGS_KEY      = 'ob-os-settings';
+const DAILY_TRADE_LIMIT = 3; // hard default — overridden by user settings
+
+function todayUTC() { return new Date().toISOString().slice(0, 10); }
+
+function parseJsonSafe(value) {
+  try { return value ? JSON.parse(value) : null; } catch { return null; }
+}
+
+async function getTradeList(sid) {
+  const raw = await getStoredValue(sid, TRADES_KEY);
+  const list = parseJsonSafe(raw);
+  return Array.isArray(list) ? list : [];
+}
+
+async function getDailyLimit(sid) {
+  const raw = await getStoredValue(sid, SETTINGS_KEY);
+  const s = parseJsonSafe(raw);
+  const n = parseInt(s?.maxDailyTrades, 10);
+  return Number.isFinite(n) && n > 0 ? n : DAILY_TRADE_LIMIT;
+}
+
+// GET /api/trades/daily-count?mode=Real&date=YYYY-MM-DD
+app.get('/api/trades/daily-count', async (req, res) => {
+  try {
+    const sid    = getSessionId(req, res);
+    const mode   = String(req.query.mode || 'Real');
+    const date   = String(req.query.date || todayUTC());
+    const limit  = await getDailyLimit(sid);
+
+    if (mode === 'Backtest') {
+      return res.json({ ok: true, count: 0, limit, date, mode, limitReached: false });
+    }
+
+    const trades  = await getTradeList(sid);
+    const count   = trades.filter(t =>
+      String(t.mode || '') === mode &&
+      String(t.date || '').slice(0, 10) === date.slice(0, 10) &&
+      !t._deleted
+    ).length;
+
+    return res.json({ ok: true, count, limit, date, mode, limitReached: count >= limit });
+  } catch (err) {
+    console.error('daily-count failed:', err);
+    return res.status(500).json({ error: 'daily-count failed' });
+  }
+});
+
+// POST /api/trades  — create a new trade with server-side limit enforcement.
+// Body: { trade: <trade object>, mode: string, accountId: string }
+// Returns 429 if the daily limit has been reached.
+app.post('/api/trades', async (req, res) => {
+  try {
+    const sid   = getSessionId(req, res);
+    const trade = req.body?.trade;
+    const mode  = String(req.body?.mode || trade?.mode || 'Real');
+
+    if (!trade || typeof trade !== 'object' || !trade.id) {
+      return res.status(400).json({ error: 'trade object with id is required', code: 'TRADE_INVALID' });
+    }
+
+    // Backtest has no daily limit
+    if (mode !== 'Backtest') {
+      const limit  = await getDailyLimit(sid);
+      const date   = String(trade.date || todayUTC()).slice(0, 10);
+      const trades = await getTradeList(sid);
+
+      const todayCount = trades.filter(t =>
+        String(t.mode || '') === mode &&
+        String(t.date || '').slice(0, 10) === date &&
+        !t._deleted
+      ).length;
+
+      if (todayCount >= limit) {
+        return res.status(429).json({
+          error: `Daily trade limit reached. You have already logged ${todayCount} trade${todayCount === 1 ? '' : 's'} today (limit: ${limit}). No more trades can be logged for this day.`,
+          code: 'DAILY_LIMIT_REACHED',
+          count: todayCount,
+          limit,
+          date,
+          mode
+        });
+      }
+    }
+
+    // Read current trades, prepend new one (dedup by id), write back
+    const trades = await getTradeList(sid);
+    const existing = trades.findIndex(t => String(t.id) === String(trade.id));
+    let updated;
+    if (existing >= 0) {
+      // ID collision — update in-place (idempotent re-submit)
+      updated = [...trades];
+      updated[existing] = { ...trades[existing], ...trade };
+    } else {
+      updated = [trade, ...trades];
+    }
+
+    await setStoredValue(sid, TRADES_KEY, JSON.stringify(updated));
+    return res.status(201).json({ ok: true, id: trade.id, total: updated.length });
+  } catch (err) {
+    console.error('POST /api/trades failed:', err);
+    return res.status(500).json({ error: 'Trade save failed' });
+  }
+});
+
 app.get('/', (req, res) => {
   const indexPath = path.join(__dirname, 'public', 'index.html');
   res.type('html').send(fs.readFileSync(indexPath, 'utf8'));
