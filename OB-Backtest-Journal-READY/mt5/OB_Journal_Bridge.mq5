@@ -258,7 +258,7 @@ void SendSnapshot()
 {
    if(StringLen(InpBridgeToken) < 10)
    {
-      Print("[OB Journal] Bridge token is missing or too short.");
+      Print("[OB] Bridge token missing.");
       return;
    }
 
@@ -284,20 +284,26 @@ void SendSnapshot()
 
    if(status == -1)
    {
-      PrintFormat("[OB Journal] WebRequest failed. MT5 error=%d. Add the endpoint domain to Tools > Options > Expert Advisors > Allow WebRequest.", errorCode);
+      PrintFormat("[OB] WebRequest failed code=%d — add the endpoint URL to Tools > Options > Expert Advisors > Allow WebRequest.", errorCode);
       return;
    }
 
    string response = CharArrayToString(responseData, 0, -1, CP_UTF8);
    if(status < 200 || status >= 300)
    {
-      PrintFormat("[OB Journal] Server returned HTTP %d: %s", status, response);
+      PrintFormat("[OB] sync failed code=%d response=%s", status, response);
       if(status == 401)
-         Print("[OB Journal] Bridge token is invalid or revoked. Create a new link token in the journal.");
+         Print("[OB] Token invalid/revoked — go to journal and click Link MT5 again to get a new token.");
+      if(status == 403)
+      {
+         long actualLogin = AccountInfoInteger(ACCOUNT_LOGIN);
+         PrintFormat("[OB] Login mismatch — this EA is on account %I64d but the token was created for a different login.", actualLogin);
+         PrintFormat("[OB] Fix: in the journal, unlink and re-link using login %I64d.", actualLogin);
+      }
       return;
    }
 
-   PrintFormat("[OB Journal] Read-only sync succeeded. HTTP %d: %s", status, response);
+   PrintFormat("[OB] sync OK (%d bytes) response=%s", StringLen(response), response);
 }
 
 // ─── EA lifecycle ─────────────────────────────────────────────────────────────
@@ -309,10 +315,44 @@ int OnInit()
       Print("[OB Journal] Set InpBridgeToken before attaching the EA.");
       return INIT_PARAMETERS_INCORRECT;
    }
+
+   // Print the actual login this EA is running on so the user can verify
+   // it matches what they entered when creating the link in the journal.
+   long   actualLogin  = AccountInfoInteger(ACCOUNT_LOGIN);
+   string actualServer = AccountInfoString(ACCOUNT_SERVER);
+   string actualName   = AccountInfoString(ACCOUNT_NAME);
+   PrintFormat("[OB] Bridge started. Sync every %ds. History scan: %d days.", InpSyncSeconds, InpHistoryDays);
+   PrintFormat("[OB] Running on account: login=%I64d  server=%s  name=%s",
+               actualLogin, actualServer, actualName);
+   PrintFormat("[OB] If you see MT5_LOGIN_MISMATCH errors, re-link this exact login (%I64d) in the journal.",
+               actualLogin);
+
+   // Pre-load the full history range so HistorySelect() works reliably.
+   // Without this, HistoryDealsTotal() often returns 0 on EA attach.
+   datetime fromTime = TimeCurrent() - (datetime)(InpHistoryDays * 86400);
+   datetime toTime   = TimeCurrent() + 86400;
+   bool loaded = HistorySelect(fromTime, toTime);
+   int deals = HistoryDealsTotal();
+   if(loaded)
+      PrintFormat("[OB] History loaded: %d deals found in last %d days.", deals, InpHistoryDays);
+   else
+      Print("[OB] HistorySelect returned false — history may load on next sync.");
+
+   // Report the last deal date if any exist
+   if(deals > 0)
+   {
+      ulong lastTicket = HistoryDealGetTicket(deals - 1);
+      datetime lastTime = (datetime)HistoryDealGetInteger(lastTicket, DEAL_TIME);
+      PrintFormat("[OB] Last deal in history: %s", TimeToString(lastTime, TIME_DATE|TIME_MINUTES));
+   }
+   else
+   {
+      Print("[OB] No deals in history range — either no trades exist or history needs to load.");
+      Print("[OB] In MT5: go to Account History tab, right-click and choose 'Load All History'.");
+   }
+
    int interval = InpSyncSeconds < 1 ? 1 : InpSyncSeconds;
    EventSetTimer(interval);
-   PrintFormat("[OB Journal] Read-only bridge v2.0 started. Endpoint: %s  History: %d days  Max closed: %d",
-      InpEndpoint, InpHistoryDays, InpMaxClosedTrades);
    SendSnapshot();
    return INIT_SUCCEEDED;
 }
