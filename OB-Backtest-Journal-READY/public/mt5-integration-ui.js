@@ -400,7 +400,7 @@
   async function refreshStatusPanel() {
     injectStyles();
     const trading = document.getElementById('pageTrading');
-    if (!trading || mode() === 'Backtest') {
+    if (!trading) {
       document.getElementById(STATUS_PANEL_ID)?.remove();
       return;
     }
@@ -410,11 +410,9 @@
       panel = document.createElement('section');
       panel.id = STATUS_PANEL_ID;
       panel.className = 'glass-card overflow-hidden';
-      // Insert before the positions panel or the KPI cards
-      const pos = document.getElementById(POSITIONS_PANEL_ID);
-      const kpi = trading.querySelector('.grid.grid-cols-2.md\\:grid-cols-4');
-      const anchor = pos || kpi;
-      if (anchor) trading.insertBefore(panel, anchor);
+      // Insert at the very top of pageTrading, before anything else
+      const firstChild = trading.firstElementChild;
+      if (firstChild) trading.insertBefore(panel, firstChild);
       else trading.appendChild(panel);
     }
 
@@ -450,7 +448,7 @@
     }
 
     const sig = JSON.stringify(accounts);
-    if (sig === lastStatusSig && panel.innerHTML) return; // no change
+    if (sig === lastStatusSig && panel.children.length > 0) return; // no change
     lastStatusSig = sig;
 
     const hasLinked = accounts.some(a => a.linked);
@@ -461,55 +459,70 @@
         <div class="mt5-sp-title">
           <i class="fa-solid fa-plug text-blue-600"></i>
           MT5 Integration — ${currentModeLabel}
-          ${hasLinked
-            ? '<span style="font-size:9px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;padding:2px 8px;border-radius:6px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">● ACTIVE</span>'
-            : '<span style="font-size:9px;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;padding:2px 8px;border-radius:6px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">NOT CONNECTED</span>'
+          ${mode() === 'Backtest'
+            ? '<span style="font-size:9px;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;padding:2px 8px;border-radius:6px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">BACKTEST MODE</span>'
+            : hasLinked
+              ? '<span style="font-size:9px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;padding:2px 8px;border-radius:6px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">● ACTIVE</span>'
+              : '<span style="font-size:9px;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;padding:2px 8px;border-radius:6px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">NOT CONNECTED</span>'
           }
         </div>
         <div class="mt5-sp-actions">
           <button class="mt5-btn mt5-btn-ghost" onclick="window.dispatchEvent(new CustomEvent('open-mt5-help'))">
-            <i class="fa-solid fa-circle-question" style="font-size:10px"></i> Help
+            <i class="fa-solid fa-circle-question" style="font-size:10px"></i> How to connect
           </button>
         </div>
       </div>
       <div id="mt5-accounts-list">
-        ${accounts.length === 0
-          ? `<div style="padding:20px 18px;font-size:12px;color:#94a3b8;text-align:center">No ${currentModeLabel} accounts found. Add an account first.</div>`
-          : accounts.map(a => {
-              const statusDot = a.syncStatus === 'synced' ? 'mt5-dot-synced' : a.linked ? 'mt5-dot-linked' : 'mt5-dot-none';
-              const badge = a.syncStatus === 'synced' ? 'mt5-badge-synced' : a.linked ? 'mt5-badge-linked' : 'mt5-badge-none';
-              const badgeText = a.syncStatus === 'synced' ? 'Synced' : a.linked ? 'Linked' : 'Not linked';
-              const lastSync = a.syncedAt ? `Last sync: ${fmtDate(a.syncedAt)}` : a.lastSyncAt ? `Linked: ${fmtDate(a.lastSyncAt)}` : '';
-              const balStr = a.balance != null ? fmtMoney(a.balance, a.currency) : '';
-              const posStr = a.positionCount != null ? `${a.positionCount} open position${a.positionCount !== 1 ? 's' : ''}` : '';
+        ${mode() === 'Backtest'
+          ? `<div style="padding:16px 18px;font-size:12px;color:#64748b;display:flex;align-items:center;gap:10px">
+               <i class="fa-solid fa-circle-info" style="color:#94a3b8"></i>
+               MT5 integration is only available in Demo, Real, and Funded modes.
+               Switch modes using the selector above.
+             </div>`
+          : accounts.length === 0
+            ? `<div style="padding:16px 18px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:10px">
+                 <i class="fa-solid fa-circle-exclamation" style="color:#cbd5e1"></i>
+                 No ${currentModeLabel} accounts found.
+                 <button onclick="typeof window.openAddAccountModal === 'function' && window.openAddAccountModal()"
+                   style="margin-left:auto;padding:5px 12px;border-radius:8px;border:1px solid #2563eb;background:#eff6ff;color:#2563eb;font-size:11px;font-weight:700;cursor:pointer">
+                   + Add account first
+                 </button>
+               </div>`
+            : accounts.map(a => {
+                const statusDot = a.syncStatus === 'synced' ? 'mt5-dot-synced' : a.linked ? 'mt5-dot-linked' : 'mt5-dot-none';
+                const badge = a.syncStatus === 'synced' ? 'mt5-badge-synced' : a.linked ? 'mt5-badge-linked' : 'mt5-badge-none';
+                const badgeText = a.syncStatus === 'synced' ? '● Synced' : a.linked ? '◐ Linked' : '○ Not linked';
+                const lastSync = a.syncedAt ? `Last sync: ${fmtDate(a.syncedAt)}` : a.lastSyncAt ? `Linked: ${fmtDate(a.lastSyncAt)}` : '';
+                const balStr = a.balance != null ? fmtMoney(a.balance, a.currency) : '';
+                const posStr = a.positionCount != null ? `${a.positionCount} open position${a.positionCount !== 1 ? 's' : ''}` : '';
 
-              return `<div class="mt5-account-row">
-                <span class="mt5-dot ${statusDot}"></span>
-                <span class="mt5-acc-name">${esc(a.accountName)}</span>
-                <span class="mt5-status-badge ${badge}">${badgeText}</span>
-                ${a.linked ? `
-                  <span class="mt5-acc-meta">${esc(a.login || '')}${a.server ? ' · ' + esc(a.server) : ''}</span>
-                  ${balStr ? `<span class="mt5-acc-bal">${esc(balStr)}</span>` : ''}
-                  ${posStr ? `<span class="mt5-acc-sync">${esc(posStr)}</span>` : ''}
-                  ${lastSync ? `<span class="mt5-acc-sync" title="${esc(a.syncedAt || '')}">${esc(lastSync)}</span>` : ''}
-                  <div style="display:flex;gap:6px;margin-left:auto">
-                    <button class="mt5-history-btn" onclick="window.__mt5OpenHistory('${esc(a.accountId)}','${esc(a.accountName)}')">
-                      <i class="fa-solid fa-clock-rotate-left" style="font-size:9px"></i> History
+                return `<div class="mt5-account-row">
+                  <span class="mt5-dot ${statusDot}"></span>
+                  <span class="mt5-acc-name">${esc(a.accountName)}</span>
+                  <span class="mt5-status-badge ${badge}">${badgeText}</span>
+                  ${a.linked ? `
+                    <span class="mt5-acc-meta">${esc(a.login || '')}${a.server ? ' · ' + esc(a.server) : ''}</span>
+                    ${balStr ? `<span class="mt5-acc-bal">${esc(balStr)}</span>` : ''}
+                    ${posStr ? `<span class="mt5-acc-sync">${esc(posStr)}</span>` : ''}
+                    ${lastSync ? `<span class="mt5-acc-sync" title="${esc(a.syncedAt || '')}">${esc(lastSync)}</span>` : ''}
+                    <div style="display:flex;gap:6px;margin-left:auto;flex-shrink:0">
+                      <button class="mt5-history-btn" onclick="window.__mt5OpenHistory('${esc(a.accountId)}','${esc(a.accountName)}')">
+                        <i class="fa-solid fa-clock-rotate-left" style="font-size:9px"></i> History
+                      </button>
+                      <button class="mt5-btn mt5-btn-danger" style="height:24px;padding:0 8px;font-size:10px"
+                        onclick="window.__mt5Unlink('${esc(a.accountId)}')">
+                        Unlink
+                      </button>
+                    </div>
+                  ` : `
+                    <span class="mt5-acc-meta" style="flex:1">Click to connect this account to MT5 for automatic trade sync</span>
+                    <button class="mt5-btn mt5-btn-primary" style="margin-left:auto;flex-shrink:0"
+                      onclick="window.__mt5Link('${esc(a.accountId)}')">
+                      <i class="fa-solid fa-link" style="font-size:10px"></i> Link MT5
                     </button>
-                    <button class="mt5-btn mt5-btn-danger" style="height:24px;padding:0 8px;font-size:10px"
-                      onclick="window.__mt5Unlink('${esc(a.accountId)}')">
-                      Unlink
-                    </button>
-                  </div>
-                ` : `
-                  <span class="mt5-acc-meta" style="flex:1">Connect MT5 to sync trades automatically</span>
-                  <button class="mt5-btn mt5-btn-primary" style="margin-left:auto"
-                    onclick="window.__mt5Link('${esc(a.accountId)}')">
-                    <i class="fa-solid fa-link" style="font-size:10px"></i> Link MT5
-                  </button>
-                `}
-              </div>`;
-            }).join('')
+                  `}
+                </div>`;
+              }).join('')
         }
       </div>
     `;
@@ -539,9 +552,10 @@
       panel = document.createElement('section');
       panel.id = POSITIONS_PANEL_ID;
       panel.className = 'glass-card overflow-hidden';
-      // Insert before the KPI cards row
-      const kpi = trading.querySelector('.grid.grid-cols-2.md\\:grid-cols-4');
-      if (kpi) trading.insertBefore(panel, kpi);
+      // Insert after the status panel, or at top of trading page
+      const statusPanel = document.getElementById(STATUS_PANEL_ID);
+      const anchor = statusPanel?.nextElementSibling || trading.firstElementChild;
+      if (anchor) trading.insertBefore(panel, anchor);
       else trading.appendChild(panel);
     }
 
