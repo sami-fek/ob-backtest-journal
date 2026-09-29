@@ -148,6 +148,47 @@
       #${POSITIONS_PANEL_ID} .mt5-pos-sell { color: #dc2626; font-weight: 800; }
       #${POSITIONS_PANEL_ID} .mt5-pos-pnl-pos { color: #16a34a; font-weight: 800; }
       #${POSITIONS_PANEL_ID} .mt5-pos-pnl-neg { color: #dc2626; font-weight: 800; }
+
+      /* ── Mobile responsive ── */
+      @media (max-width: 767px) {
+        /* Status panel */
+        #${STATUS_PANEL_ID} .mt5-account-row {
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 10px 12px;
+        }
+        #${STATUS_PANEL_ID} .mt5-acc-meta { min-width: 100%; order: 3; }
+        #${STATUS_PANEL_ID} .mt5-acc-bal { font-size: 11px; }
+        #${STATUS_PANEL_ID} .mt5-acc-sync { font-size: 8px; }
+        #${STATUS_PANEL_ID} .mt5-btn { height: 34px; font-size: 12px; }
+        #${STATUS_PANEL_ID} .mt5-sp-title { font-size: 12px; gap: 6px; }
+
+        /* Positions table: horizontal scroll */
+        #${POSITIONS_PANEL_ID} { overflow: hidden; }
+        #${POSITIONS_PANEL_ID} > *:last-child { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #${POSITIONS_PANEL_ID} .mt5-pos-row {
+          grid-template-columns: 1fr 48px 56px 70px 56px !important;
+          font-size: 10px !important;
+          padding: 6px 10px !important;
+          gap: 0 !important;
+        }
+        #${POSITIONS_PANEL_ID} .mt5-pos-header { padding: 10px 12px; }
+        #${POSITIONS_PANEL_ID} .mt5-pos-header > div { font-size: 10px; }
+
+        /* MT5 integration modal */
+        #mt5IntegrationModal > div { max-width: calc(100vw - 24px) !important; margin: 0 12px; }
+        #mt5IntegrationModal .p-6 { padding: 16px !important; }
+        #mt5IntegrationModal h3 { font-size: 16px !important; }
+
+        /* History modal */
+        #mt5-history-modal .mt5-hm-box {
+          max-width: calc(100vw - 16px) !important;
+          max-height: 90vh !important;
+          border-radius: 16px !important;
+        }
+        #mt5-history-modal .mt5-hm-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #mt5-history-modal table { min-width: 560px; }
+      }
     `;
     document.head.appendChild(s);
   }
@@ -159,7 +200,7 @@
     const o = document.createElement('div');
     o.id = 'mt5IntegrationModal';
     o.className = 'fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-950/30 backdrop-blur-md';
-    o.innerHTML = `<div class="w-full max-w-[520px] rounded-[26px] border border-white/90 bg-white/98 shadow-2xl overflow-hidden">${html}</div>`;
+    o.innerHTML = `<div style="width:100%;max-width:min(520px,calc(100vw - 24px));max-height:90vh;overflow-y:auto;border-radius:26px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.98);box-shadow:0 32px 80px rgba(15,23,42,.2);overflow:hidden">${html}</div>`;
     document.body.appendChild(o);
     o.addEventListener('click', e => { if (e.target === o) o.remove(); });
     done?.(o);

@@ -12,7 +12,7 @@
 create table if not exists public.users (
   id            text        primary key,
   email         text        not null unique,
-  password_hash text        not null,
+  password_hash text,
   created_at    timestamptz not null default now()
 );
 create index if not exists users_email_idx on public.users (email);

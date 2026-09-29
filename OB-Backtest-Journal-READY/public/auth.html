@@ -8,30 +8,26 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: 'Inter', sans-serif; }
-
-    .glass-card {
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.6);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.8) inset;
-    }
 
     .ob-bg {
       background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 40%, #f4f7fb 100%);
       min-height: 100vh;
     }
-
-    .accent-gradient {
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    .glass-card {
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.65);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.8) inset;
     }
-
     .field {
       width: 100%;
-      padding: 0.625rem 0.875rem;
+      padding: 0.65rem 0.9rem;
       border: 1.5px solid #e2e8f0;
       border-radius: 0.625rem;
       font-size: 0.9375rem;
@@ -41,16 +37,28 @@
       background: #fff;
       color: #1e293b;
     }
-    .field:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    .field:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+
+    /* OTP digit boxes */
+    .otp-box {
+      width: 46px; height: 56px;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 0.625rem;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      background: #fff;
+      color: #6366f1;
+      caret-color: #6366f1;
     }
-    .field.error { border-color: #ef4444; }
-    .field.error:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
+    .otp-box:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+    .otp-box.filled { border-color: #6366f1; background: #f5f3ff; }
 
     .btn-primary {
       width: 100%;
-      padding: 0.6875rem 1rem;
+      padding: 0.7rem 1rem;
       border-radius: 0.625rem;
       border: none;
       cursor: pointer;
@@ -62,237 +70,516 @@
       transition: opacity 0.15s, transform 0.1s;
       letter-spacing: 0.01em;
     }
-    .btn-primary:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+    .btn-primary:hover:not(:disabled) { opacity: 0.91; transform: translateY(-1px); }
     .btn-primary:active:not(:disabled) { transform: translateY(0); }
-    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .tab-btn {
-      flex: 1;
-      padding: 0.5rem;
-      border: none;
-      background: transparent;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      font-weight: 500;
+    .btn-google {
+      width: 100%;
+      padding: 0.65rem 1rem;
+      border-radius: 0.625rem;
+      border: 1.5px solid #e2e8f0;
       cursor: pointer;
+      font-size: 0.9375rem;
+      font-weight: 500;
       font-family: inherit;
-      color: #64748b;
-      transition: background 0.15s, color 0.15s;
-    }
-    .tab-btn.active {
+      color: #334155;
       background: #fff;
-      color: #6366f1;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .btn-google:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; transform: translateY(-1px); }
+    .btn-google:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #94a3b8;
+      font-size: 0.8125rem;
+      margin: 18px 0;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e2e8f0;
     }
 
     .alert {
-      padding: 0.625rem 0.875rem;
+      padding: 0.65rem 0.9rem;
       border-radius: 0.5rem;
       font-size: 0.875rem;
       display: none;
+      margin-bottom: 16px;
     }
     .alert.show { display: block; }
-    .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .alert-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
     .alert-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .alert-info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+    .step { display: none; }
+    .step.active { display: block; }
 
     .logo-mark {
-      width: 48px; height: 48px;
+      width: 50px; height: 50px;
       border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
       font-size: 1.375rem;
       font-weight: 800;
       color: #fff;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
     }
 
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .card-animate { animation: fadeIn 0.3s ease; }
+    .tab-btn {
+      flex: 1; padding: 0.5rem;
+      border: none; background: transparent;
+      border-radius: 0.5rem;
+      font-size: 0.875rem; font-weight: 500;
+      cursor: pointer; font-family: inherit; color: #64748b;
+      transition: background 0.15s, color 0.15s;
+    }
+    .tab-btn.active { background: #fff; color: #6366f1; box-shadow: 0 1px 4px rgba(0,0,0,0.10); }
+
+    .resend-timer { font-size: 0.8125rem; color: #94a3b8; text-align: center; margin-top: 10px; }
+    .resend-link  { color: #6366f1; cursor: pointer; text-decoration: underline; }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .card-animate { animation: fadeIn 0.28s ease; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+    .shake { animation: shake 0.35s ease; }
   </style>
 </head>
 <body class="ob-bg flex items-center justify-center p-4">
 
-  <div class="w-full max-w-sm card-animate">
+<div class="w-full max-w-sm card-animate">
 
-    <!-- Logo + Brand -->
-    <div class="flex flex-col items-center mb-8">
-      <div class="logo-mark accent-gradient mb-3 shadow-lg">OB</div>
-      <h1 class="text-2xl font-bold text-slate-800 tracking-tight">OB Backtest Journal</h1>
-      <p class="text-slate-500 text-sm mt-1">Your private trading performance log</p>
+  <!-- Logo -->
+  <div class="flex flex-col items-center mb-7">
+    <div class="logo-mark mb-3 shadow-lg"></div>
+    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">OB Backtest Journal</h1>
+    <p class="text-slate-500 text-sm mt-1">Your private trading performance log</p>
+  </div>
+
+  <!-- Card -->
+  <div class="glass-card rounded-2xl p-7">
+
+    <!-- Tabs -->
+    <div class="flex bg-slate-100 rounded-xl p-1 mb-5" id="tabBar">
+      <button class="tab-btn active" id="tabOtp"      onclick="setTab('otp')">Magic Link</button>
+      <button class="tab-btn"        id="tabPassword" onclick="setTab('password')">Password</button>
     </div>
 
-    <!-- Card -->
-    <div class="glass-card rounded-2xl p-7">
+    <!-- Alert -->
+    <div class="alert alert-error"   id="alertError"></div>
+    <div class="alert alert-success" id="alertSuccess"></div>
+    <div class="alert alert-info"    id="alertInfo"></div>
 
-      <!-- Tabs -->
-      <div class="flex bg-slate-100 rounded-xl p-1 mb-6">
-        <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Sign In</button>
-        <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Create Account</button>
+    <!-- ══ OTP TAB ══════════════════════════════════════════════════════════ -->
+    <div id="tabContentOtp">
+
+      <!-- STEP 1: enter email -->
+      <div class="step active" id="stepEmail">
+        <p class="text-sm text-slate-500 mb-4 leading-relaxed">
+          Enter your email and we'll send you a 6-digit sign-in code. No password needed.
+        </p>
+        <form onsubmit="handleSendCode(event)" novalidate>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Email address</label>
+          <input id="otpEmail" type="email" class="field mb-4"
+            placeholder="you@example.com" autocomplete="email" required />
+          <button type="submit" class="btn-primary" id="btnSendCode">Send Code</button>
+        </form>
+
+        <div class="divider">or</div>
+
+        <!-- Google Sign-In button -->
+        <button class="btn-google" id="btnGoogle" onclick="handleGoogleClick()">
+          <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            <path fill="none" d="M0 0h48v48H0z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <p class="text-xs text-slate-400 text-center mt-4">
+          New users are registered automatically on first sign-in.
+        </p>
       </div>
 
-      <!-- Alert -->
-      <div class="alert alert-error mb-4" id="alertError"></div>
-      <div class="alert alert-success mb-4" id="alertSuccess"></div>
-
-      <!-- LOGIN FORM -->
-      <form id="formLogin" onsubmit="handleLogin(event)" novalidate>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="loginEmail">Email</label>
-          <input id="loginEmail" type="email" class="field" placeholder="you@example.com" autocomplete="email" required />
+      <!-- STEP 2: enter OTP code -->
+      <div class="step" id="stepCode">
+        <div class="text-center mb-5">
+          <p class="text-sm text-slate-600">We sent a 6-digit code to</p>
+          <p class="font-semibold text-slate-800 mt-1" id="codeEmailDisplay"></p>
         </div>
-        <div class="mb-5">
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="loginPassword">Password</label>
-          <input id="loginPassword" type="password" class="field" placeholder="••••••••" autocomplete="current-password" required />
+        <form onsubmit="handleVerifyCode(event)" novalidate>
+          <!-- 6 individual digit boxes -->
+          <div class="flex justify-center gap-2 mb-5" id="otpBoxes">
+            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="0" />
+            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="1" />
+            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="2" />
+            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="3" />
+            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="4" />
+            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="5" />
+          </div>
+          <button type="submit" class="btn-primary" id="btnVerify" disabled>Verify Code</button>
+        </form>
+        <div class="resend-timer mt-3" id="resendArea">
+          Resend in <span id="resendCountdown">60</span>s
         </div>
-        <button type="submit" class="btn-primary" id="btnLogin">Sign In</button>
-      </form>
-
-      <!-- REGISTER FORM -->
-      <form id="formRegister" class="hidden" onsubmit="handleRegister(event)" novalidate>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="regEmail">Email</label>
-          <input id="regEmail" type="email" class="field" placeholder="you@example.com" autocomplete="email" required />
-        </div>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="regPassword">Password</label>
-          <input id="regPassword" type="password" class="field" placeholder="At least 8 characters" autocomplete="new-password" required />
-        </div>
-        <div class="mb-5">
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="regConfirm">Confirm Password</label>
-          <input id="regConfirm" type="password" class="field" placeholder="••••••••" autocomplete="new-password" required />
-        </div>
-        <button type="submit" class="btn-primary" id="btnRegister">Create Account</button>
-      </form>
+        <p class="text-xs text-center mt-3">
+          <span class="resend-link" onclick="goBackToEmail()">← Use a different email</span>
+        </p>
+      </div>
 
     </div>
 
-    <!-- Footer note -->
-    <p class="text-center text-xs text-slate-400 mt-5">
-      Your data is stored privately and never shared.
-    </p>
+    <!-- ══ PASSWORD TAB ══════════════════════════════════════════════════════ -->
+    <div id="tabContentPassword" class="hidden">
+
+      <!-- Login -->
+      <div class="step active" id="stepLogin">
+        <form onsubmit="handleLogin(event)" novalidate>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+          <input id="loginEmail" type="email" class="field mb-3"
+            placeholder="you@example.com" autocomplete="email" required />
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+          <input id="loginPassword" type="password" class="field mb-5"
+            placeholder="••••••••" autocomplete="current-password" required />
+          <button type="submit" class="btn-primary" id="btnLogin">Sign In</button>
+        </form>
+        <p class="text-xs text-center text-slate-400 mt-3">
+          No account? <span class="resend-link" onclick="setTab('otp')">Use magic code instead</span>
+        </p>
+      </div>
+
+    </div>
 
   </div>
 
-  <script>
-    // ── Tab switching ──────────────────────────────────────────────────────────
-    function switchTab(tab) {
-      const isLogin = tab === 'login';
-      document.getElementById('formLogin').classList.toggle('hidden', !isLogin);
-      document.getElementById('formRegister').classList.toggle('hidden', isLogin);
-      document.getElementById('tab-login').classList.toggle('active', isLogin);
-      document.getElementById('tab-register').classList.toggle('active', !isLogin);
-      clearAlerts();
+  <p class="text-center text-xs text-slate-400 mt-5">
+    Your data is stored privately and never shared.
+  </p>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let currentTab    = 'otp';
+let currentEmail  = '';
+let resendTimer   = null;
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function clearAlerts() {
+  ['alertError','alertSuccess','alertInfo'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('show'); el.textContent = '';
+  });
+}
+function showAlert(type, msg) {
+  clearAlerts();
+  const el = document.getElementById('alert' + type);
+  el.textContent = msg; el.classList.add('show');
+}
+function setBtn(id, loading, labels) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.textContent = loading ? labels[1] : labels[0];
+}
+function getRedirect() {
+  const p = new URLSearchParams(window.location.search).get('next');
+  return (p && p.startsWith('/') && !p.startsWith('//')) ? p : '/';
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function setTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabContentOtp').classList.toggle('hidden', tab !== 'otp');
+  document.getElementById('tabContentPassword').classList.toggle('hidden', tab !== 'password');
+  document.getElementById('tabOtp').classList.toggle('active', tab === 'otp');
+  document.getElementById('tabPassword').classList.toggle('active', tab !== 'otp');
+  clearAlerts();
+}
+
+// ── OTP — Step 1: send code ────────────────────────────────────────────────────
+async function handleSendCode(e) {
+  e.preventDefault();
+  clearAlerts();
+  const email = document.getElementById('otpEmail').value.trim();
+  if (!email || !email.includes('@')) { showAlert('Error', 'Please enter a valid email address.'); return; }
+
+  setBtn('btnSendCode', true, ['Send Code', 'Sending…']);
+  try {
+    const res  = await fetch('/api/auth/send-code', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) { showAlert('Error', body.error || 'Failed to send code.'); return; }
+
+    currentEmail = email;
+    document.getElementById('codeEmailDisplay').textContent = email;
+    showStep('stepCode');
+    startResendTimer();
+    focusFirstOtpBox();
+  } catch {
+    showAlert('Error', 'Network error. Please try again.');
+  } finally {
+    setBtn('btnSendCode', false, ['Send Code', 'Sending…']);
+  }
+}
+
+// ── OTP — Step 2: verify code ──────────────────────────────────────────────────
+async function handleVerifyCode(e) {
+  e.preventDefault();
+  clearAlerts();
+  const code = getOtpValue();
+  if (code.length !== 6) { showAlert('Error', 'Please enter the full 6-digit code.'); return; }
+
+  setBtn('btnVerify', true, ['Verify Code', 'Verifying…']);
+  try {
+    const res  = await fetch('/api/auth/verify-code', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: currentEmail, code })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok) {
+      showAlert('Success', 'Verified! Signing you in…');
+      setTimeout(() => { window.location.href = getRedirect(); }, 700);
+    } else {
+      shakeOtpBoxes();
+      clearOtpBoxes();
+      showAlert('Error', body.error || 'Incorrect code. Please try again.');
+      focusFirstOtpBox();
     }
+  } catch {
+    showAlert('Error', 'Network error. Please try again.');
+  } finally {
+    setBtn('btnVerify', false, ['Verify Code', 'Verifying…']);
+  }
+}
 
-    function clearAlerts() {
-      const e = document.getElementById('alertError');
-      const s = document.getElementById('alertSuccess');
-      e.classList.remove('show'); e.textContent = '';
-      s.classList.remove('show'); s.textContent = '';
-    }
+// ── OTP box helpers ────────────────────────────────────────────────────────────
+function getOtpBoxes() { return [...document.querySelectorAll('.otp-box')]; }
 
-    function showError(msg) {
-      const el = document.getElementById('alertError');
-      el.textContent = msg;
-      el.classList.add('show');
-      document.getElementById('alertSuccess').classList.remove('show');
-    }
+function getOtpValue() { return getOtpBoxes().map(b => b.value).join(''); }
 
-    function showSuccess(msg) {
-      const el = document.getElementById('alertSuccess');
-      el.textContent = msg;
-      el.classList.add('show');
-      document.getElementById('alertError').classList.remove('show');
-    }
+function focusFirstOtpBox() {
+  const boxes = getOtpBoxes();
+  (boxes.find(b => !b.value) || boxes[0]).focus();
+}
 
-    function setLoading(btnId, loading) {
-      const btn = document.getElementById(btnId);
-      btn.disabled = loading;
-      btn.textContent = loading
-        ? (btnId === 'btnLogin' ? 'Signing in…' : 'Creating account…')
-        : (btnId === 'btnLogin' ? 'Sign In' : 'Create Account');
-    }
+function clearOtpBoxes() {
+  getOtpBoxes().forEach(b => { b.value = ''; b.classList.remove('filled'); });
+  document.getElementById('btnVerify').disabled = true;
+}
 
-    // ── Redirect target ────────────────────────────────────────────────────────
-    function getRedirectTarget() {
-      const params = new URLSearchParams(window.location.search);
-      const next = params.get('next');
-      // Only redirect to relative paths on the same origin
-      if (next && next.startsWith('/') && !next.startsWith('//')) return next;
-      return '/';
-    }
+function shakeOtpBoxes() {
+  const container = document.getElementById('otpBoxes');
+  container.classList.remove('shake');
+  void container.offsetWidth; // reflow
+  container.classList.add('shake');
+}
 
-    // ── Login ──────────────────────────────────────────────────────────────────
-    async function handleLogin(e) {
-      e.preventDefault();
-      clearAlerts();
-      const email    = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
+function updateVerifyBtn() {
+  document.getElementById('btnVerify').disabled = getOtpValue().length !== 6;
+}
 
-      if (!email || !password) { showError('Please enter your email and password.'); return; }
-
-      setLoading('btnLogin', true);
-      try {
-        const res  = await fetch('/api/auth/login', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+// Wire up OTP box keyboard behaviour
+document.addEventListener('DOMContentLoaded', () => {
+  const boxes = getOtpBoxes();
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', e => {
+      // Accept only digits; handle paste
+      const val = e.target.value.replace(/\D/g, '');
+      if (val.length > 1) {
+        // Handle paste of full code
+        val.split('').slice(0, 6).forEach((ch, j) => {
+          if (boxes[j]) { boxes[j].value = ch; boxes[j].classList.add('filled'); }
         });
-        const body = await res.json().catch(() => ({}));
-
-        if (res.ok) {
-          window.location.href = getRedirectTarget();
-        } else {
-          showError(body.error || 'Login failed. Please try again.');
-          document.getElementById('loginPassword').value = '';
-        }
-      } catch (err) {
-        showError('Network error. Please check your connection and try again.');
-      } finally {
-        setLoading('btnLogin', false);
+        boxes[Math.min(val.length, 5)].focus();
+      } else {
+        box.value = val;
+        box.classList.toggle('filled', val !== '');
+        if (val && i < 5) boxes[i + 1].focus();
       }
-    }
-
-    // ── Register ───────────────────────────────────────────────────────────────
-    async function handleRegister(e) {
-      e.preventDefault();
-      clearAlerts();
-      const email    = document.getElementById('regEmail').value.trim();
-      const password = document.getElementById('regPassword').value;
-      const confirm  = document.getElementById('regConfirm').value;
-
-      if (!email || !email.includes('@')) { showError('Please enter a valid email address.'); return; }
-      if (password.length < 8) { showError('Password must be at least 8 characters.'); return; }
-      if (password !== confirm) { showError('Passwords do not match.'); return; }
-
-      setLoading('btnRegister', true);
-      try {
-        const res  = await fetch('/api/auth/register', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-        const body = await res.json().catch(() => ({}));
-
-        if (res.ok) {
-          showSuccess('Account created! Redirecting…');
-          setTimeout(() => { window.location.href = getRedirectTarget(); }, 800);
-        } else {
-          showError(body.error || 'Registration failed. Please try again.');
-        }
-      } catch (err) {
-        showError('Network error. Please check your connection and try again.');
-      } finally {
-        setLoading('btnRegister', false);
+      updateVerifyBtn();
+    });
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !box.value && i > 0) {
+        boxes[i - 1].value = '';
+        boxes[i - 1].classList.remove('filled');
+        boxes[i - 1].focus();
+        updateVerifyBtn();
       }
+      if (e.key === 'ArrowLeft'  && i > 0) boxes[i - 1].focus();
+      if (e.key === 'ArrowRight' && i < 5) boxes[i + 1].focus();
+    });
+    // Allow clicking any box and placing cursor correctly
+    box.addEventListener('focus', () => box.select());
+  });
+
+  // Auto-detect Google Client ID from meta tag (set by server if configured)
+  const clientIdMeta = document.querySelector('meta[name="google-client-id"]');
+  if (!clientIdMeta) {
+    // Hide Google button if no client ID configured
+    const gBtn = document.getElementById('btnGoogle');
+    if (gBtn) gBtn.style.display = 'none';
+    const div = document.querySelector('.divider');
+    if (div) div.style.display = 'none';
+  }
+});
+
+// ── Resend timer ───────────────────────────────────────────────────────────────
+function startResendTimer(seconds = 60) {
+  const area = document.getElementById('resendArea');
+  const countdown = document.getElementById('resendCountdown');
+  area.innerHTML = 'Resend in <span id="resendCountdown">' + seconds + '</span>s';
+  let remaining = seconds;
+  clearInterval(resendTimer);
+  resendTimer = setInterval(() => {
+    remaining--;
+    const cd = document.getElementById('resendCountdown');
+    if (cd) cd.textContent = remaining;
+    if (remaining <= 0) {
+      clearInterval(resendTimer);
+      area.innerHTML = '<span class="resend-link" onclick="handleResend()">Resend code</span>';
     }
+  }, 1000);
+}
 
-    // ── Auto-focus ─────────────────────────────────────────────────────────────
-    document.getElementById('loginEmail').focus();
+async function handleResend() {
+  clearAlerts();
+  const area = document.getElementById('resendArea');
+  area.textContent = 'Sending…';
+  try {
+    const res  = await fetch('/api/auth/send-code', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: currentEmail })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok) {
+      clearOtpBoxes();
+      showAlert('Info', 'A new code has been sent.');
+      startResendTimer();
+      focusFirstOtpBox();
+    } else {
+      showAlert('Error', body.error || 'Failed to resend code.');
+      area.innerHTML = '<span class="resend-link" onclick="handleResend()">Retry</span>';
+    }
+  } catch {
+    showAlert('Error', 'Network error. Please try again.');
+    area.innerHTML = '<span class="resend-link" onclick="handleResend()">Retry</span>';
+  }
+}
 
-    // ── Read URL param for initial tab ─────────────────────────────────────────
-    const tabParam = new URLSearchParams(window.location.search).get('tab');
-    if (tabParam === 'register') switchTab('register');
-  </script>
+function goBackToEmail() {
+  clearInterval(resendTimer);
+  clearAlerts();
+  clearOtpBoxes();
+  showStep('stepEmail');
+}
+
+// ── Step helper ────────────────────────────────────────────────────────────────
+function showStep(stepId) {
+  document.querySelectorAll('#tabContentOtp .step').forEach(s => s.classList.remove('active'));
+  document.getElementById(stepId).classList.add('active');
+}
+
+// ── Password login (fallback tab) ──────────────────────────────────────────────
+async function handleLogin(e) {
+  e.preventDefault();
+  clearAlerts();
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) { showAlert('Error', 'Please enter your email and password.'); return; }
+  setBtn('btnLogin', true, ['Sign In', 'Signing in…']);
+  try {
+    const res  = await fetch('/api/auth/login', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok) {
+      window.location.href = getRedirect();
+    } else {
+      showAlert('Error', body.error || 'Incorrect email or password.');
+      document.getElementById('loginPassword').value = '';
+    }
+  } catch {
+    showAlert('Error', 'Network error. Please try again.');
+  } finally {
+    setBtn('btnLogin', false, ['Sign In', 'Signing in…']);
+  }
+}
+
+// ── Google Sign-In ─────────────────────────────────────────────────────────────
+function handleGoogleClick() {
+  // Check if GIS library loaded
+  if (typeof google === 'undefined' || !google?.accounts?.id) {
+    showAlert('Error', 'Google Sign-In is not available. Please use the magic code option.');
+    return;
+  }
+  const clientIdMeta = document.querySelector('meta[name="google-client-id"]');
+  if (!clientIdMeta) {
+    showAlert('Error', 'Google Sign-In is not configured on this server.');
+    return;
+  }
+  google.accounts.id.initialize({
+    client_id: clientIdMeta.content,
+    callback: handleGoogleCredential,
+    context: 'signin'
+  });
+  google.accounts.id.prompt(notification => {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      // One-tap not available — render popup button instead
+      google.accounts.id.renderButton(
+        document.getElementById('googleButtonContainer'),
+        { theme: 'outline', size: 'large', width: 320 }
+      );
+      document.getElementById('googleButtonContainer').style.display = 'block';
+      document.getElementById('btnGoogle').style.display = 'none';
+    }
+  });
+}
+
+// Hidden container for Google's rendered button fallback
+document.write('<div id="googleButtonContainer" style="display:none;margin-top:8px"></div>');
+
+async function handleGoogleCredential(response) {
+  clearAlerts();
+  try {
+    const res  = await fetch('/api/auth/google', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: response.credential })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok) {
+      showAlert('Success', 'Signed in with Google! Redirecting…');
+      setTimeout(() => { window.location.href = getRedirect(); }, 700);
+    } else {
+      showAlert('Error', body.error || 'Google Sign-In failed.');
+    }
+  } catch {
+    showAlert('Error', 'Network error during Google Sign-In.');
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+document.getElementById('otpEmail').focus();
+const tabParam = new URLSearchParams(window.location.search).get('tab');
+if (tabParam === 'password') setTab('password');
+</script>
 </body>
 </html>

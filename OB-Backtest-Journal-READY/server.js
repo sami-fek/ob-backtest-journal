@@ -53,12 +53,12 @@ if (!useSupabase) {
     PRIMARY KEY (session_id, key)
   )`);
 
-  // Users table — new for multi-user support
+  // Users table — supports password, OTP, and Google auth
   db.exec(`CREATE TABLE IF NOT EXISTS users (
-    id           TEXT PRIMARY KEY,
-    email        TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    created_at   TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id            TEXT PRIMARY KEY,
+    email         TEXT NOT NULL UNIQUE,
+    password_hash TEXT,
+    created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
 }
 
@@ -143,20 +143,28 @@ async function getUserByEmail(email) {
   return rows?.[0] ?? null;
 }
 
-async function createUser(email, passwordHash) {
+async function createUser(email, passwordHash = null) {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
+  const normalEmail = email.toLowerCase().trim();
   if (!useSupabase) {
     db.prepare('INSERT INTO users (id, email, password_hash, created_at) VALUES (?,?,?,?)')
-      .run(id, email.toLowerCase().trim(), passwordHash, now);
-    return { id, email: email.toLowerCase().trim(), created_at: now };
+      .run(id, normalEmail, passwordHash, now);
+    return { id, email: normalEmail, created_at: now };
   }
   await supabaseRequest('users', {
     method: 'POST',
     headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify({ id, email: email.toLowerCase().trim(), password_hash: passwordHash, created_at: now })
+    body: JSON.stringify({ id, email: normalEmail, password_hash: passwordHash, created_at: now })
   });
-  return { id, email: email.toLowerCase().trim(), created_at: now };
+  return { id, email: normalEmail, created_at: now };
+}
+
+// Find or create a user by email — used by OTP + Google flows
+async function findOrCreateUser(email) {
+  const existing = await getUserByEmail(email);
+  if (existing) return existing;
+  return createUser(email, null);
 }
 
 // ─── Auth middleware ───────────────────────────────────────────────────────────
@@ -249,6 +257,216 @@ app.get('/api/auth/me', async (req, res) => {
   const user = await requireAuth(req, res);
   if (!user) return unauthorized(res);
   return res.json({ ok: true, user: { id: user.id, email: user.email } });
+});
+
+// ─── OTP (email magic code) ───────────────────────────────────────────────────
+// Codes are stored in the kv table under the shared OTP namespace so no extra
+// table is needed.  Key: otp:<normalised-email>  Value: { code, expiresAt }
+// A rate-limit key prevents spam: otp_limit:<email> → { count, windowStart }
+
+const OTP_NAMESPACE  = '__otp__';
+const OTP_EXPIRY_MS  = 10 * 60 * 1000;   // 10 minutes
+const OTP_RATE_MAX   = 3;                 // max sends per 15-minute window
+const OTP_RATE_WIN   = 15 * 60 * 1000;   // 15 minutes
+
+function generateOtp() {
+  // 6-digit numeric code, zero-padded
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+async function sendOtpEmail(email, code) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error('RESEND_API_KEY is not configured');
+
+  const fromAddress = process.env.RESEND_FROM || 'OB Journal <onboarding@resend.dev>';
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: fromAddress,
+      to: [email],
+      subject: `${code} — your OB Journal sign-in code`,
+      html: `
+        <div style="font-family:Inter,sans-serif;max-width:420px;margin:0 auto;padding:32px 24px;background:#f4f7fb;border-radius:16px">
+          <div style="text-align:center;margin-bottom:24px">
+            <div style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:22px;font-weight:800;margin-bottom:12px">OB</div>
+            <h1 style="margin:0;font-size:20px;color:#1e293b;font-weight:700">OB Backtest Journal</h1>
+          </div>
+          <div style="background:#fff;border-radius:12px;padding:28px 24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+            <p style="margin:0 0 16px;color:#475569;font-size:15px">Your sign-in code is:</p>
+            <div style="font-size:40px;font-weight:800;letter-spacing:10px;color:#6366f1;margin:8px 0 20px">${code}</div>
+            <p style="margin:0;color:#94a3b8;font-size:13px">This code expires in 10 minutes.<br>If you didn't request this, you can ignore this email.</p>
+          </div>
+        </div>
+      `,
+      text: `Your OB Journal sign-in code is: ${code}\n\nThis code expires in 10 minutes.`
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.text().catch(() => response.statusText);
+    throw new Error(`Resend API error ${response.status}: ${err}`);
+  }
+}
+
+// POST /api/auth/send-code  { email }
+app.post('/api/auth/send-code', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').toLowerCase().trim();
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'A valid email address is required.', code: 'EMAIL_INVALID' });
+    }
+
+    // Rate limiting
+    const limitKey = `otp_limit:${email}`;
+    const limitRaw = await getStoredValue(OTP_NAMESPACE, limitKey);
+    const limit = limitRaw ? JSON.parse(limitRaw) : null;
+    const now = Date.now();
+    if (limit && (now - limit.windowStart) < OTP_RATE_WIN && limit.count >= OTP_RATE_MAX) {
+      const retryAfterSec = Math.ceil((limit.windowStart + OTP_RATE_WIN - now) / 1000);
+      return res.status(429).json({
+        error: `Too many code requests. Please wait ${Math.ceil(retryAfterSec / 60)} minute(s) before trying again.`,
+        code: 'RATE_LIMITED',
+        retryAfter: retryAfterSec
+      });
+    }
+
+    const code       = generateOtp();
+    const expiresAt  = now + OTP_EXPIRY_MS;
+    const otpKey     = `otp:${email}`;
+
+    // Store OTP
+    await setStoredValue(OTP_NAMESPACE, otpKey, JSON.stringify({ code, expiresAt }));
+
+    // Update rate limit counter
+    const newLimit = (limit && (now - limit.windowStart) < OTP_RATE_WIN)
+      ? { count: limit.count + 1, windowStart: limit.windowStart }
+      : { count: 1, windowStart: now };
+    await setStoredValue(OTP_NAMESPACE, limitKey, JSON.stringify(newLimit));
+
+    // Send email
+    await sendOtpEmail(email, code);
+
+    console.log(`[Auth] OTP sent to ${email}`);
+    return res.json({ ok: true, message: 'Code sent. Check your email.' });
+  } catch (err) {
+    console.error('send-code failed:', err);
+    // Don't leak Resend config errors to the client
+    const userMsg = err.message.includes('RESEND_API_KEY')
+      ? 'Email sending is not configured on this server.'
+      : 'Failed to send code. Please try again.';
+    return res.status(500).json({ error: userMsg, code: 'SEND_FAILED' });
+  }
+});
+
+// POST /api/auth/verify-code  { email, code }
+app.post('/api/auth/verify-code', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').toLowerCase().trim();
+    const code  = String(req.body?.code  || '').trim();
+
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and code are required.', code: 'MISSING_FIELDS' });
+    }
+
+    const otpKey = `otp:${email}`;
+    const raw    = await getStoredValue(OTP_NAMESPACE, otpKey);
+    if (!raw) {
+      return res.status(401).json({ error: 'No code was sent to this address, or it has already been used.', code: 'OTP_NOT_FOUND' });
+    }
+
+    const stored = JSON.parse(raw);
+    if (Date.now() > stored.expiresAt) {
+      await deleteStoredValue(OTP_NAMESPACE, otpKey);
+      return res.status(401).json({ error: 'This code has expired. Please request a new one.', code: 'OTP_EXPIRED' });
+    }
+
+    // Constant-time comparison to prevent timing attacks on the code
+    const codesMatch = crypto.timingSafeEqual(
+      Buffer.from(code.padEnd(10)),
+      Buffer.from(String(stored.code).padEnd(10))
+    );
+    if (!codesMatch) {
+      return res.status(401).json({ error: 'Incorrect code. Please try again.', code: 'OTP_INVALID' });
+    }
+
+    // Delete OTP immediately — single use
+    await deleteStoredValue(OTP_NAMESPACE, otpKey);
+
+    // Find or create user
+    const oldSessionId = readCookieUserId(req);
+    const user = await findOrCreateUser(email);
+
+    // Migrate anonymous session data to new user on first login
+    if (oldSessionId && oldSessionId !== user.id) {
+      await migrateSessionData(oldSessionId, user.id);
+    }
+
+    setSessionCookie(res, user.id);
+    return res.json({ ok: true, user: { id: user.id, email: user.email } });
+  } catch (err) {
+    console.error('verify-code failed:', err);
+    return res.status(500).json({ error: 'Verification failed. Please try again.', code: 'VERIFY_FAILED' });
+  }
+});
+
+// ─── Google Sign-In ───────────────────────────────────────────────────────────
+// Verifies the credential JWT returned by Google Identity Services using
+// Google's tokeninfo endpoint (no library needed — one fetch call).
+
+// POST /api/auth/google  { credential }
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { credential } = req.body || {};
+    if (!credential || typeof credential !== 'string') {
+      return res.status(400).json({ error: 'Google credential is required.', code: 'MISSING_CREDENTIAL' });
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      return res.status(503).json({ error: 'Google Sign-In is not configured on this server.', code: 'GOOGLE_NOT_CONFIGURED' });
+    }
+
+    // Verify the JWT with Google's tokeninfo endpoint
+    const verifyRes = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+    );
+    if (!verifyRes.ok) {
+      return res.status(401).json({ error: 'Google credential verification failed.', code: 'GOOGLE_INVALID' });
+    }
+
+    const payload = await verifyRes.json();
+
+    // Validate the token is intended for our app
+    if (payload.aud !== clientId) {
+      return res.status(401).json({ error: 'Google credential is not valid for this application.', code: 'GOOGLE_WRONG_AUD' });
+    }
+    if (payload.email_verified !== 'true' && payload.email_verified !== true) {
+      return res.status(401).json({ error: 'Google account email is not verified.', code: 'GOOGLE_EMAIL_UNVERIFIED' });
+    }
+
+    const email = String(payload.email || '').toLowerCase().trim();
+    if (!email) {
+      return res.status(401).json({ error: 'Could not retrieve email from Google account.', code: 'GOOGLE_NO_EMAIL' });
+    }
+
+    const oldSessionId = readCookieUserId(req);
+    const user = await findOrCreateUser(email);
+
+    if (oldSessionId && oldSessionId !== user.id) {
+      await migrateSessionData(oldSessionId, user.id);
+    }
+
+    setSessionCookie(res, user.id);
+    return res.json({ ok: true, user: { id: user.id, email: user.email } });
+  } catch (err) {
+    console.error('Google sign-in failed:', err);
+    return res.status(500).json({ error: 'Google Sign-In failed. Please try again.', code: 'GOOGLE_FAILED' });
+  }
 });
 
 // ─── KV storage routes (protected) ────────────────────────────────────────────

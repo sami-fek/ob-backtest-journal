@@ -89,14 +89,24 @@ app.use(async (req, res) => {
 
     if (contentType?.toLowerCase().includes('text/html')) {
       let html = bytes.toString('utf8');
-      // Inject backend-sync.js (feature loader + account hydration) into every
-      // HTML page so the full feature layer is always available after auth.
+
+      // Inject backend-sync.js into every HTML page
       if (!html.includes('src="/backend-sync.js"')) {
         html = html.replace(
           /<\/body>\s*<\/html>\s*$/i,
           '  <script src="/backend-sync.js"></script>\n</body>\n</html>'
         );
       }
+
+      // Inject Google Client ID meta tag when configured
+      const googleClientId = process.env.GOOGLE_CLIENT_ID;
+      if (googleClientId && !html.includes('name="google-client-id"')) {
+        html = html.replace(
+          '<meta charset="UTF-8"',
+          `<meta name="google-client-id" content="${googleClientId.replace(/"/g, '')}">\n  <meta charset="UTF-8"`
+        );
+      }
+
       res.send(html);
     } else {
       res.send(bytes);

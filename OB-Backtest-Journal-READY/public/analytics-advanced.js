@@ -181,6 +181,32 @@
       #ob-strategy-compare tbody tr:hover { background: #f8fafc; }
       #ob-strategy-compare tbody tr:last-child td { border-bottom: 0; }
       .ob-small-sample { font-size: 9px; color: #f59e0b; font-weight: 700; vertical-align: middle; margin-left: 4px; }
+
+      /* ── Mobile responsive ── */
+      @media (max-width: 767px) {
+        #${FILTER_ID} {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 8px;
+          padding: 12px;
+        }
+        #${FILTER_ID} .af-group { width: 100%; }
+        #${FILTER_ID} select,
+        #${FILTER_ID} input[type="date"] {
+          width: 100%;
+          min-width: unset;
+          height: 40px;
+          font-size: 13px;
+        }
+        #${FILTER_ID} .af-reset {
+          width: 100%;
+          height: 40px;
+          font-size: 13px;
+        }
+        #ob-strategy-compare .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #ob-strategy-compare table { min-width: 580px; }
+        #ob-analytics-extra-section .grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+      }
     `;
     document.head.appendChild(s);
   }

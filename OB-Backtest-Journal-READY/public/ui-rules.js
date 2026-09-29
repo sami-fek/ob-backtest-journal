@@ -85,9 +85,9 @@
     const overlay = document.createElement('div');
     overlay.id = 'accountAddModal';
     overlay.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/30 backdrop-blur-md';
-    overlay.innerHTML = `
+    overlay.innerHTML = ` 
       <div class="w-full max-w-[480px] rounded-[24px] border border-white/80 bg-white/80 backdrop-blur-2xl shadow-[0_25px_80px_rgba(15,23,42,.22)] overflow-hidden">
-        <div class="p-6 sm:p-7">
+        <div class="p-4 sm:p-6 sm:p-7">
           <div class="flex items-start justify-between gap-4">
             <div>
               <h3 class="text-xl font-bold tracking-tight text-slate-900">Add ${mode} account</h3>
