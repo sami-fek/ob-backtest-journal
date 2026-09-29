@@ -128,7 +128,7 @@
       </nav>
 
       <div class="flex items-center gap-3">
-        <button onclick="switchTab('trading')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 transition-all shadow-md shadow-blue-500/20 active:scale-95">
+        <button onclick="handleGetStarted()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 transition-all shadow-md shadow-blue-500/20 active:scale-95">
           <span>Get started</span><i class="fa-solid fa-arrow-right text-[10px]"></i>
         </button>
       </div>
@@ -151,7 +151,7 @@
             Eliminate guesswork, optimize execution, and quantify your statistical edge across Backtest, Demo, Real, and Funded accounts with precision analytics and discipline tracking.
           </p>
           <div class="flex flex-wrap items-center gap-3 pt-2">
-            <button onclick="switchTab('trading')" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm flex items-center gap-2 transition-all shadow-lg shadow-blue-500/25 active:scale-95"><span>GET STARTED</span><i class="fa-solid fa-play text-xs"></i></button>
+            <button onclick="handleGetStarted()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm flex items-center gap-2 transition-all shadow-lg shadow-blue-500/25 active:scale-95"><span>GET STARTED</span><i class="fa-solid fa-play text-xs"></i></button>
             <button onclick="switchTab('journal')" class="px-6 py-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold border border-slate-200 rounded-xl text-sm transition-all shadow-sm"><i class="fa-solid fa-magnifying-glass text-slate-400 mr-1.5"></i> Explore Journal</button>
           </div>
           <div class="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200/80">
@@ -713,6 +713,22 @@
         }, 4000);
       }
     })();
+
+    // ---- GET STARTED ----
+    // If the user is not authenticated, redirect to auth page.
+    // If already logged in, go straight to the trading tab.
+    async function handleGetStarted() {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
+        if (res.ok) {
+          switchTab('trading');
+        } else {
+          window.location.href = '/auth.html?next=/';
+        }
+      } catch {
+        window.location.href = '/auth.html?next=/';
+      }
+    }
 
     window.onload = async function() {
       await loadState();
