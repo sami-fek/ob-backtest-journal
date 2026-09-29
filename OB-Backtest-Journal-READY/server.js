@@ -53,13 +53,17 @@ if (!useSupabase) {
     PRIMARY KEY (session_id, key)
   )`);
 
-  // Users table — supports password, OTP, and Google auth
+  // Users table — supports password auth and Google Sign-In
+  // google_sub stores the stable Google account identifier (never changes)
   db.exec(`CREATE TABLE IF NOT EXISTS users (
     id            TEXT PRIMARY KEY,
     email         TEXT NOT NULL UNIQUE,
     password_hash TEXT,
+    google_sub    TEXT UNIQUE,
     created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
+  // Add google_sub column to existing DBs that predate this migration
+  try { db.exec(`ALTER TABLE users ADD COLUMN google_sub TEXT UNIQUE`); } catch (_) {}
 }
 
 // ─── Supabase helpers ─────────────────────────────────────────────────────────
@@ -143,28 +147,68 @@ async function getUserByEmail(email) {
   return rows?.[0] ?? null;
 }
 
-async function createUser(email, passwordHash = null) {
+async function createUser(email, passwordHash = null, googleSub = null) {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const normalEmail = email.toLowerCase().trim();
   if (!useSupabase) {
-    db.prepare('INSERT INTO users (id, email, password_hash, created_at) VALUES (?,?,?,?)')
-      .run(id, normalEmail, passwordHash, now);
-    return { id, email: normalEmail, created_at: now };
+    db.prepare('INSERT INTO users (id, email, password_hash, google_sub, created_at) VALUES (?,?,?,?,?)')
+      .run(id, normalEmail, passwordHash, googleSub, now);
+    return { id, email: normalEmail, google_sub: googleSub, created_at: now };
   }
   await supabaseRequest('users', {
     method: 'POST',
     headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify({ id, email: normalEmail, password_hash: passwordHash, created_at: now })
+    body: JSON.stringify({ id, email: normalEmail, password_hash: passwordHash, google_sub: googleSub, created_at: now })
   });
-  return { id, email: normalEmail, created_at: now };
+  return { id, email: normalEmail, google_sub: googleSub, created_at: now };
 }
 
-// Find or create a user by email — used by OTP + Google flows
+// Look up user by Google sub (stable identifier — never changes even if email changes)
+async function getUserByGoogleSub(sub) {
+  if (!sub) return null;
+  if (!useSupabase) {
+    return db.prepare('SELECT id, email, google_sub, created_at FROM users WHERE google_sub = ?').get(sub) ?? null;
+  }
+  const q = new URLSearchParams({ select: 'id,email,google_sub,created_at', google_sub: `eq.${sub}`, limit: '1' });
+  const rows = await supabaseRequest(`users?${q.toString()}`);
+  return rows?.[0] ?? null;
+}
+
+// Find or create a user from a verified Google token payload.
+// Priority: (1) match by google_sub, (2) match by email and attach sub,
+// (3) create new user.  The same Google account always resolves to the same
+// application user — no duplicates.
+async function findOrCreateUserByGoogle(sub, email) {
+  // 1. Exact match by stable Google sub
+  let user = await getUserByGoogleSub(sub);
+  if (user) return user;
+
+  // 2. Existing user with same email (e.g. registered with password first)
+  //    Attach the google_sub so future logins go through path 1
+  user = await getUserByEmail(email);
+  if (user) {
+    if (!useSupabase) {
+      db.prepare('UPDATE users SET google_sub = ? WHERE id = ? AND google_sub IS NULL').run(sub, user.id);
+    } else {
+      await supabaseRequest(`users?id=eq.${user.id}&google_sub=is.null`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ google_sub: sub })
+      });
+    }
+    return { ...user, google_sub: sub };
+  }
+
+  // 3. New user — create with google_sub attached
+  return createUser(email, null, sub);
+}
+
+// Find or create a user by email — kept for password register flow
 async function findOrCreateUser(email) {
   const existing = await getUserByEmail(email);
   if (existing) return existing;
-  return createUser(email, null);
+  return createUser(email, null, null);
 }
 
 // ─── Auth middleware ───────────────────────────────────────────────────────────
@@ -260,8 +304,15 @@ app.get('/api/auth/me', async (req, res) => {
 });
 
 // ─── Google Sign-In ───────────────────────────────────────────────────────────
-// Verifies the credential JWT returned by Google Identity Services using
-// Google's tokeninfo endpoint (no library needed — one fetch call).
+// Full server-side verification of the Google ID token (credential) returned
+// by Google Identity Services.  Steps per Google's spec:
+//   1. Fetch Google's public tokeninfo endpoint to decode + verify the JWT
+//   2. Verify iss (issuer) is accounts.google.com or https://accounts.google.com
+//   3. Verify aud (audience) matches our GOOGLE_CLIENT_ID
+//   4. Verify exp (expiry) — token must not be expired
+//   5. Verify email_verified is true
+//   6. Use sub (stable Google account ID) as the primary identity key
+// We never trust email/sub values sent directly from the frontend.
 
 // POST /api/auth/google  { credential }
 app.post('/api/auth/google', async (req, res) => {
@@ -273,44 +324,99 @@ app.post('/api/auth/google', async (req, res) => {
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return res.status(503).json({ error: 'Google Sign-In is not configured on this server.', code: 'GOOGLE_NOT_CONFIGURED' });
+      return res.status(503).json({
+        error: 'Google Sign-In is not configured on this server. Set the GOOGLE_CLIENT_ID environment variable.',
+        code: 'GOOGLE_NOT_CONFIGURED'
+      });
     }
 
-    // Verify the JWT with Google's tokeninfo endpoint
+    // ── Step 1: Verify the ID token with Google's tokeninfo endpoint ──────────
+    // This endpoint decodes the JWT, checks its signature against Google's
+    // public keys, and returns the claims if valid.
     const verifyRes = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
+      { signal: AbortSignal.timeout(8000) }
     );
+
     if (!verifyRes.ok) {
-      return res.status(401).json({ error: 'Google credential verification failed.', code: 'GOOGLE_INVALID' });
+      console.warn('[Auth] Google tokeninfo rejected:', verifyRes.status);
+      return res.status(401).json({
+        error: 'Google credential verification failed. Please try signing in again.',
+        code: 'GOOGLE_INVALID'
+      });
     }
 
     const payload = await verifyRes.json();
 
-    // Validate the token is intended for our app
-    if (payload.aud !== clientId) {
-      return res.status(401).json({ error: 'Google credential is not valid for this application.', code: 'GOOGLE_WRONG_AUD' });
-    }
-    if (payload.email_verified !== 'true' && payload.email_verified !== true) {
-      return res.status(401).json({ error: 'Google account email is not verified.', code: 'GOOGLE_EMAIL_UNVERIFIED' });
+    // ── Step 2: Verify issuer ─────────────────────────────────────────────────
+    const validIssuers = ['accounts.google.com', 'https://accounts.google.com'];
+    if (!validIssuers.includes(payload.iss)) {
+      console.warn('[Auth] Google token invalid issuer:', payload.iss);
+      return res.status(401).json({ error: 'Invalid token issuer.', code: 'GOOGLE_INVALID_ISSUER' });
     }
 
+    // ── Step 3: Verify audience matches our client ID ─────────────────────────
+    // aud can be a string or array
+    const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    if (!audiences.includes(clientId)) {
+      console.warn('[Auth] Google token wrong audience:', payload.aud);
+      return res.status(401).json({
+        error: 'Google credential is not valid for this application.',
+        code: 'GOOGLE_WRONG_AUD'
+      });
+    }
+
+    // ── Step 4: Verify token expiry ───────────────────────────────────────────
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (payload.exp && Number(payload.exp) < nowSec) {
+      return res.status(401).json({
+        error: 'Google credential has expired. Please sign in again.',
+        code: 'GOOGLE_EXPIRED'
+      });
+    }
+
+    // ── Step 5: Require verified email ────────────────────────────────────────
+    if (payload.email_verified !== 'true' && payload.email_verified !== true) {
+      return res.status(401).json({
+        error: 'Your Google account email address is not verified.',
+        code: 'GOOGLE_EMAIL_UNVERIFIED'
+      });
+    }
+
+    // ── Step 6: Extract sub (stable identity) and email ───────────────────────
+    // sub is Google's permanent, stable identifier for this account.
+    // It never changes even if the user changes their email address.
+    const sub   = String(payload.sub || '').trim();
     const email = String(payload.email || '').toLowerCase().trim();
+
+    if (!sub) {
+      return res.status(401).json({ error: 'Could not retrieve identity from Google token.', code: 'GOOGLE_NO_SUB' });
+    }
     if (!email) {
       return res.status(401).json({ error: 'Could not retrieve email from Google account.', code: 'GOOGLE_NO_EMAIL' });
     }
 
+    // ── Find or create application user ───────────────────────────────────────
+    // Uses sub as primary key — same Google account always → same app user.
     const oldSessionId = readCookieUserId(req);
-    const user = await findOrCreateUser(email);
+    const user = await findOrCreateUserByGoogle(sub, email);
 
+    // Migrate any anonymous session data to this user (first-time sign-in)
     if (oldSessionId && oldSessionId !== user.id) {
       await migrateSessionData(oldSessionId, user.id);
     }
 
+    // ── Create application session ────────────────────────────────────────────
     setSessionCookie(res, user.id);
+    console.log(`[Auth] Google sign-in: user ${user.id.slice(0,8)}… (${user.email})`);
     return res.json({ ok: true, user: { id: user.id, email: user.email } });
+
   } catch (err) {
     console.error('Google sign-in failed:', err);
-    return res.status(500).json({ error: 'Google Sign-In failed. Please try again.', code: 'GOOGLE_FAILED' });
+    return res.status(500).json({
+      error: 'Google Sign-In failed. Please try again.',
+      code: 'GOOGLE_FAILED'
+    });
   }
 });
 

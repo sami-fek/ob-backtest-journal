@@ -4,353 +4,469 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OB Journal — Sign In</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Identity Services — must load before the page logic -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .ob-bg {
-      background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 40%, #f4f7fb 100%);
-      min-height: 100vh;
-    }
-    .glass-card {
-      background: rgba(255,255,255,0.88);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.65);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.8) inset;
-    }
-    .logo-mark {
-      width: 52px; height: 52px;
-      border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; font-weight: 800; color: #fff;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #eef2ff 0%, #e8f0fe 50%, #f4f7fb 100%);
+      color: #1e293b;
     }
 
-    /* ── Google button ── */
-    .btn-google {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      border-radius: 0.75rem;
-      border: 1.5px solid #dadce0;
-      cursor: pointer;
-      font-size: 0.9375rem;
-      font-weight: 500;
-      font-family: 'Inter', sans-serif;
-      color: #3c4043;
-      background: #fff;
+    body {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      min-height: 100vh;
+      padding: 16px;
     }
-    .btn-google:hover:not(:disabled) {
-      background: #f8f9fa;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-      border-color: #c6c9cd;
-    }
-    .btn-google:active:not(:disabled) { background: #f1f3f4; }
-    .btn-google:disabled { opacity: 0.55; cursor: not-allowed; }
 
-    /* ── Password fields ── */
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(99, 102, 241, 0.10), 0 2px 8px rgba(0,0,0,0.06);
+      padding: 36px 32px 32px;
+      animation: rise 0.3s ease;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Logo ── */
+    .logo-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 28px;
+      gap: 10px;
+    }
+    .logo-mark {
+      width: 54px; height: 54px;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: 800; color: #fff;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+    }
+    .logo-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #1e293b;
+      letter-spacing: -0.01em;
+    }
+    .logo-sub {
+      font-size: 0.8125rem;
+      color: #64748b;
+      margin-top: -4px;
+    }
+
+    /* ── Alerts ── */
+    .alert {
+      display: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      line-height: 1.45;
+      margin-bottom: 16px;
+    }
+    .alert.show { display: block; }
+    .alert-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .alert-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+
+    /* ── Google button container ── */
+    /* We let GIS render the official button inside this div.
+       Width is controlled by the data-width attribute on the div element. */
+    .google-btn-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 6px;
+    }
+    /* Override iframe sizing from GIS to fill our container */
+    .google-btn-wrap iframe {
+      width: 100% !important;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      text-align: center;
+      margin-bottom: 14px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      color: #cbd5e1; font-size: 0.8125rem;
+      margin: 20px 0;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: #e2e8f0;
+    }
+
+    /* ── Password form ── */
+    .pw-section { display: none; }
+    .pw-section.open { display: block; }
+
+    .field-label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #475569;
+      margin-bottom: 5px;
+    }
     .field {
       width: 100%;
-      padding: 0.65rem 0.9rem;
+      padding: 0.65rem 0.875rem;
       border: 1.5px solid #e2e8f0;
-      border-radius: 0.625rem;
+      border-radius: 10px;
       font-size: 0.9375rem;
       font-family: inherit;
       outline: none;
       transition: border-color 0.15s, box-shadow 0.15s;
       background: #fff;
       color: #1e293b;
+      margin-bottom: 12px;
     }
-    .field:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
-
-    .btn-primary {
+    .field:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+    .btn-pw {
       width: 100%;
-      padding: 0.7rem 1rem;
-      border-radius: 0.625rem;
+      padding: 0.7rem;
       border: none;
+      border-radius: 10px;
       cursor: pointer;
       font-size: 0.9375rem;
       font-weight: 600;
       font-family: inherit;
       color: #fff;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
       transition: opacity 0.15s, transform 0.1s;
+      margin-top: 4px;
     }
-    .btn-primary:hover:not(:disabled) { opacity: 0.91; transform: translateY(-1px); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-pw:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .btn-pw:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .divider {
-      display: flex; align-items: center; gap: 10px;
-      color: #94a3b8; font-size: 0.8125rem; margin: 20px 0;
+    /* ── Toggle links ── */
+    .toggle-row {
+      text-align: center;
+      margin-top: 14px;
     }
-    .divider::before, .divider::after {
-      content: ''; flex: 1; height: 1px; background: #e2e8f0;
-    }
-
-    .alert {
-      padding: 0.65rem 0.9rem;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      display: none; margin-bottom: 14px;
-    }
-    .alert.show { display: block; }
-    .alert-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-    .alert-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-
     .toggle-link {
-      color: #6366f1; cursor: pointer; font-size: 0.8125rem;
-      text-decoration: underline; text-underline-offset: 2px;
+      font-size: 0.8125rem;
+      color: #6366f1;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      background: none;
+      border: none;
+      font-family: inherit;
+    }
+    .toggle-link:hover { color: #4f46e5; }
+
+    /* ── Footer note ── */
+    .footer-note {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      text-align: center;
+      margin-top: 20px;
+      line-height: 1.5;
     }
 
-    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-    .card-animate { animation: fadeIn 0.28s ease; }
-
-    /* Loading spinner inside google button */
+    /* ── Spinner (loading state) ── */
+    .spinner-wrap {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      color: #64748b;
+      font-size: 0.875rem;
+    }
+    .spinner-wrap.show { display: flex; }
     .spinner {
       width: 18px; height: 18px;
-      border: 2px solid #dadce0;
+      border: 2px solid #e2e8f0;
       border-top-color: #6366f1;
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
-      flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 440px) {
+      .card { padding: 28px 20px 24px; }
+    }
   </style>
 </head>
-<body class="ob-bg flex items-center justify-center p-4">
+<body>
 
-<div class="w-full max-w-sm card-animate">
+<div class="card">
 
   <!-- Logo -->
-  <div class="flex flex-col items-center mb-7">
-    <div class="logo-mark mb-3 shadow-lg">OB</div>
-    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">OB Backtest Journal</h1>
-    <p class="text-slate-500 text-sm mt-1">Sign in to your trading journal</p>
+  <div class="logo-wrap">
+    <div class="logo-mark">OB</div>
+    <div>
+      <div class="logo-title">OB Backtest Journal</div>
+      <div class="logo-sub">Your private trading performance log</div>
+    </div>
   </div>
 
-  <!-- Card -->
-  <div class="glass-card rounded-2xl p-7">
+  <!-- Alerts -->
+  <div class="alert alert-error"   id="alertError"></div>
+  <div class="alert alert-success" id="alertSuccess"></div>
 
-    <div class="alert alert-error"   id="alertError"></div>
-    <div class="alert alert-success" id="alertSuccess"></div>
+  <!-- Google Sign-In / Sign-Up buttons (rendered by GIS) -->
+  <div id="googleSection">
+    <p class="section-label" id="googleLabel">Sign in or create an account</p>
 
-    <!-- ── Google Sign-In (primary) ── -->
-    <div id="googleSection">
-      <button class="btn-google" id="btnGoogle" onclick="startGoogleSignIn()">
-        <!-- Google logo SVG -->
-        <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-        </svg>
-        <span id="googleBtnText">Continue with Google</span>
-      </button>
+    <!-- GIS renders the official "Sign in with Google" button here -->
+    <div class="google-btn-wrap" id="gSignInBtn"></div>
 
-      <!-- Hidden div where GIS renders its own button as fallback -->
-      <div id="googleButtonFallback" style="display:none; margin-top:10px;"></div>
+    <!-- GIS renders the official "Sign up with Google" button here -->
+    <div class="google-btn-wrap" id="gSignUpBtn"></div>
+
+    <div class="spinner-wrap" id="googleSpinner">
+      <div class="spinner"></div>
+      <span>Verifying with Google…</span>
     </div>
-
-    <div class="divider">or</div>
-
-    <!-- ── Password (fallback) ── -->
-    <div id="passwordSection">
-      <p class="text-xs text-slate-400 text-center mb-4">Sign in with email and password</p>
-      <form onsubmit="handlePasswordLogin(event)" novalidate>
-        <label class="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
-        <input id="pwEmail" type="email" class="field mb-3"
-          placeholder="you@example.com" autocomplete="email" />
-        <label class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
-        <input id="pwPassword" type="password" class="field mb-5"
-          placeholder="••••••••" autocomplete="current-password" />
-        <button type="submit" class="btn-primary" id="btnPwLogin">Sign In</button>
-      </form>
-    </div>
-
-    <p class="text-xs text-center text-slate-400 mt-5">
-      New users are registered automatically on first Google sign-in.
-    </p>
-
   </div>
 
-  <p class="text-center text-xs text-slate-400 mt-4">
+  <!-- Divider -->
+  <div class="divider" id="divider">or</div>
+
+  <!-- Password fallback (collapsed by default, expand via link) -->
+  <div class="pw-section" id="pwSection">
+    <form onsubmit="handlePasswordLogin(event)" novalidate autocomplete="on">
+      <label class="field-label" for="pwEmail">Email</label>
+      <input id="pwEmail" type="email" class="field"
+        placeholder="you@example.com" autocomplete="email" />
+
+      <label class="field-label" for="pwPassword">Password</label>
+      <input id="pwPassword" type="password" class="field"
+        placeholder="••••••••" autocomplete="current-password" />
+
+      <button type="submit" class="btn-pw" id="btnPwLogin">Sign In</button>
+    </form>
+  </div>
+
+  <!-- Show/hide password form -->
+  <div class="toggle-row">
+    <button class="toggle-link" id="togglePwBtn" onclick="togglePassword()">
+      Sign in with email &amp; password instead
+    </button>
+  </div>
+
+  <p class="footer-note">
+    New users are registered automatically on first Google sign-in.<br>
     Your data is stored privately and never shared.
   </p>
 
 </div>
 
 <script>
-  function getRedirect() {
-    const p = new URLSearchParams(window.location.search).get('next');
-    return (p && p.startsWith('/') && !p.startsWith('//')) ? p : '/';
-  }
+'use strict';
 
-  function clearAlerts() {
-    ['alertError','alertSuccess'].forEach(id => {
-      const el = document.getElementById(id);
-      el.classList.remove('show'); el.textContent = '';
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function getRedirect() {
+  const p = new URLSearchParams(window.location.search).get('next');
+  return (p && p.startsWith('/') && !p.startsWith('//')) ? p : '/';
+}
+
+function showAlert(type, msg) {
+  clearAlerts();
+  const el = document.getElementById('alert' + type);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function clearAlerts() {
+  document.getElementById('alertError').classList.remove('show');
+  document.getElementById('alertSuccess').classList.remove('show');
+}
+
+function setGoogleLoading(loading) {
+  document.getElementById('googleSection').style.opacity = loading ? '0.6' : '1';
+  document.getElementById('googleSection').style.pointerEvents = loading ? 'none' : '';
+  document.getElementById('googleSpinner').classList.toggle('show', loading);
+  document.getElementById('gSignInBtn').style.visibility = loading ? 'hidden' : '';
+  document.getElementById('gSignUpBtn').style.visibility = loading ? 'hidden' : '';
+}
+
+// ── Password section toggle ────────────────────────────────────────────────────
+function togglePassword() {
+  const section = document.getElementById('pwSection');
+  const btn     = document.getElementById('togglePwBtn');
+  const open    = section.classList.toggle('open');
+  btn.textContent = open
+    ? 'Hide email & password sign-in'
+    : 'Sign in with email & password instead';
+  if (open) document.getElementById('pwEmail').focus();
+}
+
+// ── Google credential callback ─────────────────────────────────────────────────
+// Called by GIS after the user completes Google authentication.
+// The credential is a signed JWT — we send it to our backend for verification.
+// We NEVER read the JWT payload here; the server does all verification.
+async function handleGoogleCredential(response) {
+  clearAlerts();
+  setGoogleLoading(true);
+
+  try {
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: response.credential })
     });
+
+    const body = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      showAlert('Success', 'Signed in! Taking you to your journal…');
+      // Small delay so the user sees the confirmation
+      setTimeout(() => { window.location.replace(getRedirect()); }, 700);
+    } else {
+      setGoogleLoading(false);
+      showAlert('Error', body.error || 'Google Sign-In failed. Please try again.');
+    }
+  } catch {
+    setGoogleLoading(false);
+    showAlert('Error', 'Network error. Please check your connection and try again.');
   }
-  function showError(msg)   { clearAlerts(); const el = document.getElementById('alertError');   el.textContent = msg; el.classList.add('show'); }
-  function showSuccess(msg) { clearAlerts(); const el = document.getElementById('alertSuccess'); el.textContent = msg; el.classList.add('show'); }
+}
 
-  // ── Google Sign-In ──────────────────────────────────────────────────────────
-  function startGoogleSignIn() {
-    clearAlerts();
-    const btn = document.getElementById('btnGoogle');
+// ── Password login ─────────────────────────────────────────────────────────────
+async function handlePasswordLogin(e) {
+  e.preventDefault();
+  clearAlerts();
 
-    // Check GIS loaded
-    if (typeof google === 'undefined' || !google?.accounts?.id) {
-      showError('Google Sign-In is not available. Please use email/password below.');
-      return;
-    }
+  const email    = document.getElementById('pwEmail').value.trim();
+  const password = document.getElementById('pwPassword').value;
+  if (!email || !password) {
+    showAlert('Error', 'Please enter your email and password.');
+    return;
+  }
 
-    const clientIdMeta = document.querySelector('meta[name="google-client-id"]');
-    if (!clientIdMeta?.content) {
-      showError('Google Sign-In is not configured on this server. Use email/password below.');
-      return;
-    }
+  const btn = document.getElementById('btnPwLogin');
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
 
-    // Show loading state
-    btn.disabled = true;
-    btn.innerHTML = '<div class="spinner"></div><span>Connecting to Google…</span>';
-
-    google.accounts.id.initialize({
-      client_id: clientIdMeta.content,
-      callback: handleGoogleCredential,
-      context: 'signin',
-      ux_mode: 'popup'
+  try {
+    const res  = await fetch('/api/auth/login', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
     });
+    const body = await res.json().catch(() => ({}));
 
-    // Try one-tap first, fall back to popup button
-    google.accounts.id.prompt(notification => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        // One-tap not available — render Google's own button
-        btn.style.display = 'none';
-        const fallback = document.getElementById('googleButtonFallback');
-        fallback.style.display = 'block';
-        google.accounts.id.renderButton(fallback, {
-          theme: 'outline',
-          size: 'large',
-          width: 320,
-          text: 'signin_with'
-        });
-      } else {
-        // Reset button while one-tap prompt is showing
-        btn.disabled = false;
-        btn.innerHTML = `
-          <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-          </svg>
-          <span>Continue with Google</span>`;
-      }
-    });
-  }
-
-  async function handleGoogleCredential(response) {
-    clearAlerts();
-    try {
-      const res  = await fetch('/api/auth/google', {
-        method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: response.credential })
-      });
-      const body = await res.json().catch(() => ({}));
-      if (res.ok) {
-        showSuccess('Signed in! Redirecting…');
-        setTimeout(() => { window.location.href = getRedirect(); }, 600);
-      } else {
-        showError(body.error || 'Google Sign-In failed. Please try again.');
-        resetGoogleButton();
-      }
-    } catch {
-      showError('Network error. Please try again.');
-      resetGoogleButton();
+    if (res.ok) {
+      showAlert('Success', 'Signed in! Taking you to your journal…');
+      setTimeout(() => { window.location.replace(getRedirect()); }, 700);
+    } else {
+      showAlert('Error', body.error || 'Incorrect email or password.');
+      document.getElementById('pwPassword').value = '';
     }
-  }
-
-  function resetGoogleButton() {
-    const btn = document.getElementById('btnGoogle');
+  } catch {
+    showAlert('Error', 'Network error. Please try again.');
+  } finally {
     btn.disabled = false;
-    btn.style.display = '';
-    btn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-      </svg>
-      <span>Continue with Google</span>`;
-    document.getElementById('googleButtonFallback').style.display = 'none';
+    btn.textContent = 'Sign In';
   }
+}
 
-  // ── Password login ──────────────────────────────────────────────────────────
-  async function handlePasswordLogin(e) {
-    e.preventDefault();
-    clearAlerts();
-    const email    = document.getElementById('pwEmail').value.trim();
-    const password = document.getElementById('pwPassword').value;
-    if (!email || !password) { showError('Please enter your email and password.'); return; }
-
-    const btn = document.getElementById('btnPwLogin');
-    btn.disabled = true; btn.textContent = 'Signing in…';
-    try {
-      const res  = await fetch('/api/auth/login', {
-        method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const body = await res.json().catch(() => ({}));
-      if (res.ok) {
-        showSuccess('Signed in! Redirecting…');
-        setTimeout(() => { window.location.href = getRedirect(); }, 600);
-      } else {
-        showError(body.error || 'Incorrect email or password.');
-        document.getElementById('pwPassword').value = '';
-      }
-    } catch {
-      showError('Network error. Please try again.');
-    } finally {
-      btn.disabled = false; btn.textContent = 'Sign In';
-    }
-  }
-
-  // ── Init: auto-trigger Google one-tap if client ID is present ──────────────
-  window.addEventListener('load', () => {
-    const clientIdMeta = document.querySelector('meta[name="google-client-id"]');
-    if (!clientIdMeta?.content) {
-      // No Google client ID — hide Google section, show only password
-      document.getElementById('googleSection').style.display = 'none';
-      document.querySelector('.divider').style.display = 'none';
-      document.querySelector('#passwordSection .text-xs').style.display = 'none';
-      return;
-    }
-    // Auto-initialize GIS so one-tap can appear immediately
-    if (typeof google !== 'undefined' && google?.accounts?.id) {
-      google.accounts.id.initialize({
-        client_id: clientIdMeta.content,
-        callback: handleGoogleCredential,
-        context: 'signin',
-        ux_mode: 'popup'
-      });
-      google.accounts.id.prompt();
-    }
+// ── GIS initialisation ─────────────────────────────────────────────────────────
+// Runs once GIS library and DOM are both ready.
+function initGoogleSignIn(clientId) {
+  // Initialise the GIS client — one call covers both buttons
+  google.accounts.id.initialize({
+    client_id:              clientId,
+    callback:               handleGoogleCredential,
+    context:                'signin',
+    ux_mode:                'popup',
+    auto_select:            false,   // don't auto-sign-in silently
+    cancel_on_tap_outside:  true
   });
+
+  // Render "Sign in with Google" button
+  google.accounts.id.renderButton(
+    document.getElementById('gSignInBtn'),
+    {
+      type:   'standard',
+      theme:  'outline',
+      size:   'large',
+      text:   'signin_with',   // "Sign in with Google"
+      shape:  'rectangular',
+      logo_alignment: 'left',
+      width:  336
+    }
+  );
+
+  // Render "Sign up with Google" button
+  google.accounts.id.renderButton(
+    document.getElementById('gSignUpBtn'),
+    {
+      type:   'standard',
+      theme:  'filled_blue',
+      size:   'large',
+      text:   'signup_with',   // "Sign up with Google"
+      shape:  'rectangular',
+      logo_alignment: 'left',
+      width:  336
+    }
+  );
+
+  // Show one-tap prompt if the user has a Google session in the browser
+  google.accounts.id.prompt();
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+// We wait for window.load so the GIS script (loaded async) has time to attach
+// google.accounts.id to the global scope.
+window.addEventListener('load', () => {
+  const meta = document.querySelector('meta[name="google-client-id"]');
+
+  if (!meta?.content) {
+    // GOOGLE_CLIENT_ID not configured — hide Google section, show only password
+    document.getElementById('googleSection').style.display = 'none';
+    document.getElementById('divider').style.display       = 'none';
+    document.getElementById('togglePwBtn').style.display   = 'none';
+    document.getElementById('googleLabel').style.display   = 'none';
+    // Open password section automatically
+    document.getElementById('pwSection').classList.add('open');
+    document.getElementById('pwEmail').focus();
+    return;
+  }
+
+  if (typeof google === 'undefined' || !google?.accounts?.id) {
+    // GIS script failed to load (ad blocker, network issue)
+    showAlert('Error',
+      'Google Sign-In could not load. If you have an ad blocker, try disabling it, or use email & password below.');
+    document.getElementById('pwSection').classList.add('open');
+    return;
+  }
+
+  initGoogleSignIn(meta.content);
+});
 </script>
 </body>
 </html>

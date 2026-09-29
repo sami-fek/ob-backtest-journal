@@ -13,8 +13,12 @@ create table if not exists public.users (
   id            text        primary key,
   email         text        not null unique,
   password_hash text,
+  google_sub    text        unique,
   created_at    timestamptz not null default now()
 );
+-- Migration for existing deployments: add google_sub if not present
+-- Run this manually in Supabase SQL editor if the table already exists:
+-- ALTER TABLE public.users ADD COLUMN IF NOT EXISTS google_sub text unique;
 create index if not exists users_email_idx on public.users (email);
 alter table public.users enable row level security;
 -- Service role bypasses RLS; no anonymous access policy is needed.
