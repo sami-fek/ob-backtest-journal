@@ -495,7 +495,7 @@
                 const lastSync = a.syncedAt ? `Last sync: ${fmtDate(a.syncedAt)}` : a.lastSyncAt ? `Linked: ${fmtDate(a.lastSyncAt)}` : '';
                 const balStr = a.balance != null ? fmtMoney(a.balance, a.currency) : '';
                 const posStr = a.positionCount != null ? `${a.positionCount} open position${a.positionCount !== 1 ? 's' : ''}` : '';
-
+              
                 return `<div class="mt5-account-row">
                   <span class="mt5-dot ${statusDot}"></span>
                   <span class="mt5-acc-name">${esc(a.accountName)}</span>

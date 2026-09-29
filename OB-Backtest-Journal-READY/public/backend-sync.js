@@ -55,9 +55,12 @@
   };
 
   // ---- Load order ----
+  // 0. auth-check.js loads IMMEDIATELY — redirects to /auth.html if the user
+  //    is not authenticated. It is async/non-blocking so it won't delay reveal.
   // 1. ui-stability-fix.js runs FIRST and alone, so it can install its
   //    switchTab/switchMode wrappers before anything else touches them.
   // 2. Everything else loads in PARALLEL (no onload chaining).
+  inject('/auth-check.js');
   const FIRST = '/ui-stability-fix.js';
   const REST = [
     '/ui-rules.js',
