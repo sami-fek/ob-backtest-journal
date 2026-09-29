@@ -25,6 +25,42 @@
       border: 1px solid rgba(255,255,255,0.65);
       box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.8) inset;
     }
+    .logo-mark {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; font-weight: 800; color: #fff;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    }
+
+    /* ── Google button ── */
+    .btn-google {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      border: 1.5px solid #dadce0;
+      cursor: pointer;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      color: #3c4043;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .btn-google:hover:not(:disabled) {
+      background: #f8f9fa;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      border-color: #c6c9cd;
+    }
+    .btn-google:active:not(:disabled) { background: #f1f3f4; }
+    .btn-google:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* ── Password fields ── */
     .field {
       width: 100%;
       padding: 0.65rem 0.9rem;
@@ -39,23 +75,6 @@
     }
     .field:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
 
-    /* OTP digit boxes */
-    .otp-box {
-      width: 46px; height: 56px;
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: 700;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 0.625rem;
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      background: #fff;
-      color: #6366f1;
-      caret-color: #6366f1;
-    }
-    .otp-box:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
-    .otp-box.filled { border-color: #6366f1; background: #f5f3ff; }
-
     .btn-primary {
       width: 100%;
       padding: 0.7rem 1rem;
@@ -68,89 +87,46 @@
       color: #fff;
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
       transition: opacity 0.15s, transform 0.1s;
-      letter-spacing: 0.01em;
     }
     .btn-primary:hover:not(:disabled) { opacity: 0.91; transform: translateY(-1px); }
-    .btn-primary:active:not(:disabled) { transform: translateY(0); }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .btn-google {
-      width: 100%;
-      padding: 0.65rem 1rem;
-      border-radius: 0.625rem;
-      border: 1.5px solid #e2e8f0;
-      cursor: pointer;
-      font-size: 0.9375rem;
-      font-weight: 500;
-      font-family: inherit;
-      color: #334155;
-      background: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      transition: background 0.15s, border-color 0.15s, transform 0.1s;
-    }
-    .btn-google:hover:not(:disabled) { background: #f8fafc; border-color: #cbd5e1; transform: translateY(-1px); }
-    .btn-google:disabled { opacity: 0.5; cursor: not-allowed; }
-
     .divider {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: #94a3b8;
-      font-size: 0.8125rem;
-      margin: 18px 0;
+      display: flex; align-items: center; gap: 10px;
+      color: #94a3b8; font-size: 0.8125rem; margin: 20px 0;
     }
     .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: #e2e8f0;
+      content: ''; flex: 1; height: 1px; background: #e2e8f0;
     }
 
     .alert {
       padding: 0.65rem 0.9rem;
       border-radius: 0.5rem;
       font-size: 0.875rem;
-      display: none;
-      margin-bottom: 16px;
+      display: none; margin-bottom: 14px;
     }
     .alert.show { display: block; }
     .alert-error   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
     .alert-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-    .alert-info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 
-    .step { display: none; }
-    .step.active { display: block; }
-
-    .logo-mark {
-      width: 50px; height: 50px;
-      border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.375rem;
-      font-weight: 800;
-      color: #fff;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    .toggle-link {
+      color: #6366f1; cursor: pointer; font-size: 0.8125rem;
+      text-decoration: underline; text-underline-offset: 2px;
     }
-
-    .tab-btn {
-      flex: 1; padding: 0.5rem;
-      border: none; background: transparent;
-      border-radius: 0.5rem;
-      font-size: 0.875rem; font-weight: 500;
-      cursor: pointer; font-family: inherit; color: #64748b;
-      transition: background 0.15s, color 0.15s;
-    }
-    .tab-btn.active { background: #fff; color: #6366f1; box-shadow: 0 1px 4px rgba(0,0,0,0.10); }
-
-    .resend-timer { font-size: 0.8125rem; color: #94a3b8; text-align: center; margin-top: 10px; }
-    .resend-link  { color: #6366f1; cursor: pointer; text-decoration: underline; }
 
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .card-animate { animation: fadeIn 0.28s ease; }
-    @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
-    .shake { animation: shake 0.35s ease; }
+
+    /* Loading spinner inside google button */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid #dadce0;
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="ob-bg flex items-center justify-center p-4">
@@ -159,427 +135,222 @@
 
   <!-- Logo -->
   <div class="flex flex-col items-center mb-7">
-    <div class="logo-mark mb-3 shadow-lg"></div>
+    <div class="logo-mark mb-3 shadow-lg">OB</div>
     <h1 class="text-2xl font-bold text-slate-800 tracking-tight">OB Backtest Journal</h1>
-    <p class="text-slate-500 text-sm mt-1">Your private trading performance log</p>
+    <p class="text-slate-500 text-sm mt-1">Sign in to your trading journal</p>
   </div>
 
   <!-- Card -->
   <div class="glass-card rounded-2xl p-7">
 
-    <!-- Tabs -->
-    <div class="flex bg-slate-100 rounded-xl p-1 mb-5" id="tabBar">
-      <button class="tab-btn active" id="tabOtp"      onclick="setTab('otp')">Magic Link</button>
-      <button class="tab-btn"        id="tabPassword" onclick="setTab('password')">Password</button>
-    </div>
-
-    <!-- Alert -->
     <div class="alert alert-error"   id="alertError"></div>
     <div class="alert alert-success" id="alertSuccess"></div>
-    <div class="alert alert-info"    id="alertInfo"></div>
 
-    <!-- ══ OTP TAB ══════════════════════════════════════════════════════════ -->
-    <div id="tabContentOtp">
+    <!-- ── Google Sign-In (primary) ── -->
+    <div id="googleSection">
+      <button class="btn-google" id="btnGoogle" onclick="startGoogleSignIn()">
+        <!-- Google logo SVG -->
+        <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        <span id="googleBtnText">Continue with Google</span>
+      </button>
 
-      <!-- STEP 1: enter email -->
-      <div class="step active" id="stepEmail">
-        <p class="text-sm text-slate-500 mb-4 leading-relaxed">
-          Enter your email and we'll send you a 6-digit sign-in code. No password needed.
-        </p>
-        <form onsubmit="handleSendCode(event)" novalidate>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Email address</label>
-          <input id="otpEmail" type="email" class="field mb-4"
-            placeholder="you@example.com" autocomplete="email" required />
-          <button type="submit" class="btn-primary" id="btnSendCode">Send Code</button>
-        </form>
-
-        <div class="divider">or</div>
-
-        <!-- Google Sign-In button -->
-        <button class="btn-google" id="btnGoogle" onclick="handleGoogleClick()">
-          <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            <path fill="none" d="M0 0h48v48H0z"/>
-          </svg>
-          Continue with Google
-        </button>
-
-        <p class="text-xs text-slate-400 text-center mt-4">
-          New users are registered automatically on first sign-in.
-        </p>
-      </div>
-
-      <!-- STEP 2: enter OTP code -->
-      <div class="step" id="stepCode">
-        <div class="text-center mb-5">
-          <p class="text-sm text-slate-600">We sent a 6-digit code to</p>
-          <p class="font-semibold text-slate-800 mt-1" id="codeEmailDisplay"></p>
-        </div>
-        <form onsubmit="handleVerifyCode(event)" novalidate>
-          <!-- 6 individual digit boxes -->
-          <div class="flex justify-center gap-2 mb-5" id="otpBoxes">
-            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="0" />
-            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="1" />
-            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="2" />
-            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="3" />
-            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="4" />
-            <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-idx="5" />
-          </div>
-          <button type="submit" class="btn-primary" id="btnVerify" disabled>Verify Code</button>
-        </form>
-        <div class="resend-timer mt-3" id="resendArea">
-          Resend in <span id="resendCountdown">60</span>s
-        </div>
-        <p class="text-xs text-center mt-3">
-          <span class="resend-link" onclick="goBackToEmail()">← Use a different email</span>
-        </p>
-      </div>
-
+      <!-- Hidden div where GIS renders its own button as fallback -->
+      <div id="googleButtonFallback" style="display:none; margin-top:10px;"></div>
     </div>
 
-    <!-- ══ PASSWORD TAB ══════════════════════════════════════════════════════ -->
-    <div id="tabContentPassword" class="hidden">
+    <div class="divider">or</div>
 
-      <!-- Login -->
-      <div class="step active" id="stepLogin">
-        <form onsubmit="handleLogin(event)" novalidate>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
-          <input id="loginEmail" type="email" class="field mb-3"
-            placeholder="you@example.com" autocomplete="email" required />
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
-          <input id="loginPassword" type="password" class="field mb-5"
-            placeholder="••••••••" autocomplete="current-password" required />
-          <button type="submit" class="btn-primary" id="btnLogin">Sign In</button>
-        </form>
-        <p class="text-xs text-center text-slate-400 mt-3">
-          No account? <span class="resend-link" onclick="setTab('otp')">Use magic code instead</span>
-        </p>
-      </div>
-
+    <!-- ── Password (fallback) ── -->
+    <div id="passwordSection">
+      <p class="text-xs text-slate-400 text-center mb-4">Sign in with email and password</p>
+      <form onsubmit="handlePasswordLogin(event)" novalidate>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+        <input id="pwEmail" type="email" class="field mb-3"
+          placeholder="you@example.com" autocomplete="email" />
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+        <input id="pwPassword" type="password" class="field mb-5"
+          placeholder="••••••••" autocomplete="current-password" />
+        <button type="submit" class="btn-primary" id="btnPwLogin">Sign In</button>
+      </form>
     </div>
+
+    <p class="text-xs text-center text-slate-400 mt-5">
+      New users are registered automatically on first Google sign-in.
+    </p>
 
   </div>
 
-  <p class="text-center text-xs text-slate-400 mt-5">
+  <p class="text-center text-xs text-slate-400 mt-4">
     Your data is stored privately and never shared.
   </p>
+
 </div>
 
 <script>
-// ── State ──────────────────────────────────────────────────────────────────────
-let currentTab    = 'otp';
-let currentEmail  = '';
-let resendTimer   = null;
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-function clearAlerts() {
-  ['alertError','alertSuccess','alertInfo'].forEach(id => {
-    const el = document.getElementById(id);
-    el.classList.remove('show'); el.textContent = '';
-  });
-}
-function showAlert(type, msg) {
-  clearAlerts();
-  const el = document.getElementById('alert' + type);
-  el.textContent = msg; el.classList.add('show');
-}
-function setBtn(id, loading, labels) {
-  const btn = document.getElementById(id);
-  if (!btn) return;
-  btn.disabled = loading;
-  btn.textContent = loading ? labels[1] : labels[0];
-}
-function getRedirect() {
-  const p = new URLSearchParams(window.location.search).get('next');
-  return (p && p.startsWith('/') && !p.startsWith('//')) ? p : '/';
-}
-
-// ── Tab switching ──────────────────────────────────────────────────────────────
-function setTab(tab) {
-  currentTab = tab;
-  document.getElementById('tabContentOtp').classList.toggle('hidden', tab !== 'otp');
-  document.getElementById('tabContentPassword').classList.toggle('hidden', tab !== 'password');
-  document.getElementById('tabOtp').classList.toggle('active', tab === 'otp');
-  document.getElementById('tabPassword').classList.toggle('active', tab !== 'otp');
-  clearAlerts();
-}
-
-// ── OTP — Step 1: send code ────────────────────────────────────────────────────
-async function handleSendCode(e) {
-  e.preventDefault();
-  clearAlerts();
-  const email = document.getElementById('otpEmail').value.trim();
-  if (!email || !email.includes('@')) { showAlert('Error', 'Please enter a valid email address.'); return; }
-
-  setBtn('btnSendCode', true, ['Send Code', 'Sending…']);
-  try {
-    const res  = await fetch('/api/auth/send-code', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) { showAlert('Error', body.error || 'Failed to send code.'); return; }
-
-    currentEmail = email;
-    document.getElementById('codeEmailDisplay').textContent = email;
-    showStep('stepCode');
-    startResendTimer();
-    focusFirstOtpBox();
-  } catch {
-    showAlert('Error', 'Network error. Please try again.');
-  } finally {
-    setBtn('btnSendCode', false, ['Send Code', 'Sending…']);
+  function getRedirect() {
+    const p = new URLSearchParams(window.location.search).get('next');
+    return (p && p.startsWith('/') && !p.startsWith('//')) ? p : '/';
   }
-}
 
-// ── OTP — Step 2: verify code ──────────────────────────────────────────────────
-async function handleVerifyCode(e) {
-  e.preventDefault();
-  clearAlerts();
-  const code = getOtpValue();
-  if (code.length !== 6) { showAlert('Error', 'Please enter the full 6-digit code.'); return; }
-
-  setBtn('btnVerify', true, ['Verify Code', 'Verifying…']);
-  try {
-    const res  = await fetch('/api/auth/verify-code', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: currentEmail, code })
+  function clearAlerts() {
+    ['alertError','alertSuccess'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('show'); el.textContent = '';
     });
-    const body = await res.json().catch(() => ({}));
-    if (res.ok) {
-      showAlert('Success', 'Verified! Signing you in…');
-      setTimeout(() => { window.location.href = getRedirect(); }, 700);
-    } else {
-      shakeOtpBoxes();
-      clearOtpBoxes();
-      showAlert('Error', body.error || 'Incorrect code. Please try again.');
-      focusFirstOtpBox();
+  }
+  function showError(msg)   { clearAlerts(); const el = document.getElementById('alertError');   el.textContent = msg; el.classList.add('show'); }
+  function showSuccess(msg) { clearAlerts(); const el = document.getElementById('alertSuccess'); el.textContent = msg; el.classList.add('show'); }
+
+  // ── Google Sign-In ──────────────────────────────────────────────────────────
+  function startGoogleSignIn() {
+    clearAlerts();
+    const btn = document.getElementById('btnGoogle');
+
+    // Check GIS loaded
+    if (typeof google === 'undefined' || !google?.accounts?.id) {
+      showError('Google Sign-In is not available. Please use email/password below.');
+      return;
     }
-  } catch {
-    showAlert('Error', 'Network error. Please try again.');
-  } finally {
-    setBtn('btnVerify', false, ['Verify Code', 'Verifying…']);
-  }
-}
 
-// ── OTP box helpers ────────────────────────────────────────────────────────────
-function getOtpBoxes() { return [...document.querySelectorAll('.otp-box')]; }
+    const clientIdMeta = document.querySelector('meta[name="google-client-id"]');
+    if (!clientIdMeta?.content) {
+      showError('Google Sign-In is not configured on this server. Use email/password below.');
+      return;
+    }
 
-function getOtpValue() { return getOtpBoxes().map(b => b.value).join(''); }
+    // Show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div><span>Connecting to Google…</span>';
 
-function focusFirstOtpBox() {
-  const boxes = getOtpBoxes();
-  (boxes.find(b => !b.value) || boxes[0]).focus();
-}
+    google.accounts.id.initialize({
+      client_id: clientIdMeta.content,
+      callback: handleGoogleCredential,
+      context: 'signin',
+      ux_mode: 'popup'
+    });
 
-function clearOtpBoxes() {
-  getOtpBoxes().forEach(b => { b.value = ''; b.classList.remove('filled'); });
-  document.getElementById('btnVerify').disabled = true;
-}
-
-function shakeOtpBoxes() {
-  const container = document.getElementById('otpBoxes');
-  container.classList.remove('shake');
-  void container.offsetWidth; // reflow
-  container.classList.add('shake');
-}
-
-function updateVerifyBtn() {
-  document.getElementById('btnVerify').disabled = getOtpValue().length !== 6;
-}
-
-// Wire up OTP box keyboard behaviour
-document.addEventListener('DOMContentLoaded', () => {
-  const boxes = getOtpBoxes();
-  boxes.forEach((box, i) => {
-    box.addEventListener('input', e => {
-      // Accept only digits; handle paste
-      const val = e.target.value.replace(/\D/g, '');
-      if (val.length > 1) {
-        // Handle paste of full code
-        val.split('').slice(0, 6).forEach((ch, j) => {
-          if (boxes[j]) { boxes[j].value = ch; boxes[j].classList.add('filled'); }
+    // Try one-tap first, fall back to popup button
+    google.accounts.id.prompt(notification => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        // One-tap not available — render Google's own button
+        btn.style.display = 'none';
+        const fallback = document.getElementById('googleButtonFallback');
+        fallback.style.display = 'block';
+        google.accounts.id.renderButton(fallback, {
+          theme: 'outline',
+          size: 'large',
+          width: 320,
+          text: 'signin_with'
         });
-        boxes[Math.min(val.length, 5)].focus();
       } else {
-        box.value = val;
-        box.classList.toggle('filled', val !== '');
-        if (val && i < 5) boxes[i + 1].focus();
+        // Reset button while one-tap prompt is showing
+        btn.disabled = false;
+        btn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          <span>Continue with Google</span>`;
       }
-      updateVerifyBtn();
     });
-    box.addEventListener('keydown', e => {
-      if (e.key === 'Backspace' && !box.value && i > 0) {
-        boxes[i - 1].value = '';
-        boxes[i - 1].classList.remove('filled');
-        boxes[i - 1].focus();
-        updateVerifyBtn();
+  }
+
+  async function handleGoogleCredential(response) {
+    clearAlerts();
+    try {
+      const res  = await fetch('/api/auth/google', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showSuccess('Signed in! Redirecting…');
+        setTimeout(() => { window.location.href = getRedirect(); }, 600);
+      } else {
+        showError(body.error || 'Google Sign-In failed. Please try again.');
+        resetGoogleButton();
       }
-      if (e.key === 'ArrowLeft'  && i > 0) boxes[i - 1].focus();
-      if (e.key === 'ArrowRight' && i < 5) boxes[i + 1].focus();
-    });
-    // Allow clicking any box and placing cursor correctly
-    box.addEventListener('focus', () => box.select());
-  });
-
-  // Auto-detect Google Client ID from meta tag (set by server if configured)
-  const clientIdMeta = document.querySelector('meta[name="google-client-id"]');
-  if (!clientIdMeta) {
-    // Hide Google button if no client ID configured
-    const gBtn = document.getElementById('btnGoogle');
-    if (gBtn) gBtn.style.display = 'none';
-    const div = document.querySelector('.divider');
-    if (div) div.style.display = 'none';
-  }
-});
-
-// ── Resend timer ───────────────────────────────────────────────────────────────
-function startResendTimer(seconds = 60) {
-  const area = document.getElementById('resendArea');
-  const countdown = document.getElementById('resendCountdown');
-  area.innerHTML = 'Resend in <span id="resendCountdown">' + seconds + '</span>s';
-  let remaining = seconds;
-  clearInterval(resendTimer);
-  resendTimer = setInterval(() => {
-    remaining--;
-    const cd = document.getElementById('resendCountdown');
-    if (cd) cd.textContent = remaining;
-    if (remaining <= 0) {
-      clearInterval(resendTimer);
-      area.innerHTML = '<span class="resend-link" onclick="handleResend()">Resend code</span>';
+    } catch {
+      showError('Network error. Please try again.');
+      resetGoogleButton();
     }
-  }, 1000);
-}
+  }
 
-async function handleResend() {
-  clearAlerts();
-  const area = document.getElementById('resendArea');
-  area.textContent = 'Sending…';
-  try {
-    const res  = await fetch('/api/auth/send-code', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: currentEmail })
-    });
-    const body = await res.json().catch(() => ({}));
-    if (res.ok) {
-      clearOtpBoxes();
-      showAlert('Info', 'A new code has been sent.');
-      startResendTimer();
-      focusFirstOtpBox();
-    } else {
-      showAlert('Error', body.error || 'Failed to resend code.');
-      area.innerHTML = '<span class="resend-link" onclick="handleResend()">Retry</span>';
+  function resetGoogleButton() {
+    const btn = document.getElementById('btnGoogle');
+    btn.disabled = false;
+    btn.style.display = '';
+    btn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      <span>Continue with Google</span>`;
+    document.getElementById('googleButtonFallback').style.display = 'none';
+  }
+
+  // ── Password login ──────────────────────────────────────────────────────────
+  async function handlePasswordLogin(e) {
+    e.preventDefault();
+    clearAlerts();
+    const email    = document.getElementById('pwEmail').value.trim();
+    const password = document.getElementById('pwPassword').value;
+    if (!email || !password) { showError('Please enter your email and password.'); return; }
+
+    const btn = document.getElementById('btnPwLogin');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    try {
+      const res  = await fetch('/api/auth/login', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showSuccess('Signed in! Redirecting…');
+        setTimeout(() => { window.location.href = getRedirect(); }, 600);
+      } else {
+        showError(body.error || 'Incorrect email or password.');
+        document.getElementById('pwPassword').value = '';
+      }
+    } catch {
+      showError('Network error. Please try again.');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Sign In';
     }
-  } catch {
-    showAlert('Error', 'Network error. Please try again.');
-    area.innerHTML = '<span class="resend-link" onclick="handleResend()">Retry</span>';
   }
-}
 
-function goBackToEmail() {
-  clearInterval(resendTimer);
-  clearAlerts();
-  clearOtpBoxes();
-  showStep('stepEmail');
-}
-
-// ── Step helper ────────────────────────────────────────────────────────────────
-function showStep(stepId) {
-  document.querySelectorAll('#tabContentOtp .step').forEach(s => s.classList.remove('active'));
-  document.getElementById(stepId).classList.add('active');
-}
-
-// ── Password login (fallback tab) ──────────────────────────────────────────────
-async function handleLogin(e) {
-  e.preventDefault();
-  clearAlerts();
-  const email    = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  if (!email || !password) { showAlert('Error', 'Please enter your email and password.'); return; }
-  setBtn('btnLogin', true, ['Sign In', 'Signing in…']);
-  try {
-    const res  = await fetch('/api/auth/login', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const body = await res.json().catch(() => ({}));
-    if (res.ok) {
-      window.location.href = getRedirect();
-    } else {
-      showAlert('Error', body.error || 'Incorrect email or password.');
-      document.getElementById('loginPassword').value = '';
+  // ── Init: auto-trigger Google one-tap if client ID is present ──────────────
+  window.addEventListener('load', () => {
+    const clientIdMeta = document.querySelector('meta[name="google-client-id"]');
+    if (!clientIdMeta?.content) {
+      // No Google client ID — hide Google section, show only password
+      document.getElementById('googleSection').style.display = 'none';
+      document.querySelector('.divider').style.display = 'none';
+      document.querySelector('#passwordSection .text-xs').style.display = 'none';
+      return;
     }
-  } catch {
-    showAlert('Error', 'Network error. Please try again.');
-  } finally {
-    setBtn('btnLogin', false, ['Sign In', 'Signing in…']);
-  }
-}
-
-// ── Google Sign-In ─────────────────────────────────────────────────────────────
-function handleGoogleClick() {
-  // Check if GIS library loaded
-  if (typeof google === 'undefined' || !google?.accounts?.id) {
-    showAlert('Error', 'Google Sign-In is not available. Please use the magic code option.');
-    return;
-  }
-  const clientIdMeta = document.querySelector('meta[name="google-client-id"]');
-  if (!clientIdMeta) {
-    showAlert('Error', 'Google Sign-In is not configured on this server.');
-    return;
-  }
-  google.accounts.id.initialize({
-    client_id: clientIdMeta.content,
-    callback: handleGoogleCredential,
-    context: 'signin'
-  });
-  google.accounts.id.prompt(notification => {
-    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-      // One-tap not available — render popup button instead
-      google.accounts.id.renderButton(
-        document.getElementById('googleButtonContainer'),
-        { theme: 'outline', size: 'large', width: 320 }
-      );
-      document.getElementById('googleButtonContainer').style.display = 'block';
-      document.getElementById('btnGoogle').style.display = 'none';
+    // Auto-initialize GIS so one-tap can appear immediately
+    if (typeof google !== 'undefined' && google?.accounts?.id) {
+      google.accounts.id.initialize({
+        client_id: clientIdMeta.content,
+        callback: handleGoogleCredential,
+        context: 'signin',
+        ux_mode: 'popup'
+      });
+      google.accounts.id.prompt();
     }
   });
-}
-
-// Hidden container for Google's rendered button fallback
-document.write('<div id="googleButtonContainer" style="display:none;margin-top:8px"></div>');
-
-async function handleGoogleCredential(response) {
-  clearAlerts();
-  try {
-    const res  = await fetch('/api/auth/google', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential: response.credential })
-    });
-    const body = await res.json().catch(() => ({}));
-    if (res.ok) {
-      showAlert('Success', 'Signed in with Google! Redirecting…');
-      setTimeout(() => { window.location.href = getRedirect(); }, 700);
-    } else {
-      showAlert('Error', body.error || 'Google Sign-In failed.');
-    }
-  } catch {
-    showAlert('Error', 'Network error during Google Sign-In.');
-  }
-}
-
-// ── Init ───────────────────────────────────────────────────────────────────────
-document.getElementById('otpEmail').focus();
-const tabParam = new URLSearchParams(window.location.search).get('tab');
-if (tabParam === 'password') setTab('password');
 </script>
 </body>
 </html>
