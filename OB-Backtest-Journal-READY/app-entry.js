@@ -25,7 +25,6 @@ if (fs.existsSync(envPath)) {
   console.log('[Env] Loaded .env file');
 }
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = Number(process.env.PORT || 3000);
 const internalPort = port + 1;
