@@ -20,19 +20,29 @@
     try {
       const res = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
       if (res.status === 401 || res.status === 403) {
-        const next = encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);
-        window.location.replace('/auth.html?next=' + next);
+        // Show auth modal if available, otherwise fall back to auth page
+        if (typeof window.showAuthModal === 'function') {
+          window.showAuthModal('/');
+        } else {
+          // auth-modal.js not yet loaded — wait briefly then try again
+          setTimeout(() => {
+            if (typeof window.showAuthModal === 'function') {
+              window.showAuthModal('/');
+            } else {
+              const next = encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);
+              window.location.replace('/auth.html?next=' + next);
+            }
+          }, 300);
+        }
         return null;
       }
       if (!res.ok) {
-        // Non-auth error (server down etc.) — don't redirect, just warn
         console.warn('[OB Auth] /api/auth/me returned', res.status);
         return null;
       }
       const body = await res.json().catch(() => null);
       return body?.user ?? null;
     } catch (err) {
-      // Network error — don't block the user, warn only
       console.warn('[OB Auth] auth check failed (network):', err.message);
       return null;
     }
