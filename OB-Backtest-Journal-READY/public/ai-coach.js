@@ -189,7 +189,9 @@
   function bindTradeButton() {
     const root=document.getElementById('tradeDrawer'); if(!root)return;
     const btn=[...root.querySelectorAll('button')].find(b=>b.textContent.includes('Analyze with AI'));
-    if(btn&&!btn.dataset.aiCoachBound){ btn.dataset.aiCoachBound='1'; btn.onclick=e=>{e.preventDefault();e.stopPropagation();const t=readTrade(window.__obJournalOpenTradeId);if(t)openTradeChat(t);}; }
+    if(!btn)return;
+    if(btn.dataset.inlineAi==='true')return;
+    if(!btn.dataset.aiCoachBound){ btn.dataset.aiCoachBound='1'; btn.onclick=e=>{e.preventDefault();e.stopPropagation();const t=readTrade(window.__obJournalOpenTradeId);if(t)openTradeChat(t);}; }
   }
 
   function hookDrawer() {

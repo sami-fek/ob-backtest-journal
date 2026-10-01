@@ -560,21 +560,21 @@
   </main>
 
   <!-- RIGHT-SIDE TRADE PEEK DRAWER -->
-  <div id="tradeDrawer" class="fixed inset-0 z-50 flex items-end justify-end drawer-backdrop hidden">
-    <div class="drawer-panel w-full max-w-[420px] h-full bg-white border-l border-slate-200 overflow-y-auto shadow-2xl flex flex-col">
-      <div class="sticky top-0 bg-white z-10 px-5 pt-5 pb-3 border-b border-slate-100">
-        <div class="flex items-start justify-between">
-          <div>
-            <div class="flex items-center gap-2">
+  <div id="tradeDrawer" class="fixed inset-0 z-50 flex items-end justify-end drawer-backdrop hidden" role="dialog" aria-modal="true" aria-label="Trade details">
+    <div class="drawer-panel w-full max-w-[440px] h-full bg-white border-l border-slate-200 shadow-2xl flex flex-col">
+      <div class="sticky top-0 bg-white z-10 px-5 pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
               <span id="drawerPair" class="text-lg font-extrabold text-slate-900 font-mono">XAUUSD</span>
               <span class="text-slate-400 font-mono text-sm">·</span>
               <span id="drawerTFLabel" class="text-sm font-bold text-slate-600 font-mono">15M</span>
-              <span class="text-slate-400 font-mono text-sm">·</span>
+              <span class="text-slate-400 font-mono text-sm hidden sm:inline">·</span>
               <span id="drawerRegimeLabel" class="text-sm font-semibold text-slate-500">Trending</span>
             </div>
-            <p id="drawerSubtitle" class="text-xs text-slate-400 mt-0.5 font-mono">2026-09-01 — Long — Win — 2.0R</p>
+            <p id="drawerSubtitle" class="text-xs text-slate-400 mt-0.5 font-mono truncate">2026-09-01 — Long — Win — 2.0R</p>
           </div>
-          <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-700 text-lg ml-3 mt-0.5 flex-shrink-0"><i class="fa-solid fa-xmark"></i></button>
+          <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-700 text-lg flex-shrink-0 w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors" aria-label="Close trade details"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>
       <div class="flex-1 overflow-y-auto px-5 py-4 space-y-5">
@@ -590,17 +590,85 @@
             <input type="file" id="drawerScreenshotInput" accept="image/*" multiple class="hidden" onchange="handleScreenshotUpload(event)">
           </label>
         </div>
-        <div>
-          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Notes</div>
-          <textarea id="drawerNotesInput" placeholder="What did you see? Anything irregular about this OB?" rows="4" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 resize-none leading-relaxed"></textarea>
+        <div id="drawerNotesSection">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Notes</div>
+            <button type="button" id="drawerNotesEditBtn" onclick="enterDrawerEditMode()" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+              <i class="fa-solid fa-pen text-[10px]"></i> Edit
+            </button>
+          </div>
+          <div id="drawerNotesView" class="min-h-[90px] bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-[12.5px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
+            <span class="text-slate-400 italic">No notes saved for this trade yet.</span>
+          </div>
+          <div id="drawerNotesEditWrap" class="hidden">
+            <textarea id="drawerNotesInput" placeholder="What did you see? Anything irregular about this OB?" rows="6" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-y leading-relaxed"></textarea>
+            <div class="flex items-center justify-end gap-2 mt-2">
+              <button type="button" onclick="cancelDrawerEditMode()" class="px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+                Cancel
+              </button>
+              <button type="button" onclick="saveDrawer()" class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-500/20 transition-colors flex items-center gap-1.5">
+                <i class="fa-solid fa-check text-[10px]"></i> Save Note
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="drawerAiSection">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest flex items-center gap-1.5">
+              <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> AI Analysis
+            </div>
+            <button type="button" id="drawerAiRerunBtn" onclick="analyzeTradeWithAI()" class="hidden flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors">
+              <i class="fa-solid fa-rotate text-[10px]"></i> Re-run
+            </button>
+          </div>
+          <div id="drawerAiPanel" class="rounded-xl border border-slate-200 bg-slate-50/60 p-0 overflow-hidden">
+            <div id="drawerAiEmpty" class="px-4 py-5 text-center">
+              <div class="w-9 h-9 mx-auto mb-2 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+              </div>
+              <p class="text-[11.5px] text-slate-500 leading-relaxed">No analysis yet. Click <strong class="text-indigo-600">Analyze with AI</strong> below for a focused coach review of this trade.</p>
+            </div>
+            <div id="drawerAiLoading" class="hidden px-4 py-5">
+              <div class="flex items-center gap-3">
+                <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <i class="fa-solid fa-circle-notch fa-spin text-blue-600 text-sm"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-[12px] font-semibold text-slate-700">Analyzing this trade…</div>
+                  <div class="text-[11px] text-slate-400">Coach is reviewing setup, checklist, notes & screenshots.</div>
+                </div>
+              </div>
+              <div class="mt-3 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse" style="width: 60%"></div>
+              </div>
+            </div>
+            <div id="drawerAiResult" class="hidden">
+              <div class="px-4 py-2.5 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 border-b border-indigo-100/60 flex items-center justify-between">
+                <span class="text-[10px] font-bold tracking-widest uppercase text-indigo-700 flex items-center gap-1.5">
+                  <i class="fa-solid fa-sparkles text-[10px]"></i> Coach Response
+                </span>
+                <span id="drawerAiTime" class="text-[10px] text-slate-500 font-mono"></span>
+              </div>
+              <div id="drawerAiText" class="px-4 py-3.5 text-[12.5px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words max-h-[420px] overflow-y-auto"></div>
+            </div>
+            <div id="drawerAiError" class="hidden px-4 py-4 border-l-4 border-rose-400 bg-rose-50/60 rounded-tr-xl rounded-br-xl">
+              <div class="flex items-start gap-2.5">
+                <i class="fa-solid fa-triangle-exclamation text-rose-500 mt-0.5 text-sm"></i>
+                <div class="min-w-0 flex-1">
+                  <div class="text-[12px] font-semibold text-rose-800">AI analysis unavailable</div>
+                  <div id="drawerAiErrorText" class="text-[11.5px] text-rose-700 mt-0.5 leading-relaxed">The AI service could not be reached. Please try again.</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-4 space-y-2">
-        <button id="drawerSaveBtn" onclick="saveDrawer()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2">
-          <i class="fa-solid fa-floppy-disk"></i><span id="drawerSaveBtnLabel">Save Changes</span>
-        </button>
-        <button type="button" id="drawerAiBtn" onclick="analyzeTradeWithAI()" class="w-full py-2.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-600 border border-blue-200 hover:border-blue-600 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95">
+      <div class="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-4 space-y-2 flex-shrink-0">
+        <button type="button" id="drawerAiBtn" data-inline-ai="true" onclick="analyzeTradeWithAI()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
           <i class="fa-solid fa-wand-magic-sparkles"></i><span id="drawerAiBtnLabel">Analyze with AI</span>
+        </button>
+        <button id="drawerSaveBtn" onclick="saveDrawerFromFooter()" class="w-full py-2.5 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 hover:border-emerald-600 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
+          <i class="fa-solid fa-floppy-disk"></i><span id="drawerSaveBtnLabel">Save Checklist &amp; Screenshots</span>
         </button>
         <button id="drawerDeleteBtn" class="w-full py-2 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 text-slate-400 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2">
           <i class="fa-solid fa-trash"></i> Delete Trade
@@ -660,6 +728,11 @@
     let chartStrategyInstance = null;
     let chartTimeframeInstance = null;
     let chartRegimeInstance = null;
+
+    let currentDrawerTradeId = null;
+    let drawerOriginalNote = '';
+    let drawerEditMode = false;
+    let drawerAiBusy = false;
 
     // ---- EARLY TAB RESTORE ----
     (function restoreTabNow() {
@@ -1375,32 +1448,133 @@
       chartRegimeInstance.update();
     }
 
-    let currentDrawerTradeId = null;
+    function renderDrawerNotesView(t) {
+      const viewEl = document.getElementById('drawerNotesView');
+      if (!viewEl) return;
+      const note = (t && typeof t.notes === 'string') ? t.notes.trim() : '';
+      viewEl.innerHTML = note
+        ? note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
+        : '<span class="text-slate-400 italic">No notes saved for this trade yet.</span>';
+    }
+
+    function resetDrawerAiPanel() {
+      ['drawerAiEmpty','drawerAiLoading','drawerAiResult','drawerAiError'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+      const rerun = document.getElementById('drawerAiRerunBtn');
+      if (rerun) rerun.classList.add('hidden');
+    }
+
+    function showDrawerAi(state, payload) {
+      resetDrawerAiPanel();
+      const map = { empty: 'drawerAiEmpty', loading: 'drawerAiLoading', result: 'drawerAiResult', error: 'drawerAiError' };
+      const target = document.getElementById(map[state]);
+      if (target) target.classList.remove('hidden');
+      if (state === 'result') {
+        const textEl = document.getElementById('drawerAiText');
+        const timeEl = document.getElementById('drawerAiTime');
+        const rerun = document.getElementById('drawerAiRerunBtn');
+        if (textEl) textEl.textContent = payload?.text ?? '';
+        if (timeEl) timeEl.textContent = payload?.time ?? '';
+        if (rerun) rerun.classList.remove('hidden');
+      } else if (state === 'error') {
+        const errEl = document.getElementById('drawerAiErrorText');
+        if (errEl) errEl.textContent = payload?.message || 'The AI service could not be reached. Please try again.';
+      } else if (state === 'empty') {
+        // no-op
+      }
+    }
+
+    function enterDrawerEditMode() {
+      if (!currentDrawerTradeId) return;
+      const t = trades.find(item => item.id === currentDrawerTradeId);
+      if (!t) return;
+      const input = document.getElementById('drawerNotesInput');
+      const view = document.getElementById('drawerNotesView');
+      const editWrap = document.getElementById('drawerNotesEditWrap');
+      const editBtn = document.getElementById('drawerNotesEditBtn');
+      if (!input || !view || !editWrap || !editBtn) return;
+      drawerOriginalNote = t.notes || '';
+      drawerEditMode = true;
+      input.value = drawerOriginalNote;
+      view.classList.add('hidden');
+      editWrap.classList.remove('hidden');
+      editBtn.classList.add('hidden');
+      setTimeout(() => { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }, 30);
+    }
+
+    function cancelDrawerEditMode() {
+      const t = trades.find(item => item.id === currentDrawerTradeId);
+      if (!t) return;
+      const view = document.getElementById('drawerNotesView');
+      const editWrap = document.getElementById('drawerNotesEditWrap');
+      const editBtn = document.getElementById('drawerNotesEditBtn');
+      const input = document.getElementById('drawerNotesInput');
+      // Restore note state to persisted original (discard unsaved edits)
+      if (!t.notes) t.notes = '';
+      if (typeof drawerOriginalNote === 'string') {
+        t.notes = drawerOriginalNote;
+      }
+      if (view) view.classList.remove('hidden');
+      if (editWrap) editWrap.classList.add('hidden');
+      if (editBtn) editBtn.classList.remove('hidden');
+      if (input) input.value = t.notes;
+      renderDrawerNotesView(t);
+      drawerEditMode = false;
+      drawerOriginalNote = '';
+    }
 
     function openDrawer(id) {
       const t = trades.find(item => item.id === id);
       if (!t) return;
       currentDrawerTradeId = id;
+      drawerOriginalNote = '';
+      drawerEditMode = false;
       const steps = checklistFor(t.strategy);
       if (!t.checklist || t.checklist.length !== steps.length) t.checklist = steps.map(() => 'notset');
       if (!t.screenshots) t.screenshots = [];
-      document.getElementById('drawerPair').textContent = t.pair;
-      document.getElementById('drawerTFLabel').textContent = t.timeframe;
-      document.getElementById('drawerRegimeLabel').textContent = t.regime;
-      document.getElementById('drawerSubtitle').textContent = `${t.date} — ${t.direction.charAt(0) + t.direction.slice(1).toLowerCase()} — ${t.result} — ${t.rMultiple >= 0 ? '+' : ''}${t.rMultiple.toFixed(2)}R${t.session ? ' — ' + t.session : ''}`;
+      document.getElementById('drawerPair').textContent = t.pair || '—';
+      document.getElementById('drawerTFLabel').textContent = t.timeframe || '—';
+      document.getElementById('drawerRegimeLabel').textContent = t.regime || '—';
+      const safeR = (typeof t.rMultiple === 'number') ? t.rMultiple : (typeof t.r === 'number' ? t.r : signedR(t));
+      const safeDir = (t.direction || '').toString();
+      const dirLabel = safeDir.length >= 1 ? (safeDir.charAt(0).toUpperCase() + safeDir.slice(1).toLowerCase()) : '—';
+      const resultLabel = t.result || (safeR > 0 ? 'Win' : (safeR < 0 ? 'Loss' : 'Breakeven'));
+      document.getElementById('drawerSubtitle').textContent = `${t.date || ''} — ${dirLabel} — ${resultLabel || '—'} — ${safeR >= 0 ? '+' : ''}${(Number(safeR) || 0).toFixed(2)}R${t.session ? ' — ' + t.session : ''}`;
       renderDrawerChecklist(t);
       renderDrawerScreenshots(t);
-      document.getElementById('drawerNotesInput').value = t.notes || '';
-      document.getElementById('drawerNotesInput').oninput = () => saveDrawerNotes();
+      renderDrawerNotesView(t);
+      const viewEl = document.getElementById('drawerNotesView');
+      const editWrap = document.getElementById('drawerNotesEditWrap');
+      const editBtn = document.getElementById('drawerNotesEditBtn');
+      const input = document.getElementById('drawerNotesInput');
+      if (viewEl) viewEl.classList.remove('hidden');
+      if (editWrap) editWrap.classList.add('hidden');
+      if (editBtn) editBtn.classList.remove('hidden');
+      if (input) {
+        input.value = t.notes || '';
+        input.oninput = null; // No autosave on every keystroke — explicit Save/Cancel only
+      }
+      resetDrawerAiPanel();
+      showDrawerAi('empty');
       document.getElementById('drawerDeleteBtn').onclick = () => { deleteTrade(t.id); closeDrawer(); };
       const drawer = document.getElementById('tradeDrawer');
       drawer.classList.remove('hidden');
       requestAnimationFrame(() => drawer.classList.add('drawer-open'));
+      window.__obJournalOpenTradeId = id; // Keep ai-coach hook compatible
     }
+
     function closeDrawer() {
       const drawer = document.getElementById('tradeDrawer');
       drawer.classList.remove('drawer-open');
-      setTimeout(() => drawer.classList.add('hidden'), 280);
+      setTimeout(() => {
+        drawer.classList.add('hidden');
+        // If user had unsaved edits (still in edit mode), discard them silently on close.
+        drawerEditMode = false;
+        drawerOriginalNote = '';
+        drawerAiBusy = false;
+      }, 280);
       currentDrawerTradeId = null;
     }
 
@@ -1454,35 +1628,56 @@
       renderJournalTable();
     }
 
+    function persistDrawerSaveFeedback(btn, label, textBefore, textAfter) {
+      if (!btn) return;
+      if (label) label.textContent = textAfter || 'Saved ✓';
+      btn.classList.add('opacity-80');
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.classList.remove('opacity-80');
+        btn.disabled = false;
+        if (label) label.textContent = textBefore || 'Save Changes';
+      }, 1200);
+    }
+
     function saveDrawer() {
       if (!currentDrawerTradeId) return;
       const t = trades.find(item => item.id === currentDrawerTradeId);
       if (!t) return;
-      t.notes = document.getElementById('drawerNotesInput').value;
+      // If we are in edit mode, commit the textarea content as the new note.
+      // Otherwise checklist + screenshots are already applied to the trade object in-memory; just persist.
+      if (drawerEditMode) {
+        const input = document.getElementById('drawerNotesInput');
+        if (input) t.notes = input.value;
+      }
       saveState();
       renderTradingConsole();
       renderJournalTable();
-      const btn = document.getElementById('drawerSaveBtn');
-      const label = document.getElementById('drawerSaveBtnLabel');
-      if (btn && label) {
-        const prevClass = btn.className;
-        btn.classList.remove('bg-emerald-600');
-        btn.classList.add('bg-emerald-500');
-        label.textContent = 'Saved ✓';
-        setTimeout(() => {
-          btn.classList.remove('bg-emerald-500');
-          btn.classList.add('bg-emerald-600');
-          label.textContent = 'Save Changes';
-        }, 1200);
+      renderDrawerNotesView(t);
+      // Exit edit mode back to view
+      if (drawerEditMode) {
+        const view = document.getElementById('drawerNotesView');
+        const editWrap = document.getElementById('drawerNotesEditWrap');
+        const editBtn = document.getElementById('drawerNotesEditBtn');
+        if (view) view.classList.remove('hidden');
+        if (editWrap) editWrap.classList.add('hidden');
+        if (editBtn) editBtn.classList.remove('hidden');
+        drawerEditMode = false;
+        drawerOriginalNote = '';
+      }
+      // Feedback (note edit button inside edit section)
+      const saveBtnInEdit = document.querySelector('#drawerNotesEditWrap button[onclick="saveDrawer()"]');
+      if (saveBtnInEdit) persistDrawerSaveFeedback(saveBtnInEdit, null, '', 'Saved ✓');
+      // Feedback (footer button)
+      const footerSaveBtn = document.getElementById('drawerSaveBtn');
+      const footerSaveLabel = document.getElementById('drawerSaveBtnLabel');
+      if (footerSaveBtn && footerSaveLabel) {
+        const txt = footerSaveLabel.textContent;
+        persistDrawerSaveFeedback(footerSaveBtn, footerSaveLabel, txt, 'Saved ✓');
       }
     }
-    function saveDrawerNotes() {
-      if (!currentDrawerTradeId) return;
-      const t = trades.find(item => item.id === currentDrawerTradeId);
-      if (!t) return;
-      t.notes = document.getElementById('drawerNotesInput').value;
-      saveState();
-    }
+
+    function saveDrawerFromFooter() { saveDrawer(); }
     function handleScreenshotUpload(event) {
       if (!currentDrawerTradeId) return;
       const t = trades.find(item => item.id === currentDrawerTradeId);
@@ -1523,6 +1718,103 @@
     }
 
     document.getElementById('tradeDrawer').addEventListener('click', function(e) { if (e.target === this) closeDrawer(); });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        const drawer = document.getElementById('tradeDrawer');
+        if (drawer && !drawer.classList.contains('hidden')) {
+          e.preventDefault();
+          closeDrawer();
+        }
+      }
+    });
+
+    async function analyzeTradeWithAI() {
+      if (drawerAiBusy) return;
+      if (!currentDrawerTradeId) return;
+      const t = trades.find(item => item.id === currentDrawerTradeId);
+      if (!t) return;
+      drawerAiBusy = true;
+      const btnLabel = document.getElementById('drawerAiBtnLabel');
+      if (btnLabel) { btnLabel.dataset.original = btnLabel.textContent || 'Analyze with AI'; btnLabel.textContent = 'Analyzing…'; }
+      showDrawerAi('loading');
+
+      // Pick model based on screenshot images
+      const hasImages = Array.isArray(t.screenshots) && t.screenshots.some(x => typeof x === 'string' && x.startsWith('data:image/'));
+      const model = hasImages ? 'qwen/qwen3.6-27b' : 'openai/gpt-oss-20b';
+
+      const checklistSummary = (() => {
+        const steps = checklistFor(t.strategy) || [];
+        return steps.map((label, i) => {
+          const status = (t.checklist && t.checklist[i]) || 'notset';
+          return `${String(i+1).padStart(2,' ')}. [${status === 'pass' ? '✓' : status === 'fail' ? '✗' : '?'}] ${label}`;
+        }).join('\n');
+      })();
+
+      const promptLines = [
+        `You are a practical trading-coach reviewing a single journaled trade.`,
+        `Separate: (1) setup / checklist quality and (2) result (win/loss/BE). A losing trade can still be clean. A winning trade can still be a violation.`,
+        `Use plain text. No markdown. Keep under 320 words. Structure: Key observation → Checklist quality → Outcome vs execution → 1 concrete next test / adjustment.`,
+        ``,
+        `TRADE DETAILS`,
+        `Date: ${t.date || ''}`,
+        `Mode: ${t.mode || ''}${t.session ? ' · Session: ' + t.session : ''}`,
+        `Pair: ${t.pair || ''} · TF: ${t.timeframe || ''} · Regime: ${t.regime || ''}`,
+        `Strategy: ${t.strategy || ''} · Direction: ${t.direction || ''}`,
+        `Result: ${t.result || ''} · R: ${(t.rMultiple != null ? Number(t.rMultiple).toFixed(2) : 'N/A')}${typeof t.pnl === 'number' ? ' · P/L: $' + t.pnl.toFixed(2) : ''}`,
+        ``,
+        `ENTRY CHECKLIST (${t.strategy || ''})`,
+        checklistSummary,
+        ``,
+        `USER NOTES`,
+        (t.notes && String(t.notes).trim()) ? String(t.notes).trim() : '(no note)'
+      ];
+
+      try {
+        const messages = [
+          { role: 'system', content: 'You are a concise trading journal coach. Plain text. No markdown. No asterisks. Use bullet • if useful. Separate clean execution from lucky result.' },
+          { role: 'user', content: promptLines.join('\n') }
+        ];
+
+        if (hasImages) {
+          const imgParts = t.screenshots.filter(x => typeof x === 'string' && x.startsWith('data:image/')).slice(0, 4).map(url => ({ type: 'image_url', image_url: { url } }));
+          const textPart = { type: 'text', text: promptLines.join('\n') + '\n\nAlso analyze the attached screenshots. Call out anything visible about structure, entry location, invalidation, and targets.' };
+          messages[1] = { role: 'user', content: [textPart, ...imgParts] };
+        }
+
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'groq',
+            model,
+            messages,
+            max_completion_tokens: 800,
+            temperature: 0.35
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = typeof data?.error === 'string' ? data.error
+                    : typeof data?.error?.message === 'string' ? data.error.message
+                    : `AI service returned ${res.status}. Please try again.`;
+          throw new Error(msg);
+        }
+        const text = (data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || '').trim();
+        if (!text) throw new Error('AI returned an empty response.');
+
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        showDrawerAi('result', { text, time });
+      } catch (err) {
+        const msg = err && err.message ? String(err.message) : 'Unable to reach the AI service right now. Please try again later.';
+        showDrawerAi('error', { message: msg });
+      } finally {
+        drawerAiBusy = false;
+        if (btnLabel && btnLabel.dataset.original) btnLabel.textContent = btnLabel.dataset.original;
+        else if (btnLabel) btnLabel.textContent = 'Analyze with AI';
+      }
+    }
 
     function deleteTrade(id) {
       if (confirm('Delete this trade record permanently?')) {
