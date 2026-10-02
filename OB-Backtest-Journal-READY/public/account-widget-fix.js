@@ -93,8 +93,6 @@
     const mode=getMode();
     if(!item||item.mode!==mode)return;
     localStorage.setItem(accountKey(mode),item.id);
-    // ui-rules keeps activeAccountId private. Its patched switchMode reads this
-    // per-mode key, so re-entering the same mode is the supported bridge.
     if(typeof window.switchMode==='function'){
       try{window.switchMode(mode);return;}catch(_){}
     }
@@ -107,10 +105,16 @@
     if(!root||target<0)return;
     const from=currentIndex(list);if(target===from)return;
     animating=true;suppressRenderUntil=Date.now()+750;
+    root.dataset.animating='1';
     setVisualIndex(root,target);position(root,target,true);
     setTimeout(()=>{
       commitAccount(item);
-      setTimeout(()=>{animating=false;suppressRenderUntil=0;lastSignature='';render();},120);
+      setTimeout(()=>{
+        animating=false;suppressRenderUntil=0;lastSignature='';
+        const r=document.getElementById(ROOT_ID);
+        if(r)delete r.dataset.animating;
+        render();
+      },120);
     },560);
   }
 
@@ -148,6 +152,9 @@
     root.querySelector('#walletNext')?.addEventListener('click',e=>{e.stopPropagation();move(1);});
     root.querySelectorAll('.wallet-edit').forEach(button=>button.addEventListener('click',e=>{e.stopPropagation();const item=readAccounts()[Number(button.dataset.index)];if(item&&typeof window.openEditAccountModal==='function')window.openEditAccountModal(item.id);}));
     root.querySelector('#walletAdd')?.addEventListener('click',e=>{
+      // If mt5-link-widget.js has already taken over this button, let it handle the click.
+      const walletAdd = root.querySelector('#walletAdd');
+      if (walletAdd && walletAdd.dataset.addMenuPatched === '1') return;
       e.stopPropagation();
       const mode=getMode();
       if(typeof window.openAddAccountModal==='function'){window.openAddAccountModal();return;}
@@ -160,8 +167,13 @@
   function boot(){
     injectStyles();render();
     window.addEventListener('resize',()=>{if(animating)return;const root=document.getElementById(ROOT_ID);if(root)position(root,currentIndex(readAccounts()),false);});
-    setInterval(render,700);
     window.addEventListener('wallet-accounts-updated',()=>{lastSignature='';render();});
+    const sm=window.switchMode;
+    if(typeof sm==='function'&&!sm.__walletNoTimerWrapped){
+      const wrapped=function(...a){const r=sm.apply(this,a);lastSignature='';render();return r;};
+      wrapped.__walletNoTimerWrapped=true;window.switchMode=wrapped;
+    }
+    setTimeout(()=>{lastSignature='';render();},900);
   }
   if(document.readyState==='complete')setTimeout(boot,120);else window.addEventListener('load',()=>setTimeout(boot,120));
 })();

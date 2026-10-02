@@ -84,10 +84,11 @@
 
   function boot() {
     patchEditModal();
-    patchTradeDrawerSave();
+    // Note: patchTradeDrawerSave removed — closing the drawer after save
+    // was auto-closing it without the user asking, and nulling currentDrawerTradeId
+    // before saves could complete. Save now stays open so the user can review.
     const observer = new MutationObserver(() => {
       patchEditModal();
-      patchTradeDrawerSave();
     });
     observer.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('wallet-accounts-updated', persistAccounts);

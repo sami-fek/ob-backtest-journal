@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverPath = path.join(__dirname, 'server.js');
@@ -36,7 +36,7 @@ app.get('/', (req, res, next) => {
       path.join(__dirname, 'public', 'context-entry-ui.js'),
       path.join(__dirname, 'public', 'ui-refresh.js'),
       path.join(__dirname, 'public', 'simple-checklist.js'),
-      path.join(__dirname, 'public', 'simple-journal-shell.js')
+      path.join(__dirname, 'public', 'trading-layout-step1.js')
     ].filter(p => fs.existsSync(p));
     const feature = featurePaths.map(p => fs.readFileSync(p, 'utf8')).join('\\n');
     const closingScript = '</script>';

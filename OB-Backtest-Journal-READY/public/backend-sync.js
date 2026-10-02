@@ -1,13 +1,126 @@
 (() => {
-  const STORAGE_KEY = 'my_journal_trades_v1';
   const ACCOUNT_STORAGE_KEY = 'my_journal_accounts_v1';
-  async function readServerState(storageKey = STORAGE_KEY) { try { const response = await fetch(`/api/storage/${encodeURIComponent(storageKey)}`, { credentials:'same-origin' }); if(response.status===404)return null; if(!response.ok)throw new Error(`Storage read ${response.status}`); const body=await response.json(); return typeof body.value==='string'?body.value:null; } catch(error){console.warn('[OB Journal] Server state read failed; using local cache.',error);return null;} }
-  async function writeServerState(value, storageKey = STORAGE_KEY) { try { const response=await fetch(`/api/storage/${encodeURIComponent(storageKey)}`,{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({value})}); if(!response.ok)throw new Error(`Storage write ${response.status}`); return true; } catch(error){console.warn('[OB Journal] Server state write failed; local cache remains available.',error);return false;} }
-  function setPersistenceLabel(){document.querySelectorAll('span').forEach(label=>{if(label.textContent.includes('LocalStorage Persistent'))label.innerHTML='<i class="fa-solid fa-database text-blue-600 mr-1"></i> Cloud Persistent';});}
-  const originalLoad=window.onload;
-  window.persistAccountState=value=>writeServerState(value,ACCOUNT_STORAGE_KEY);
-  window.onload=async function(...args){const[serverState,serverAccounts]=await Promise.all([readServerState(STORAGE_KEY),readServerState(ACCOUNT_STORAGE_KEY)]);const localState=localStorage.getItem(STORAGE_KEY),localAccounts=localStorage.getItem(ACCOUNT_STORAGE_KEY);if(serverState)localStorage.setItem(STORAGE_KEY,serverState);else if(localState)await writeServerState(localState,STORAGE_KEY);if(serverAccounts)localStorage.setItem(ACCOUNT_STORAGE_KEY,serverAccounts);else if(localAccounts)await writeServerState(localAccounts,ACCOUNT_STORAGE_KEY);if(typeof originalLoad==='function')originalLoad.apply(this,args);setPersistenceLabel();};
-  const originalSave=window.saveState;if(typeof originalSave==='function')window.saveState=function(...args){const result=originalSave.apply(this,args),value=localStorage.getItem(STORAGE_KEY);if(value)void writeServerState(value);return result;};
-  const load=(src,next)=>{const s=document.createElement('script');s.src=src;s.onload=next;document.head.appendChild(s);};
-  load('/ui-rules.js',()=>load('/account-widget-fix.js',()=>load('/account-edit-persistence-fix.js',()=>load('/journal-analytics-ui.js',()=>load('/journal-heatmap.js',()=>load('/discipline-journal-move.js',()=>load('/account-widget-size-fix.js',()=>load('/ai-coach.js',()=>load('/mt5-link-ui.js',()=>load('/mt5-link-widget.js',()=>load('/mt5-integration-ui.js',()=>load('/mt5-balance-overlay.js'))))))))))));
+
+  async function readServerState(storageKey) {
+    try {
+      const response = await fetch(`/api/storage/${encodeURIComponent(storageKey)}`, {
+        credentials: 'same-origin', cache: 'no-store'
+      });
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(`Storage read ${response.status}`);
+      const body = await response.json();
+      return typeof body.value === 'string' ? body.value : null;
+    } catch (error) {
+      console.warn('[OB Journal] Server state read failed; using local cache.', error);
+      return null;
+    }
+  }
+
+  async function writeServerState(value, storageKey) {
+    try {
+      const response = await fetch(`/api/storage/${encodeURIComponent(storageKey)}`, {
+        method: 'PUT', credentials: 'same-origin', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value })
+      });
+      if (!response.ok) throw new Error(`Storage write ${response.status}`);
+      return true;
+    } catch (error) {
+      console.warn('[OB Journal] Server state write failed; local cache remains available.', error);
+      return false;
+    }
+  }
+
+  function setPersistenceLabel() {
+    document.querySelectorAll('span').forEach(label => {
+      if (label.textContent.includes('LocalStorage Persistent'))
+        label.innerHTML = '<i class="fa-solid fa-database text-blue-600 mr-1"></i> Cloud Persistent';
+    });
+  }
+
+  async function hydrateAccounts() {
+    const serverAccounts = await readServerState(ACCOUNT_STORAGE_KEY);
+    const localAccounts = localStorage.getItem(ACCOUNT_STORAGE_KEY);
+    if (serverAccounts) localStorage.setItem(ACCOUNT_STORAGE_KEY, serverAccounts);
+    else if (localAccounts) void writeServerState(localAccounts, ACCOUNT_STORAGE_KEY);
+  }
+
+  window.persistAccountState = value => writeServerState(value, ACCOUNT_STORAGE_KEY);
+
+  const originalLoad = window.onload;
+  window.onload = async function(...args) {
+    await hydrateAccounts();
+    if (typeof originalLoad === 'function') originalLoad.apply(this, args);
+    setPersistenceLabel();
+  };
+
+  // ---- Load order ----
+  // 0. auth-check.js loads IMMEDIATELY — redirects to /auth.html if the user
+  //    is not authenticated. It is async/non-blocking so it won't delay reveal.
+  // 1. auth-modal.js loads next — provides the in-page sign-in modal and
+  //    overrides handleGetStarted() on every page.
+  // 2. ui-stability-fix.js runs FIRST and alone, so it can install its
+  //    switchTab/switchMode wrappers before anything else touches them.
+  // 3. Everything else loads in PARALLEL (no onload chaining).
+  inject('/auth-check.js');
+  inject('/auth-modal.js');
+  const FIRST = '/ui-stability-fix.js';
+  const REST = [
+    '/ui-rules.js',
+    '/account-widget-fix.js',
+    '/account-edit-persistence-fix.js',
+    '/journal-analytics-ui.js',
+    '/journal-heatmap.js',
+    '/account-widget-size-fix.js',
+    '/mt5-link-ui.js',
+    '/mt5-link-widget.js',
+    '/mt5-integration-ui.js',
+    '/mt5-balance-overlay.js',
+    '/ui-save-gate-fix.js',
+    '/ui-navigation-fix.js',
+    '/ui-carousel-stability.js',
+    '/discipline-engine.js',
+    '/analytics-advanced.js',
+    '/mt5-r-assign.js'
+  ];
+
+  function inject(src, onDone) {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => onDone && onDone();
+    script.onerror = () => {
+      console.warn(`[OB Journal] UI feature script failed to load: ${src}`);
+      onDone && onDone();
+    };
+    document.head.appendChild(script);
+  }
+
+  function loadRest() {
+    REST.forEach(src => inject(src)); // parallel — do not chain
+  }
+
+  // Kick off accounts hydration in parallel with everything else.
+  hydrateAccounts().finally(() => {});
+
+    // Load the first script alone, then fire the rest all at once.
+  // When ALL scripts have loaded, reveal the page.
+  let pending = REST.length;
+  const onOneDone = () => {
+    pending -= 1;
+    if (pending <= 0) {
+      // One more frame to let scripts finish their initial render.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.documentElement.classList.remove('ob-booting');
+        });
+      });
+    }
+  };
+
+  function loadRestAndReveal() {
+    REST.forEach(src => inject(src, onOneDone));
+  }
+
+  inject(FIRST, loadRestAndReveal);
 })();
