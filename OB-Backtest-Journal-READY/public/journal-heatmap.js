@@ -1,6 +1,11 @@
 (() => {
+  // P&L calendar (Trading page) + Trading Activity heatmap.
+  // Dollar values: R × account starting balance × risk % — the same
+  // calculation the account balance display uses, so the numbers agree.
   const GRID_ID = 'calendarHeatmapGrid';
-  const STYLE_ID = 'journal-pnl-heatmap-style-v2';
+  const STYLE_ID = 'journal-pnl-heatmap-style-v3';
+  const ACTIVITY_ID = 'ob-activity-card';
+  const ACTIVITY_WEEKS = 26;
   let viewDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let booted = false;
 
@@ -17,26 +22,90 @@
     return Number(account?.startingBalance ?? account?.balance ?? 100000) || 100000;
   };
   const pnlFor = trade => Number(trade.rMultiple || 0) * baseFor(trade) * (getRisk() / 100);
+  const isoOf = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const todayIso = () => { const n = new Date(); return isoOf(n.getFullYear(), n.getMonth(), n.getDate()); };
+  const money = value => !value ? '$0' : `${value > 0 ? '+' : '-'}$${Math.abs(Math.round(value)).toLocaleString('en-US')}`;
+  // Compact form for narrow screens: +$2.4k, -$1k, +$850
+  const short = value => {
+    if (!value) return '$0';
+    const a = Math.abs(value);
+    const t = a >= 1000 ? (a / 1000).toFixed(a >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(Math.round(a));
+    return (value > 0 ? '+$' : '-$') + t;
+  };
+  const pnlHtml = value => `<span class="ob-jh-full">${money(value)}</span><span class="ob-jh-short">${short(value)}</span>`;
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = `
-      #${GRID_ID}.ob-jh-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px}
-      #${GRID_ID} .ob-jh-head{padding:6px 3px;text-align:center;font-size:9px;font-weight:800;color:#94a3b8}
-      #${GRID_ID} .ob-jh-cell{min-height:62px;padding:6px;border:1px solid #e2e8f0;background:#fff;border-radius:8px;display:flex;flex-direction:column;justify-content:space-between}
-      #${GRID_ID} .ob-jh-empty{background:#f8fafc;border-color:#f1f5f9}
-      #${GRID_ID} .ob-jh-day{font:700 9px 'JetBrains Mono',monospace;color:#64748b}
-      #${GRID_ID} .ob-jh-pnl{font:800 11px 'JetBrains Mono',monospace}
-      #${GRID_ID} .ob-jh-count{font:700 8px 'JetBrains Mono',monospace;color:#94a3b8}
-      #${GRID_ID} .ob-jh-win{background:#eaf7f0;border-color:#c6e8d5}.ob-jh-win .ob-jh-pnl{color:#159570}
-      #${GRID_ID} .ob-jh-loss{background:#fff0f1;border-color:#f3c8ce}.ob-jh-loss .ob-jh-pnl{color:#df5a66}
-      #${GRID_ID} .ob-jh-flat{background:#fff}.ob-jh-flat .ob-jh-pnl{color:#94a3b8}
-      #${GRID_ID} .ob-jh-week{background:#fafafa;padding:7px;border:1px solid #e2e8f0;border-radius:8px;display:flex;flex-direction:column;justify-content:space-between}
-      #${GRID_ID} .ob-jh-week-label{font-size:8px;color:#94a3b8;font-weight:800}.ob-jh-week-pnl{font:800 11px 'JetBrains Mono',monospace;color:#159570}.ob-jh-week-count{font:700 8px 'JetBrains Mono',monospace;color:#94a3b8}
-      .ob-jh-nav{width:27px;height:27px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;display:grid;place-items:center;cursor:pointer}.ob-jh-nav:hover{color:#2563eb;border-color:#bfdbfe;background:#f8fafc}
-      @media(max-width:700px){#${GRID_ID}.ob-jh-grid{grid-template-columns:repeat(8,minmax(43px,1fr));overflow-x:auto}.ob-jh-cell{min-height:56px;padding:5px}}
+      :root, html[data-theme="light"] {
+        --cal-cell-bg: #ffffff; --cal-cell-border: #e7e7e9; --cal-muted: #94a3b8; --cal-text: #101729;
+        --cal-win-bg: rgba(22,163,74,.07); --cal-win-border: rgba(22,163,74,.45); --cal-win-text: #16a34a;
+        --cal-loss-bg: rgba(239,68,68,.07); --cal-loss-border: rgba(239,68,68,.45); --cal-loss-text: #ef4444;
+        --cal-today: #3b82f6; --cal-week-bg: #fafafa;
+        --act-empty: #f1f5f9;
+        --act-p1: rgba(22,163,74,.22); --act-p2: rgba(22,163,74,.4); --act-p3: rgba(22,163,74,.6); --act-p4: rgba(22,163,74,.8); --act-p5: #16a34a;
+        --act-l1: rgba(239,68,68,.22); --act-l2: rgba(239,68,68,.4); --act-l3: rgba(239,68,68,.6); --act-l4: rgba(239,68,68,.8); --act-l5: #dc2626;
+      }
+      html[data-theme="dark"] {
+        --cal-cell-bg: #0f0f0f; --cal-cell-border: #262626; --cal-muted: #7c8596; --cal-text: #fafafa;
+        --cal-win-bg: rgba(34,197,94,.1); --cal-win-border: rgba(34,197,94,.5); --cal-win-text: #22c55e;
+        --cal-loss-bg: rgba(239,68,68,.1); --cal-loss-border: rgba(239,68,68,.5); --cal-loss-text: #ef4444;
+        --cal-today: #3b82f6; --cal-week-bg: #171717;
+        --act-empty: #1c1c1c;
+        --act-p1: rgba(34,197,94,.2); --act-p2: rgba(34,197,94,.38); --act-p3: rgba(34,197,94,.56); --act-p4: rgba(34,197,94,.76); --act-p5: #22c55e;
+        --act-l1: rgba(239,68,68,.2); --act-l2: rgba(239,68,68,.38); --act-l3: rgba(239,68,68,.56); --act-l4: rgba(239,68,68,.76); --act-l5: #ef4444;
+      }
+      #${GRID_ID}.ob-jh-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.05fr);gap:6px}
+      #${GRID_ID} .ob-jh-head{padding:4px 3px 6px;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cal-muted)}
+      #${GRID_ID} .ob-jh-cell{position:relative;min-height:70px;padding:7px 8px;border:1px solid var(--cal-cell-border);background:var(--cal-cell-bg);border-radius:12px;display:flex;flex-direction:column;justify-content:space-between;transition:border-color .15s}
+      #${GRID_ID} .ob-jh-blank{min-height:70px;border-radius:12px;border:1px dashed transparent}
+      #${GRID_ID} .ob-jh-day{font:700 10px 'JetBrains Mono',monospace;color:var(--cal-muted)}
+      #${GRID_ID} .ob-jh-pnl{font:800 12px 'JetBrains Mono',monospace;color:var(--cal-text)}
+      #${GRID_ID} .ob-jh-count{font:800 8.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--cal-muted)}
+      #${GRID_ID} .ob-jh-flat .ob-jh-pnl{color:var(--cal-muted);font-weight:700}
+      #${GRID_ID} .ob-jh-win{background:var(--cal-win-bg);border-color:var(--cal-win-border)}
+      #${GRID_ID} .ob-jh-win .ob-jh-pnl{color:var(--cal-win-text)}
+      #${GRID_ID} .ob-jh-loss{background:var(--cal-loss-bg);border-color:var(--cal-loss-border)}
+      #${GRID_ID} .ob-jh-loss .ob-jh-pnl{color:var(--cal-loss-text)}
+      #${GRID_ID} .ob-jh-today{border-color:var(--cal-today);box-shadow:0 0 0 1px var(--cal-today) inset}
+      #${GRID_ID} .ob-jh-today .ob-jh-day{color:var(--cal-today)}
+      #${GRID_ID} .ob-jh-week{min-height:70px;padding:7px 8px;border:1px solid var(--cal-cell-border);background:var(--cal-week-bg);border-radius:12px;display:flex;flex-direction:column;justify-content:space-between}
+      #${GRID_ID} .ob-jh-week.ob-jh-win{background:var(--cal-win-bg);border-color:var(--cal-win-border)}
+      #${GRID_ID} .ob-jh-week.ob-jh-loss{background:var(--cal-loss-bg);border-color:var(--cal-loss-border)}
+      #${GRID_ID} .ob-jh-week-label{font-size:9px;color:var(--cal-muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+      #${GRID_ID} .ob-jh-week-pnl{font:800 12px 'JetBrains Mono',monospace;color:var(--cal-muted)}
+      #${GRID_ID} .ob-jh-week.ob-jh-win .ob-jh-week-pnl{color:var(--cal-win-text)}
+      #${GRID_ID} .ob-jh-week.ob-jh-loss .ob-jh-week-pnl{color:var(--cal-loss-text)}
+      #${GRID_ID} .ob-jh-week-count{font:800 8.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--cal-muted)}
+      #${GRID_ID} .ob-jh-short{display:none}
+      .ob-jh-nav{width:27px;height:27px;border:1px solid var(--cal-cell-border);border-radius:9999px;background:var(--cal-cell-bg);color:var(--cal-muted);display:grid;place-items:center;cursor:pointer}
+      .ob-jh-nav:hover{color:var(--blue,#3b82f6);border-color:var(--blue,#3b82f6)}
+      @media(max-width:700px){
+        #${GRID_ID}.ob-jh-grid{grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.15fr);gap:3px}
+        #${GRID_ID} .ob-jh-head{font-size:8px;letter-spacing:0;padding:2px 0 4px}
+        #${GRID_ID} .ob-jh-cell,#${GRID_ID} .ob-jh-week,#${GRID_ID} .ob-jh-blank{min-height:52px;padding:4px 3px;border-radius:9px}
+        #${GRID_ID} .ob-jh-pnl,#${GRID_ID} .ob-jh-week-pnl{font-size:8.5px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden}
+        #${GRID_ID} .ob-jh-count,#${GRID_ID} .ob-jh-week-count,#${GRID_ID} .ob-jh-week-label{font-size:7px;letter-spacing:0;white-space:nowrap}
+        #${GRID_ID} .ob-jh-none .ob-jh-count,#${GRID_ID} .ob-jh-none .ob-jh-pnl{visibility:hidden}
+        #${GRID_ID} .ob-jh-full{display:none} #${GRID_ID} .ob-jh-short{display:inline}
+      }
+
+      /* Trading Activity heatmap */
+      #${ACTIVITY_ID} .ob-act-scroll{overflow-x:auto;padding-bottom:4px}
+      #${ACTIVITY_ID} .ob-act-wrap{display:inline-grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:start}
+      #${ACTIVITY_ID} .ob-act-months{display:grid;grid-auto-flow:column;grid-auto-columns:14px;gap:3px;font:700 9.5px Inter,system-ui,sans-serif;color:var(--cal-muted);height:14px;white-space:nowrap}
+      #${ACTIVITY_ID} .ob-act-days{display:grid;grid-template-rows:repeat(7,14px);gap:3px;font:700 9px Inter,system-ui,sans-serif;color:var(--cal-muted);line-height:14px}
+      #${ACTIVITY_ID} .ob-act-grid{display:grid;grid-template-rows:repeat(7,14px);grid-auto-flow:column;grid-auto-columns:14px;gap:3px}
+      #${ACTIVITY_ID} .ob-act-sq{width:14px;height:14px;border-radius:4px;background:var(--act-empty)}
+      #${ACTIVITY_ID} .ob-act-sq.ob-act-out{background:transparent}
+      #${ACTIVITY_ID} .ob-act-sq.ob-act-today{outline:1.5px solid var(--cal-today);outline-offset:1px}
+      ${[1, 2, 3, 4, 5].map(i => `#${ACTIVITY_ID} .ob-act-p${i}{background:var(--act-p${i})} #${ACTIVITY_ID} .ob-act-l${i}{background:var(--act-l${i})}`).join('\n      ')}
+      #${ACTIVITY_ID} .ob-act-legend{display:flex;align-items:center;gap:3px;font:700 10px Inter,system-ui,sans-serif;color:var(--cal-muted)}
+      #${ACTIVITY_ID} .ob-act-legend .ob-act-sq{width:12px;height:12px;border-radius:3px}
+      #${ACTIVITY_ID} .ob-act-summary{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11px;color:var(--cal-muted)}
+      #${ACTIVITY_ID} .ob-act-summary b{font-family:'JetBrains Mono',monospace;color:var(--cal-text)}
     `;
     document.head.appendChild(style);
   }
@@ -47,23 +116,17 @@
     return getTrades().filter(t => t.mode === mode && (mode === 'Backtest' || !accountId || t.accountId === accountId));
   }
 
-  function monthData() {
-    const y = viewDate.getFullYear(), m = viewDate.getMonth();
-    const days = new Date(y, m + 1, 0).getDate();
-    const first = new Date(y, m, 1).getDay();
+  function dailyStats() {
     const stats = {};
     relevantTrades().forEach(t => {
-      const parts = String(t.date || '').split('-').map(Number);
-      if (parts.length !== 3 || parts[0] !== y || parts[1] !== m + 1) return;
-      const d = parts[2];
-      if (!stats[d]) stats[d] = { pnl: 0, count: 0 };
-      stats[d].pnl += pnlFor(t);
-      stats[d].count++;
+      const iso = String(t.date || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+      if (!stats[iso]) stats[iso] = { pnl: 0, count: 0 };
+      stats[iso].pnl += pnlFor(t);
+      stats[iso].count++;
     });
-    return { y, m, days, first, stats };
+    return stats;
   }
-
-  const money = value => !value ? '$0' : `${value > 0 ? '+' : '-'}$${Math.abs(Math.round(value)).toLocaleString('en-US')}`;
 
   function render() {
     const grid = document.getElementById(GRID_ID);
@@ -74,18 +137,23 @@
     const card = grid.closest('.glass-card');
     if (card) card.style.display = '';
 
-    const data = monthData();
-    const monthName = new Date(data.y, data.m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    const all = Object.values(data.stats);
-    const total = all.reduce((sum, x) => sum + x.pnl, 0);
-    const count = all.reduce((sum, x) => sum + x.count, 0);
+    const y = viewDate.getFullYear(), m = viewDate.getMonth();
+    const days = new Date(y, m + 1, 0).getDate();
+    const first = new Date(y, m, 1).getDay();
+    const all = dailyStats();
+    const stats = {};
+    for (let d = 1; d <= days; d++) { const s = all[isoOf(y, m, d)]; if (s) stats[d] = s; }
+    const monthName = new Date(y, m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const values = Object.values(stats);
+    const total = values.reduce((sum, x) => sum + x.pnl, 0);
+    const count = values.reduce((sum, x) => sum + x.count, 0);
 
     const label = document.getElementById('heatmapMonthLabel');
     if (label) {
       label.textContent = `P&L Calendar Heatmap (${monthName})`;
       const controls = label.closest('.border-b')?.querySelector('.flex.items-center.gap-2.text-xs');
       if (controls && !controls.querySelector('[data-ob-jh-prev]')) {
-        controls.innerHTML = `<button type="button" class="ob-jh-nav" data-ob-jh-prev aria-label="Previous month"><i class="fa-solid fa-chevron-left text-[9px]"></i></button><span class="font-mono text-[10px] text-slate-500 min-w-[96px] text-center">${monthName}</span><button type="button" class="ob-jh-nav" data-ob-jh-next aria-label="Next month"><i class="fa-solid fa-chevron-right text-[9px]"></i></button><button type="button" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-500" data-ob-jh-today>This month</button>`;
+        controls.innerHTML = `<button type="button" class="ob-jh-nav" data-ob-jh-prev aria-label="Previous month"><i class="fa-solid fa-chevron-left text-[9px]"></i></button><span class="font-mono text-[10px] text-slate-500 min-w-[96px] text-center">${monthName}</span><button type="button" class="ob-jh-nav" data-ob-jh-next aria-label="Next month"><i class="fa-solid fa-chevron-right text-[9px]"></i></button><button type="button" class="px-2.5 py-1.5 rounded-full border border-slate-200 bg-white text-[10px] font-bold text-slate-500" data-ob-jh-today>This month</button>`;
         controls.querySelector('[data-ob-jh-prev]').onclick = () => { viewDate.setMonth(viewDate.getMonth() - 1); render(); };
         controls.querySelector('[data-ob-jh-next]').onclick = () => { viewDate.setMonth(viewDate.getMonth() + 1); render(); };
         controls.querySelector('[data-ob-jh-today]').onclick = () => { const n = new Date(); viewDate = new Date(n.getFullYear(), n.getMonth(), 1); render(); };
@@ -94,21 +162,22 @@
       }
     }
 
-    const empty = i => `<div class="ob-jh-cell ob-jh-empty"></div>`;
-    let html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => `<div class="ob-jh-head">${day}</div>`).join('') + '<div class="ob-jh-head">WEEK</div>';
-    for (let i = 0; i < data.first; i++) html += empty(i);
-    for (let d = 1; d <= data.days; d++) {
-      const s = data.stats[d] || { pnl: 0, count: 0 };
-      const cls = s.pnl > 0 ? 'ob-jh-win' : s.pnl < 0 ? 'ob-jh-loss' : 'ob-jh-flat';
-      const iso = `${data.y}-${String(data.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      html += `<div class="ob-jh-cell ${cls}" data-date="${iso}"><button type="button" class="ob-jh-add" data-add-date="${iso}" title="Add Trade" aria-label="Add trade on ${iso}">+</button><div class="ob-jh-day">${d}</div><div class="ob-jh-pnl">${s.count ? money(s.pnl) : '$0'}</div><div class="ob-jh-count">${s.count ? `${s.count} trade${s.count === 1 ? '' : 's'}` : 'No trades'}</div></div>`;
-    }
-    const rows = Math.ceil((data.first + data.days) / 7);
+    const today = todayIso();
+    const cls = pnl => pnl > 0 ? 'ob-jh-win' : pnl < 0 ? 'ob-jh-loss' : 'ob-jh-flat';
+    let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => `<div class="ob-jh-head">${day}</div>`).join('') + '<div class="ob-jh-head">Week</div>';
+    const rows = Math.ceil((first + days) / 7);
     for (let row = 0; row < rows; row++) {
       let wp = 0, wt = 0;
-      const start = row * 7 - data.first + 1;
-      for (let d = start; d < start + 7; d++) if (d >= 1 && d <= data.days && data.stats[d]) { wp += data.stats[d].pnl; wt += data.stats[d].count; }
-      html += `<div class="ob-jh-week"><div class="ob-jh-week-label">Week ${row + 1}</div><div class="ob-jh-week-pnl">${money(wp)}</div><div class="ob-jh-week-count">${wt} trade${wt === 1 ? '' : 's'}</div></div>`;
+      for (let col = 0; col < 7; col++) {
+        const d = row * 7 + col - first + 1;
+        if (d < 1 || d > days) { html += '<div class="ob-jh-blank" aria-hidden="true"></div>'; continue; }
+        const s = stats[d] || { pnl: 0, count: 0 };
+        wp += s.pnl; wt += s.count;
+        const iso = isoOf(y, m, d);
+        const todayCls = iso === today ? ' ob-jh-today' : '';
+        html += `<div class="ob-jh-cell ${s.count ? cls(s.pnl) : 'ob-jh-flat ob-jh-none'}${todayCls}" data-date="${iso}"><button type="button" class="ob-jh-add" data-add-date="${iso}" title="Add Trade" aria-label="Add trade on ${iso}">+</button><div class="ob-jh-day">${d}</div><div class="ob-jh-pnl">${s.count ? pnlHtml(s.pnl) : '$0'}</div><div class="ob-jh-count">${s.count ? `${s.count} trade${s.count === 1 ? '' : 's'}` : 'No trades'}</div></div>`;
+      }
+      html += `<div class="ob-jh-week ${wt ? cls(wp) : ''}"><div class="ob-jh-week-label">Week ${row + 1}</div><div class="ob-jh-week-pnl">${pnlHtml(wp)}</div><div class="ob-jh-week-count">${wt} trade${wt === 1 ? '' : 's'}</div></div>`;
     }
     grid.classList.add('ob-jh-grid');
     grid.innerHTML = html;
@@ -125,6 +194,81 @@
 
     const subtitle = card?.querySelector('p');
     if (subtitle) subtitle.textContent = `${count} trades • Monthly P&L ${money(total)} • account/mode filtered`;
+
+    renderActivity(all);
+  }
+
+  // ── Trading Activity: last 26 weeks, one rounded square per day,
+  //    5 levels for profit and 5 for loss (scaled to the biggest day). ──
+  function ensureActivityCard() {
+    let card = document.getElementById(ACTIVITY_ID);
+    if (card) return card;
+    const grid = document.getElementById(GRID_ID);
+    const anchor = document.getElementById('ob-trading-pnl-account-row') || grid?.closest('.glass-card');
+    if (!anchor || !anchor.parentNode) return null;
+    card = document.createElement('div');
+    card.id = ACTIVITY_ID;
+    card.className = 'glass-card p-5 space-y-4';
+    card.innerHTML = `
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-table-cells text-blue-600"></i>Trading Activity</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Last ${ACTIVITY_WEEKS} weeks • account/mode filtered</p>
+        </div>
+        <div class="ob-act-legend" aria-hidden="true"><span>Loss</span>${[5, 4, 3, 2, 1].map(i => `<span class="ob-act-sq ob-act-l${i}"></span>`).join('')}<span class="ob-act-sq"></span>${[1, 2, 3, 4, 5].map(i => `<span class="ob-act-sq ob-act-p${i}"></span>`).join('')}<span>Profit</span></div>
+      </div>
+      <div class="ob-act-scroll"><div class="ob-act-wrap" data-act-body></div></div>
+      <div class="ob-act-summary" data-act-summary></div>`;
+    anchor.parentNode.insertBefore(card, anchor.nextSibling);
+    return card;
+  }
+
+  function renderActivity(all) {
+    const card = ensureActivityCard();
+    if (!card) return;
+    const body = card.querySelector('[data-act-body]');
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start = new Date(end);
+    start.setDate(start.getDate() - end.getDay() - (ACTIVITY_WEEKS - 1) * 7); // a Sunday, 26 weeks back
+    const inRange = Object.entries(all).filter(([iso]) => { const d = new Date(iso + 'T00:00:00'); return d >= start && d <= end; });
+    const max = Math.max(0, ...inRange.map(([, s]) => Math.abs(s.pnl)));
+    const level = pnl => !pnl || !max ? 0 : Math.min(5, Math.max(1, Math.ceil((Math.abs(pnl) / max) * 5)));
+    const today = todayIso();
+    let squares = '', months = '', lastMonth = -1;
+    for (let w = 0; w < ACTIVITY_WEEKS; w++) {
+      const weekStart = new Date(start); weekStart.setDate(start.getDate() + w * 7);
+      const mo = weekStart.getMonth();
+      months += `<span>${mo !== lastMonth ? weekStart.toLocaleDateString('en-US', { month: 'short' }) : ''}</span>`;
+      lastMonth = mo;
+      for (let d = 0; d < 7; d++) {
+        const day = new Date(weekStart); day.setDate(weekStart.getDate() + d);
+        const iso = isoOf(day.getFullYear(), day.getMonth(), day.getDate());
+        if (day > end) { squares += '<span class="ob-act-sq ob-act-out"></span>'; continue; }
+        const s = all[iso];
+        let cls = 'ob-act-sq';
+        let title = `${iso}: no trades`;
+        if (s) {
+          const lv = level(s.pnl);
+          if (s.pnl > 0) cls += ` ob-act-p${lv}`; else if (s.pnl < 0) cls += ` ob-act-l${lv}`;
+          title = `${iso}: ${money(s.pnl)} • ${s.count} trade${s.count === 1 ? '' : 's'}`;
+        }
+        if (iso === today) cls += ' ob-act-today';
+        squares += `<span class="${cls}" title="${title}"></span>`;
+      }
+    }
+    body.innerHTML = `<span></span><div class="ob-act-months">${months}</div>
+      <div class="ob-act-days"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
+      <div class="ob-act-grid" role="img" aria-label="Daily P&amp;L for the last ${ACTIVITY_WEEKS} weeks">${squares}</div>`;
+    const net = inRange.reduce((a, [, s]) => a + s.pnl, 0);
+    const gross = inRange.reduce((a, [, s]) => a + Math.max(0, s.pnl), 0);
+    const loss = inRange.reduce((a, [, s]) => a + Math.min(0, s.pnl), 0);
+    const n = inRange.reduce((a, [, s]) => a + s.count, 0);
+    const best = inRange.reduce((b, [iso, s]) => (!b || s.pnl > b.pnl ? { iso, pnl: s.pnl } : b), null);
+    const worst = inRange.reduce((b, [iso, s]) => (!b || s.pnl < b.pnl ? { iso, pnl: s.pnl } : b), null);
+    card.querySelector('[data-act-summary]').innerHTML = n
+      ? `<span>Net P&amp;L <b>${money(net)}</b></span><span>Gross profit <b>${money(gross)}</b></span><span>Gross loss <b>${money(loss)}</b></span><span>Trades <b>${n}</b></span><span>Best day <b>${money(best.pnl)}</b></span><span>Worst day <b>${money(worst.pnl)}</b></span>`
+      : `<span>No trades in the last ${ACTIVITY_WEEKS} weeks for this account.</span>`;
   }
 
   function removeExtraHeatmaps() {
@@ -162,6 +306,7 @@
     window.addEventListener('resize', () => setTimeout(render, 20));
   }
 
+  window.obRenderCalendar = () => render();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
 })();
