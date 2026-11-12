@@ -480,13 +480,15 @@ app.delete('/api/storage/:key', async (req, res) => {
 
 // ─── AI proxy (protected) ────────────────────────────────────────────────────
 
+// The Anthropic entry was removed: it pointed at a non-existent OpenAI-style
+// endpoint (/v1/chat/completions) and was never offered in the UI.
+// GROQ_API_URL is optional (tests point it at a local mock); default is Groq.
 const PROVIDER_CONFIG = {
-  groq:     { url: 'https://api.groq.com/openai/v1/chat/completions',                         env: 'GROQ_API_KEY',     headers: {} },
+  groq:     { url: process.env.GROQ_API_URL || 'https://api.groq.com/openai/v1/chat/completions', env: 'GROQ_API_KEY',     headers: {} },
   gemini:   { url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', env: 'GEMINI_API_KEY',   headers: {} },
-  openai:   { url: 'https://api.openai.com/v1/chat/completions',                               env: 'OPENAI_API_KEY',   headers: {} },
-  anthropic:{ url: 'https://api.anthropic.com/v1/chat/completions',                            env: 'ANTHROPIC_API_KEY', headers: { 'anthropic-dangerous-direct-browser-access': 'true' } }
+  openai:   { url: 'https://api.openai.com/v1/chat/completions',                               env: 'OPENAI_API_KEY',   headers: {} }
 };
-function providerConfig(provider) { return PROVIDER_CONFIG[provider]; }
+function providerConfig(provider) { return Object.prototype.hasOwnProperty.call(PROVIDER_CONFIG, provider) ? PROVIDER_CONFIG[provider] : null; }
 function envKey(provider) { const cfg = providerConfig(provider); return cfg ? process.env[cfg.env] : null; }
 
 function cleanAiAnswer(value) {
@@ -565,12 +567,18 @@ function compactGroqMessages(messages) {
 
 app.post('/api/ai', async (req, res) => {
   const user = await requireAuth(req, res);
-  if (!user) return unauthorized(res);
+  if (!user) return unauthorized(res, 'Please sign in to use the AI coach.');
 
   const { provider = 'groq', model, messages, max_completion_tokens = 800, temperature = 0.4 } = req.body || {};
   const cfg = providerConfig(provider);
+  if (!cfg) return res.status(400).json({ error: `Unknown AI provider "${provider}".`, code: 'AI_UNKNOWN_PROVIDER' });
   const key = envKey(provider);
-  if (!cfg || !key) return res.status(503).json({ error: `Server AI provider "${provider}" is not configured.` });
+  if (!key) {
+    return res.status(503).json({
+      error: `The AI coach is not configured on the server: ${cfg.env} is not set. Add it in the server's environment variables (Render → Environment) and redeploy.`,
+      code: 'AI_NOT_CONFIGURED'
+    });
+  }
   if (!model || !Array.isArray(messages)) return res.status(400).json({ error: 'model and messages are required' });
 
   try {
@@ -585,9 +593,10 @@ app.post('/api/ai', async (req, res) => {
     const finalMessages = provider === 'groq' ? compactGroqMessages(safeMessages) : safeMessages;
     const payload = { model, messages: finalMessages, max_completion_tokens: safeMaxTokens, temperature };
     if (provider === 'groq') {
-      payload.include_reasoning = false;
+      // Per Groq docs: qwen/qwen3.8-27b accepts reasoning_effort "none";
+      // include_reasoning is documented for the GPT-OSS models.
       if (model.startsWith('qwen/')) payload.reasoning_effort = 'none';
-      else if (model.startsWith('openai/gpt-oss-')) payload.reasoning_effort = 'low';
+      else if (model.startsWith('openai/gpt-oss-')) { payload.reasoning_effort = 'low'; payload.include_reasoning = false; }
     }
     const upstream = await fetch(cfg.url, {
       method: 'POST',
@@ -599,6 +608,14 @@ app.post('/api/ai', async (req, res) => {
     try { body = JSON.parse(text); } catch {}
     if (upstream.ok && body?.choices?.[0]?.message?.content) {
       body.choices[0].message.content = cleanAiAnswer(body.choices[0].message.content);
+    }
+    if (!upstream.ok) {
+      const upstreamMsg = typeof body?.error === 'string' ? body.error : body?.error?.message;
+      console.error(`AI upstream ${provider} returned ${upstream.status} for model ${model}: ${upstreamMsg || String(text).slice(0, 200)}`);
+      if (upstream.status === 401 || upstream.status === 403) {
+        return res.status(502).json({ error: `The AI provider rejected the server's API key (${cfg.env}). Check that the key is valid and active.`, code: 'AI_KEY_REJECTED' });
+      }
+      return res.status(upstream.status).json({ error: `AI provider error (${upstream.status})${upstreamMsg ? ': ' + upstreamMsg : ''}`, code: 'AI_UPSTREAM_ERROR' });
     }
     return res.status(upstream.status).json(body);
   } catch (err) {
@@ -618,7 +635,7 @@ app.get('/api/health', (req, res) => {
       groq:     Boolean(process.env.GROQ_API_KEY),
       gemini:   Boolean(process.env.GEMINI_API_KEY),
       openai:   Boolean(process.env.OPENAI_API_KEY),
-      anthropic:Boolean(process.env.ANTHROPIC_API_KEY)
+      coach:    process.env.GROQ_API_KEY ? 'ready (GROQ_API_KEY set)' : 'disabled: GROQ_API_KEY is not set'
     }
   });
 });

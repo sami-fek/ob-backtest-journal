@@ -75,7 +75,7 @@
       root.querySelector('#obChatSend').onclick = sendMessage;
       root.querySelector('#obChatImageBtn').onclick = () => root.querySelector('#obChatImageInput').click();
       root.querySelector('#obChatImageInput').onchange = async e => {
-        const files = [...(e.target.files || [])].filter(f => f.type.startsWith('image/')).slice(0,5);
+        const files = [...(e.target.files || [])].filter(f => f.type.startsWith('image/')).slice(0,3); // qwen3.8-27b: max 3 images
         currentImages = [];
         for (const f of files) currentImages.push(await fileToDataUrl(f));
         root.querySelector('#obChatImageCount').textContent = currentImages.length ? `${currentImages.length} image${currentImages.length>1?'s':''} attached` : '';
@@ -140,7 +140,7 @@
   function makeMessages(question, trade) {
     const context=[datasetText(relevantTrades()), trade ? tradeContext(trade) : 'NO SINGLE TRADE SELECTED'];
     const content=[{type:'text',text:`You are the AI Coach inside a trading journal. Act like a practical conversational coach. Analyze ONLY the supplied journal data and images; do not invent market facts, price levels, or missing trade details. The user may ask about one trade, multiple trades, notes, checklist quality, screenshots/images, performance, patterns, discipline, or any combination. Treat notes and images as first-class evidence, not just the checklist. If the data is insufficient, say exactly what is missing.\n\n${context.join('\n\n')}\n\nUSER QUESTION: ${question}`}];
-    currentImages.slice(0,5).forEach(url=>content.push({type:'image_url',image_url:{url}}));
+    currentImages.slice(0,3).forEach(url=>content.push({type:'image_url',image_url:{url}}));
     return [{role:'system',content:'You are a practical trading coach. Maintain natural multi-turn conversation. Do not reveal hidden reasoning.'}, ...chatHistory, {role:'user',content}];
   }
 
@@ -172,9 +172,9 @@
     input.value=''; addMessage('user',question); const pending=addMessage('ai','Thinking…'); busy=true; root.querySelector('#obChatSend').disabled=true;
     try {
       const hasTradeShots=!!(trade&&Array.isArray(trade.screenshots)&&trade.screenshots.some(x=>typeof x==='string'&&x.startsWith('data:image/')));
-      if(!currentImages.length && hasTradeShots) currentImages=trade.screenshots.filter(x=>typeof x==='string'&&x.startsWith('data:image/')).slice(0,5);
+      if(!currentImages.length && hasTradeShots) currentImages=trade.screenshots.filter(x=>typeof x==='string'&&x.startsWith('data:image/')).slice(0,3);
       const hasImages=currentImages.length>0;
-      const model=hasImages?'qwen/qwen3.6-27b':'openai/gpt-oss-20b';
+      const model=hasImages?'qwen/qwen3.8-27b':'openai/gpt-oss-20b'; // Groq shut down qwen3.6-27b on 2026-09-14
       const messages=makeMessages(question,trade);
       const r=await fetch('/api/ai',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:'groq',model,messages,max_completion_tokens:800,temperature:.3})});
       const b=await r.json().catch(()=>({})); if(!r.ok)throw new Error(b?.error?.message||b?.error||`AI request failed (${r.status})`);

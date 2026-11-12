@@ -1981,7 +1981,7 @@
 
       // Pick model based on screenshot images
       const hasImages = Array.isArray(t.screenshots) && t.screenshots.some(x => typeof x === 'string' && x.startsWith('data:image/'));
-      const model = hasImages ? 'qwen/qwen3.6-27b' : 'openai/gpt-oss-20b';
+      const model = hasImages ? 'qwen/qwen3.8-27b' : 'openai/gpt-oss-20b'; // Groq shut down qwen3.6-27b on 2026-09-14
 
       const checklistSummary = (() => {
         const steps = stepsForTrade(t) || [];
@@ -2017,7 +2017,7 @@
         ];
 
         if (hasImages) {
-          const imgParts = t.screenshots.filter(x => typeof x === 'string' && x.startsWith('data:image/')).slice(0, 4).map(url => ({ type: 'image_url', image_url: { url } }));
+          const imgParts = t.screenshots.filter(x => typeof x === 'string' && x.startsWith('data:image/')).slice(0, 3).map(url => ({ type: 'image_url', image_url: { url } }));
           const textPart = { type: 'text', text: promptLines.join('\n') + '\n\nAlso analyze the attached screenshots. Call out anything visible about structure, entry location, invalidation, and targets.' };
           messages[1] = { role: 'user', content: [textPart, ...imgParts] };
         }
