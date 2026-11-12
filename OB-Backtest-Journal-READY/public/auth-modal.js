@@ -146,8 +146,8 @@
       <button id="ob-auth-close" aria-label="Close" onclick="window.hideAuthModal()">✕</button>
 
       <div class="ob-auth-logo-wrap">
-        <div class="ob-auth-logo-mark">OB</div>
-        <div class="ob-auth-title">OB Backtest Journal</div>
+        <div class="ob-auth-logo-mark">MY</div>
+        <div class="ob-auth-title">MY Journal</div>
         <div class="ob-auth-sub">Sign in to your trading journal</div>
       </div>
 

@@ -138,4 +138,4 @@ app.use(async (req, res) => {
   }
 });
 
-app.listen(port, () => console.log('OB Journal MT5 gateway running on port ' + port));
+app.listen(port, () => console.log('MY Journal MT5 gateway running on port ' + port));

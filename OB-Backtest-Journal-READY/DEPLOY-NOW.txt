@@ -1,4 +1,4 @@
-OB BACKTEST JOURNAL — SIMPLE DEPLOY
+MY JOURNAL — SIMPLE DEPLOY
 
 1) SUPABASE
 - Create a free project at supabase.com

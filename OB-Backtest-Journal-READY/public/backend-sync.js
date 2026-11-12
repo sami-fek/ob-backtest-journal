@@ -11,7 +11,7 @@
       const body = await response.json();
       return typeof body.value === 'string' ? body.value : null;
     } catch (error) {
-      console.warn('[OB Journal] Server state read failed; using local cache.', error);
+      console.warn('[MY Journal] Server state read failed; using local cache.', error);
       return null;
     }
   }
@@ -26,7 +26,7 @@
       if (!response.ok) throw new Error(`Storage write ${response.status}`);
       return true;
     } catch (error) {
-      console.warn('[OB Journal] Server state write failed; local cache remains available.', error);
+      console.warn('[MY Journal] Server state write failed; local cache remains available.', error);
       return false;
     }
   }
@@ -90,7 +90,7 @@
     script.async = true;
     script.onload = () => onDone && onDone();
     script.onerror = () => {
-      console.warn(`[OB Journal] UI feature script failed to load: ${src}`);
+      console.warn(`[MY Journal] UI feature script failed to load: ${src}`);
       onDone && onDone();
     };
     document.head.appendChild(script);

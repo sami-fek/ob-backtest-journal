@@ -1,4 +1,4 @@
-# OB Backtest Journal — ready to deploy
+# MY Journal — ready to deploy
 
 The existing journal UI, Model OB system, AI Coach UI, notes, screenshots and trade behavior are preserved. Only deployment/storage/security plumbing was changed.
 

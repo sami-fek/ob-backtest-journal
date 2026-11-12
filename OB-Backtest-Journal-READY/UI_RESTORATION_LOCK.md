@@ -1,4 +1,4 @@
-# OB Backtest Journal — UI Restoration Lock
+# MY Journal — UI Restoration Lock
 
 **Purpose:** permanent source-of-truth for the UI we built together. This file must be treated as a protected project contract by future coding agents.
 

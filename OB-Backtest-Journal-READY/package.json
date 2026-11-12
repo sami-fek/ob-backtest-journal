@@ -2,7 +2,7 @@
   "name": "ob-backtest-journal-webapp",
   "version": "1.0.0",
   "private": true,
-  "description": "OB Backtest Journal with persistent server storage and server-side AI proxy",
+  "description": "MY Journal with persistent server storage and server-side AI proxy",
   "type": "module",
   "scripts": {
     "start": "node app-entry.js",

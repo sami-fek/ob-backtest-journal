@@ -782,7 +782,7 @@ app.get('/', (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use((req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-app.listen(PORT, () => console.log(`OB Journal running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`MY Journal running on http://localhost:${PORT}`));
 
 // Export for app-entry.js compatibility (getSessionId is used by MT5 routes)
 export { getSessionId, getStoredValue, setStoredValue, deleteStoredValue };
