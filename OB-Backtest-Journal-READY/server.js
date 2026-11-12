@@ -39,7 +39,8 @@ const useSupabase = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SER
 let db = null;
 
 if (!useSupabase) {
-  const dataDir = path.join(__dirname, 'data');
+  // DATA_DIR lets tests use a throwaway folder; default is unchanged.
+  const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
   fs.mkdirSync(dataDir, { recursive: true });
   db = new Database(path.join(dataDir, 'journal.db'));
   db.pragma('journal_mode = WAL');
@@ -224,6 +225,26 @@ function unauthorized(res, message = 'Authentication required') {
   return res.status(401).json({ error: message, code: 'UNAUTHORIZED' });
 }
 
+// Turn an unexpected auth/database error into a readable 500 response.
+// Database schema problems (e.g. a Supabase users table created before the
+// google_sub column existed) get their own code so they are easy to diagnose.
+function authServerError(res, err, action, code) {
+  const msg = String(err?.message || '');
+  if (/^Supabase \d+/.test(msg) && /(column|relation|table|schema|does not exist|google_sub|password_hash)/i.test(msg)) {
+    return res.status(500).json({
+      error: `${action} failed: the account database is missing a required table or column (for example users.google_sub). The server administrator must update the database schema; see the server logs.`,
+      code: 'AUTH_DB_SCHEMA'
+    });
+  }
+  if (/^Supabase \d+/.test(msg)) {
+    return res.status(500).json({
+      error: `${action} failed: the account database returned an error. Please try again; if it keeps happening, check the server logs.`,
+      code: 'AUTH_DB_ERROR'
+    });
+  }
+  return res.status(500).json({ error: `${action} failed because of a server error. Please try again.`, code });
+}
+
 // ─── Auth routes (public — no auth required) ─────────────────────────────────
 
 // POST /api/auth/register
@@ -257,7 +278,7 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(201).json({ ok: true, user: { id: user.id, email: user.email } });
   } catch (err) {
     console.error('Register failed:', err);
-    return res.status(500).json({ error: 'Registration failed. Please try again.', code: 'REGISTER_FAILED' });
+    return authServerError(res, err, 'Registration', 'REGISTER_FAILED');
   }
 });
 
@@ -266,7 +287,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body || {};
 
-    if (!email || !password) {
+    if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
       return res.status(400).json({ error: 'Email and password are required.', code: 'MISSING_CREDENTIALS' });
     }
 
@@ -275,6 +296,15 @@ app.post('/api/auth/login', async (req, res) => {
       // Use constant-time comparison to prevent timing attacks
       await bcrypt.compare(password, '$2a$12$invalidhashtopreventtimingattack');
       return res.status(401).json({ error: 'Incorrect email or password.', code: 'INVALID_CREDENTIALS' });
+    }
+
+    // Accounts created through Google Sign-In have no password hash.
+    // bcrypt.compare(password, null) throws, which used to surface as a 500.
+    if (!user.password_hash) {
+      return res.status(401).json({
+        error: 'This account uses Google sign-in. Please use the "Sign in with Google" button.',
+        code: 'PASSWORD_NOT_SET'
+      });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
@@ -286,7 +316,7 @@ app.post('/api/auth/login', async (req, res) => {
     return res.json({ ok: true, user: { id: user.id, email: user.email } });
   } catch (err) {
     console.error('Login failed:', err);
-    return res.status(500).json({ error: 'Login failed. Please try again.', code: 'LOGIN_FAILED' });
+    return authServerError(res, err, 'Login', 'LOGIN_FAILED');
   }
 });
 
@@ -413,10 +443,7 @@ app.post('/api/auth/google', async (req, res) => {
 
   } catch (err) {
     console.error('Google sign-in failed:', err);
-    return res.status(500).json({
-      error: 'Google Sign-In failed. Please try again.',
-      code: 'GOOGLE_FAILED'
-    });
+    return authServerError(res, err, 'Google Sign-In', 'GOOGLE_FAILED');
   }
 });
 

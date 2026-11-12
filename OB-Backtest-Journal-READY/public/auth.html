@@ -6,7 +6,7 @@
   <title>OB Journal — Sign In</title>
 
   <!-- Google Identity Services — must load before the page logic -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://accounts.google.com/gsi/client?hl=en" async defer></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -242,9 +242,6 @@
     <!-- GIS renders the official "Sign in with Google" button here -->
     <div class="google-btn-wrap" id="gSignInBtn"></div>
 
-    <!-- GIS renders the official "Sign up with Google" button here -->
-    <div class="google-btn-wrap" id="gSignUpBtn"></div>
-
     <div class="spinner-wrap" id="googleSpinner">
       <div class="spinner"></div>
       <span>Verifying with Google…</span>
@@ -275,9 +272,14 @@
       Sign in with email &amp; password instead
     </button>
   </div>
+  <div class="toggle-row">
+    <button class="toggle-link" id="toggleModeBtn" type="button" onclick="togglePwMode()">
+      New here? Create an account
+    </button>
+  </div>
 
-  <p class="footer-note">
-    New users are registered automatically on first Google sign-in.<br>
+  <p class="footer-note" id="footerNote">
+    Create an account with email and password, or sign in with Google.<br>
     Your data is stored privately and never shared.
   </p>
 
@@ -308,18 +310,34 @@ function setGoogleLoading(loading) {
   document.getElementById('googleSection').style.pointerEvents = loading ? 'none' : '';
   document.getElementById('googleSpinner').classList.toggle('show', loading);
   document.getElementById('gSignInBtn').style.visibility = loading ? 'hidden' : '';
-  document.getElementById('gSignUpBtn').style.visibility = loading ? 'hidden' : '';
 }
 
 // ── Password section toggle ────────────────────────────────────────────────────
-function togglePassword() {
-  const section = document.getElementById('pwSection');
-  const btn     = document.getElementById('togglePwBtn');
-  const open    = section.classList.toggle('open');
-  btn.textContent = open
+function setPasswordOpen(open) {
+  document.getElementById('pwSection').classList.toggle('open', open);
+  document.getElementById('togglePwBtn').textContent = open
     ? 'Hide email & password sign-in'
     : 'Sign in with email & password instead';
   if (open) document.getElementById('pwEmail').focus();
+}
+function togglePassword() {
+  setPasswordOpen(!document.getElementById('pwSection').classList.contains('open'));
+}
+
+// 'signin' → POST /api/auth/login, 'register' → POST /api/auth/register
+let pwMode = 'signin';
+function togglePwMode() {
+  pwMode = pwMode === 'register' ? 'signin' : 'register';
+  const reg = pwMode === 'register';
+  document.getElementById('btnPwLogin').textContent = reg ? 'Create Account' : 'Sign In';
+  const pw = document.getElementById('pwPassword');
+  pw.setAttribute('autocomplete', reg ? 'new-password' : 'current-password');
+  pw.setAttribute('placeholder', reg ? 'At least 8 characters' : '••••••••');
+  document.getElementById('toggleModeBtn').textContent = reg
+    ? 'Already have an account? Sign in'
+    : 'New here? Create an account';
+  clearAlerts();
+  setPasswordOpen(true);
 }
 
 // ── Google credential callback ─────────────────────────────────────────────────
@@ -365,13 +383,19 @@ async function handlePasswordLogin(e) {
     showAlert('Error', 'Please enter your email and password.');
     return;
   }
+  const registering = pwMode === 'register';
+  if (registering && password.length < 8) {
+    showAlert('Error', 'Password must be at least 8 characters.');
+    return;
+  }
 
   const btn = document.getElementById('btnPwLogin');
+  const idleLabel = registering ? 'Create Account' : 'Sign In';
   btn.disabled = true;
-  btn.textContent = 'Signing in…';
+  btn.textContent = registering ? 'Creating account…' : 'Signing in…';
 
   try {
-    const res  = await fetch('/api/auth/login', {
+    const res  = await fetch(registering ? '/api/auth/register' : '/api/auth/login', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
@@ -380,17 +404,17 @@ async function handlePasswordLogin(e) {
     const body = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      showAlert('Success', 'Signed in! Taking you to your journal…');
+      showAlert('Success', registering ? 'Account created! Taking you to your journal…' : 'Signed in! Taking you to your journal…');
       setTimeout(() => { window.location.replace(getRedirect()); }, 700);
     } else {
-      showAlert('Error', body.error || 'Incorrect email or password.');
+      showAlert('Error', body.error || (registering ? 'Could not create the account. Please try again.' : 'Incorrect email or password.'));
       document.getElementById('pwPassword').value = '';
     }
   } catch {
     showAlert('Error', 'Network error. Please try again.');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Sign In';
+    btn.textContent = idleLabel;
   }
 }
 
@@ -414,24 +438,11 @@ function initGoogleSignIn(clientId) {
       type:   'standard',
       theme:  'outline',
       size:   'large',
-      text:   'signin_with',   // "Sign in with Google"
+      text:   'signin_with',   // "Sign in with Google" — also creates new accounts
       shape:  'rectangular',
       logo_alignment: 'left',
-      width:  336
-    }
-  );
-
-  // Render "Sign up with Google" button
-  google.accounts.id.renderButton(
-    document.getElementById('gSignUpBtn'),
-    {
-      type:   'standard',
-      theme:  'filled_blue',
-      size:   'large',
-      text:   'signup_with',   // "Sign up with Google"
-      shape:  'rectangular',
-      logo_alignment: 'left',
-      width:  336
+      width:  336,
+      locale: 'en'             // always English, regardless of browser language
     }
   );
 
@@ -451,6 +462,8 @@ window.addEventListener('load', () => {
     document.getElementById('divider').style.display       = 'none';
     document.getElementById('togglePwBtn').style.display   = 'none';
     document.getElementById('googleLabel').style.display   = 'none';
+    document.getElementById('footerNote').innerHTML =
+      'Google sign-in is not configured on this server (GOOGLE_CLIENT_ID is not set). Use email and password.<br>Your data is stored privately and never shared.';
     // Open password section automatically
     document.getElementById('pwSection').classList.add('open');
     document.getElementById('pwEmail').focus();

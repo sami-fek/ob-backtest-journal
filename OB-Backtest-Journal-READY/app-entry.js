@@ -119,7 +119,9 @@ app.use(async (req, res) => {
 
       // Inject Google Client ID meta tag when configured
       const googleClientId = process.env.GOOGLE_CLIENT_ID;
-      if (googleClientId && !html.includes('name="google-client-id"')) {
+      // Look for the actual tag: auth.html's script contains the text
+      // meta[name="google-client-id"], which used to block injection there.
+      if (googleClientId && !/<meta\s+name="google-client-id"/i.test(html)) {
         html = html.replace(
           '<meta charset="UTF-8"',
           `<meta name="google-client-id" content="${googleClientId.replace(/"/g, '')}">\n  <meta charset="UTF-8"`

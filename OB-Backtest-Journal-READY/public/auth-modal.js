@@ -157,7 +157,6 @@
       <div id="ob-google-section">
         <div class="ob-google-wrap">
           <div id="ob-gsi-signin"></div>
-          <div id="ob-gsi-signup"></div>
         </div>
         <div class="ob-spinner-wrap" id="ob-auth-spinner">
           <div class="ob-spinner"></div>
@@ -184,9 +183,14 @@
           Sign in with email &amp; password instead
         </button>
       </div>
+      <div style="text-align:center;margin-top:8px;">
+        <button class="ob-toggle-link" id="ob-mode-toggle" type="button">
+          New here? Create an account
+        </button>
+      </div>
 
-      <p class="ob-footer-note">
-        New users are registered automatically on first Google sign-in.<br>
+      <p class="ob-footer-note" id="ob-auth-footer">
+        Create an account with email and password, or sign in with Google.<br>
         Your data is stored privately and never shared.
       </p>
     </div>
@@ -229,13 +233,31 @@
 
   // ── Password section toggle ────────────────────────────────────────────────
   let pwOpen = false;
-  document.getElementById('ob-pw-toggle').addEventListener('click', () => {
-    pwOpen = !pwOpen;
+  // 'signin' → POST /api/auth/login, 'register' → POST /api/auth/register
+  let pwMode = 'signin';
+  function setPwOpen(open) {
+    pwOpen = open;
     document.getElementById('ob-pw-section').classList.toggle('open', pwOpen);
     document.getElementById('ob-pw-toggle').textContent = pwOpen
       ? 'Hide email & password sign-in'
       : 'Sign in with email & password instead';
     if (pwOpen) document.getElementById('ob-pw-email').focus();
+  }
+  function setPwMode(mode) {
+    pwMode = mode;
+    const reg = mode === 'register';
+    document.getElementById('ob-pw-btn').textContent = reg ? 'Create Account' : 'Sign In';
+    document.getElementById('ob-pw-password').setAttribute('autocomplete', reg ? 'new-password' : 'current-password');
+    document.getElementById('ob-pw-password').setAttribute('placeholder', reg ? 'At least 8 characters' : '••••••••');
+    document.getElementById('ob-mode-toggle').textContent = reg
+      ? 'Already have an account? Sign in'
+      : 'New here? Create an account';
+    clearAlerts();
+  }
+  document.getElementById('ob-pw-toggle').addEventListener('click', () => setPwOpen(!pwOpen));
+  document.getElementById('ob-mode-toggle').addEventListener('click', () => {
+    setPwMode(pwMode === 'register' ? 'signin' : 'register');
+    setPwOpen(true);
   });
 
   // ── Password form submit ───────────────────────────────────────────────────
@@ -245,27 +267,30 @@
     const email    = document.getElementById('ob-pw-email').value.trim();
     const password = document.getElementById('ob-pw-password').value;
     if (!email || !password) { showError('Please enter your email and password.'); return; }
+    const registering = pwMode === 'register';
+    if (registering && password.length < 8) { showError('Password must be at least 8 characters.'); return; }
 
     const btn = document.getElementById('ob-pw-btn');
-    btn.disabled = true; btn.textContent = 'Signing in…';
+    const idleLabel = registering ? 'Create Account' : 'Sign In';
+    btn.disabled = true; btn.textContent = registering ? 'Creating account…' : 'Signing in…';
     try {
-      const res  = await fetch('/api/auth/login', {
+      const res  = await fetch(registering ? '/api/auth/register' : '/api/auth/login', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
-        showSuccess('Signed in! Loading your journal…');
+        showSuccess(registering ? 'Account created! Loading your journal…' : 'Signed in! Loading your journal…');
         setTimeout(() => { window.location.replace(window.AUTH_REDIRECT || '/'); }, 700);
       } else {
-        showError(body.error || 'Incorrect email or password.');
+        showError(body.error || (registering ? 'Could not create the account. Please try again.' : 'Incorrect email or password.'));
         document.getElementById('ob-pw-password').value = '';
       }
     } catch {
       showError('Network error. Please try again.');
     } finally {
-      btn.disabled = false; btn.textContent = 'Sign In';
+      btn.disabled = false; btn.textContent = idleLabel;
     }
   });
 
@@ -311,13 +336,11 @@
       cancel_on_tap_outside: true
     });
 
+    // One Google button only, always in English (Google otherwise follows the
+    // browser language, e.g. Dutch). Google sign-in also creates new accounts.
     google.accounts.id.renderButton(
       document.getElementById('ob-gsi-signin'),
-      { type:'standard', theme:'outline',     size:'large', text:'signin_with', shape:'rectangular', logo_alignment:'left', width:336 }
-    );
-    google.accounts.id.renderButton(
-      document.getElementById('ob-gsi-signup'),
-      { type:'standard', theme:'filled_blue', size:'large', text:'signup_with', shape:'rectangular', logo_alignment:'left', width:336 }
+      { type:'standard', theme:'outline', size:'large', text:'signin_with', shape:'rectangular', logo_alignment:'left', width:336, locale:'en' }
     );
   }
 
@@ -328,7 +351,10 @@
       document.getElementById('ob-google-section').style.display = 'none';
       document.getElementById('ob-auth-divider').style.display   = 'none';
       document.getElementById('ob-pw-toggle').style.display      = 'none';
-      document.getElementById('ob-pw-section').classList.add('open');
+      document.getElementById('ob-auth-footer').innerHTML =
+        'Google sign-in is not configured on this server (GOOGLE_CLIENT_ID is not set). Use email and password.<br>' +
+        'Your data is stored privately and never shared.';
+      setPwOpen(true);
       return;
     }
     initGIS(meta.content);
@@ -385,7 +411,7 @@
   // Load GIS script if not already present
   if (!document.querySelector('script[src*="accounts.google.com/gsi/client"]')) {
     const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
+    script.src = 'https://accounts.google.com/gsi/client?hl=en';
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
