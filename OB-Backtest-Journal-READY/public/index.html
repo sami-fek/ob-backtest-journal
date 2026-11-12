@@ -661,7 +661,7 @@
         <button type="button" id="drawerAiBtn" data-inline-ai="true" onclick="analyzeTradeWithAI()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
           <i class="fa-solid fa-wand-magic-sparkles"></i><span id="drawerAiBtnLabel">Analyze with AI</span>
         </button>
-        <div id="drawerSaveGateMsg" class="hidden text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5"></div>
+        <div id="drawerSaveGateMsg" class="text-[11px] font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5" aria-live="polite"></div>
         <div class="flex items-center gap-2">
           <button id="drawerSaveBtn" onclick="saveDrawerFromFooter()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 font-bold text-xs rounded-lg transition-all active:scale-[0.98]"><span id="drawerSaveBtnLabel">Save Changes</span></button>
           <button id="drawerDeleteBtn" class="px-4 py-1.5 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 text-slate-400 border border-slate-200 hover:border-rose-200 rounded-lg text-xs font-semibold transition-all">Delete Trade</button>
@@ -678,6 +678,8 @@
   </footer>
 
   <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <!-- Trade save rule (50% checklist + note + screenshot); also unit-tested -->
+  <script src="/save-rule.js"></script>
   <script>
     const TRADES_KEY = 'ob-trades';
     const SETTINGS_KEY = 'ob-os-settings';
@@ -1783,17 +1785,34 @@
         screenshots: Array.isArray(t.screenshots) ? [...t.screenshots] : []
       };
     }
-    // Save rule: at least 50% of the strategy's checklist items checked (✓)
-    // AND a non-empty note.
+    // Save rule (public/save-rule.js): at least 50% of the strategy's checklist
+    // items checked (✓) AND a non-empty note AND at least one screenshot.
+    // Old trades stored without a screenshot can still be saved while their
+    // checklist, note and screenshots are unchanged.
     function drawerSaveGateStatus(view) {
-      if (!view) return { ok: false, missing: ['No trade open.'], missingKeys: ['none'] };
-      const total = stepsForTrade(view).length;
-      const passed = (view.checklist || []).filter(s => s === 'pass').length;
-      const need = Math.ceil(total * SAVE_GATE_MIN_CHECKLIST_RATIO);
-      const missing = [], missingKeys = [];
-      if (total > 0 && passed < need) { missing.push(`Check at least ${need} of ${total} checklist items (${passed} checked).`); missingKeys.push('checklist'); }
-      if (!String(view.notes || '').trim()) { missing.push('Write a note.'); missingKeys.push('note'); }
-      return { ok: missing.length === 0, passed, total, need, missing, missingKeys };
+      if (!view) return { ok: false, missing: ['No trade open.'], missingKeys: ['none'], items: [] };
+      if (!window.obSaveRule) return { ok: false, missing: ['Save rule not loaded — reload the page.'], missingKeys: ['none'], items: [] };
+      const isNew = !!(pendingNewTrade && pendingNewTrade.id === view.id);
+      return window.obSaveRule.evaluate({
+        totalItems: stepsForTrade(view).length,
+        checklist: view.checklist,
+        notes: view.notes,
+        screenshots: view.screenshots,
+        stored: isNew ? null : (trades.find(t => t.id === view.id) || null)
+      });
+    }
+    function renderSaveGateList(gate) {
+      const msg = document.getElementById('drawerSaveGateMsg');
+      if (!msg) return;
+      const tick = ok => ok
+        ? '<span class="text-emerald-600 font-bold" aria-label="done">✓</span>'
+        : '<span class="text-rose-500 font-bold" aria-label="missing">✕</span>';
+      const rows = (gate.items || []).map(i =>
+        `<li class="flex items-center gap-1.5 ${i.ok ? 'text-slate-600' : 'text-rose-700'}" data-req="${i.key}">${tick(i.ok)}<span>${escapeHtml(i.label)}</span></li>`).join('');
+      const legacy = gate.legacyExempt
+        ? '<div class="mt-1 text-[10.5px] text-slate-500">Old trade without a screenshot: you can save other edits; changing the checklist or note needs all three.</div>'
+        : '';
+      msg.innerHTML = `<ul class="flex flex-wrap gap-x-3 gap-y-0.5">${rows}</ul>${legacy}`;
     }
     // Save looks disabled (aria-disabled) while the rule is not met, but stays
     // clickable so a click can point at what is missing — it never saves then.
@@ -1809,10 +1828,7 @@
       btn.classList.toggle('cursor-not-allowed', !enabled);
       const label = document.getElementById('drawerSaveBtnLabel');
       if (label && !drawerSaving && label.textContent !== 'Saved ✓') label.textContent = 'Save Changes';
-      if (msg) {
-        msg.textContent = gate.ok ? '' : 'To save: ' + gate.missing.join(' ');
-        msg.classList.toggle('hidden', gate.ok);
-      }
+      if (msg) renderSaveGateList(gate);
     }
     window.updateDrawerSaveGate = updateDrawerSaveGate;
     window.__checkDrawerSaveReady = updateDrawerSaveGate;
@@ -1827,7 +1843,9 @@
       const msg = document.getElementById('drawerSaveGateMsg');
       if (msg) { msg.classList.remove('ob-req-flash'); void msg.offsetWidth; msg.classList.add('ob-req-flash'); }
       if (!target) return;
-      try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { target.scrollIntoView(); }
+      if (typeof target.scrollIntoView === 'function') {
+        try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { target.scrollIntoView(); }
+      }
       target.classList.remove('ob-req-flash'); void target.offsetWidth; target.classList.add('ob-req-flash');
       setTimeout(() => target.classList.remove('ob-req-flash'), 1800);
       if (key === 'note') { try { target.focus({ preventScroll: true }); } catch (_) {} }

@@ -190,7 +190,7 @@
     if (!rows.length) return;
     inst.active = Math.max(0, Math.min(rows.length - 1, i));
     rows.forEach((r, k) => r.classList.toggle('ob-dd-active', k === inst.active));
-    rows[inst.active].scrollIntoView({ block: 'nearest' });
+    if (typeof rows[inst.active].scrollIntoView === 'function') rows[inst.active].scrollIntoView({ block: 'nearest' });
   }
 
   // Place under the button; flip upward when there is not enough room below.
