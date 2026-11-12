@@ -38,7 +38,7 @@
       .ob-dd-btn .ob-dd-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
       .ob-dd-btn svg { flex-shrink: 0; transition: transform .15s; }
       .ob-dd-btn:hover, .ob-dd-btn:focus-visible, .ob-dd-btn[aria-expanded="true"] {
-        background: #2563eb; border-color: #2563eb; color: #fff;
+        background: #3b82f6; border-color: #3b82f6; color: #fff;
         box-shadow: 0 4px 12px rgba(37,99,235,.25); outline: none;
       }
       .ob-dd-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
@@ -62,7 +62,7 @@
       .ob-dd-opt[aria-selected="true"] .ob-dd-check { visibility: visible; }
       .ob-dd-sep { height: 1px; background: #f1f5f9; margin: 6px 4px; }
       .ob-dd-action { color: #475569; }
-      .ob-dd-action.ob-dd-active { background: #f1f5f9; color: #1e293b; }
+      .ob-dd-action.ob-dd-active { background: #eff6ff; color: #1d4ed8; } /* light: blue hover; dark: gray (theme.css) */
       .ob-dd-action.ob-dd-danger.ob-dd-active { background: #fef2f2; color: #dc2626; }
     `;
     document.head.appendChild(s);
