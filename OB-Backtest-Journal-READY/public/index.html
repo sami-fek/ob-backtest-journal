@@ -68,6 +68,12 @@
     /* Keep the floating AI Coach button off the open trade drawer */
     body.ob-drawer-open #ob-ai-fab { right: 462px !important; }
     @media (max-width: 920px) { body.ob-drawer-open #ob-ai-fab { display: none !important; } }
+    /* Flash the first missing save requirement */
+    .ob-req-flash { border-radius: 12px; animation: ob-req-flash 1.6s ease-out; }
+    @keyframes ob-req-flash {
+      0%, 40% { box-shadow: 0 0 0 3px rgba(244,63,94,.55); background-color: rgba(254,226,226,.55); }
+      100% { box-shadow: 0 0 0 0 rgba(244,63,94,0); }
+    }
 
     .chk-item { display:flex; align-items:flex-start; padding:10px 12px; border-radius:12px; border:1px solid #e2e8f0; background:#fff; margin-bottom:6px; gap:10px; transition: background 0.15s, border-color 0.15s; }
     .chk-item.chk-passed { background:#f0fdf4; border-color:#bbf7d0; }
@@ -1780,22 +1786,25 @@
     // Save rule: at least 50% of the strategy's checklist items checked (✓)
     // AND a non-empty note.
     function drawerSaveGateStatus(view) {
-      if (!view) return { ok: false, missing: ['No trade open.'] };
+      if (!view) return { ok: false, missing: ['No trade open.'], missingKeys: ['none'] };
       const total = stepsForTrade(view).length;
       const passed = (view.checklist || []).filter(s => s === 'pass').length;
       const need = Math.ceil(total * SAVE_GATE_MIN_CHECKLIST_RATIO);
-      const missing = [];
-      if (total > 0 && passed < need) missing.push(`Check at least ${need} of ${total} checklist items (${passed} checked).`);
-      if (!String(view.notes || '').trim()) missing.push('Write a note.');
-      return { ok: missing.length === 0, passed, total, need, missing };
+      const missing = [], missingKeys = [];
+      if (total > 0 && passed < need) { missing.push(`Check at least ${need} of ${total} checklist items (${passed} checked).`); missingKeys.push('checklist'); }
+      if (!String(view.notes || '').trim()) { missing.push('Write a note.'); missingKeys.push('note'); }
+      return { ok: missing.length === 0, passed, total, need, missing, missingKeys };
     }
+    // Save looks disabled (aria-disabled) while the rule is not met, but stays
+    // clickable so a click can point at what is missing — it never saves then.
     function updateDrawerSaveGate() {
       const btn = document.getElementById('drawerSaveBtn');
       const msg = document.getElementById('drawerSaveGateMsg');
       if (!btn) return;
       const gate = drawerSaveGateStatus(drawerViewTrade());
       const enabled = gate.ok && !drawerSaving;
-      btn.disabled = !enabled;
+      btn.disabled = drawerSaving;
+      btn.setAttribute('aria-disabled', String(!enabled));
       btn.classList.toggle('opacity-40', !enabled);
       btn.classList.toggle('cursor-not-allowed', !enabled);
       const label = document.getElementById('drawerSaveBtnLabel');
@@ -1807,6 +1816,22 @@
     }
     window.updateDrawerSaveGate = updateDrawerSaveGate;
     window.__checkDrawerSaveReady = updateDrawerSaveGate;
+
+    // Scroll to and flash the first missing requirement (the drawer stays open).
+    function highlightMissingRequirement(gate) {
+      const key = gate && gate.missingKeys && gate.missingKeys[0];
+      const target = key === 'checklist' ? document.getElementById('drawerChecklist')
+                   : key === 'note' ? document.getElementById('drawerNotesInput')
+                   : key === 'screenshot' ? document.getElementById('drawerScreenshotUploadLabel')
+                   : null;
+      const msg = document.getElementById('drawerSaveGateMsg');
+      if (msg) { msg.classList.remove('ob-req-flash'); void msg.offsetWidth; msg.classList.add('ob-req-flash'); }
+      if (!target) return;
+      try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { target.scrollIntoView(); }
+      target.classList.remove('ob-req-flash'); void target.offsetWidth; target.classList.add('ob-req-flash');
+      setTimeout(() => target.classList.remove('ob-req-flash'), 1800);
+      if (key === 'note') { try { target.focus({ preventScroll: true }); } catch (_) {} }
+    }
 
     function openDrawer(id) {
       const t = drawerStoredTrade(id);
@@ -1839,7 +1864,8 @@
       const isNew = !!(pendingNewTrade && pendingNewTrade.id === id);
       const delBtn = document.getElementById('drawerDeleteBtn');
       delBtn.textContent = isNew ? 'Discard' : 'Delete Trade';
-      delBtn.onclick = isNew ? () => closeDrawer() : () => { deleteTrade(t.id); closeDrawer(); };
+      // Delete closes the drawer only if the trade was really deleted (confirm accepted).
+      delBtn.onclick = isNew ? () => closeDrawer() : () => { if (deleteTrade(t.id)) closeDrawer(); };
       updateDrawerSaveGate();
       const drawer = document.getElementById('tradeDrawer');
       drawer.classList.remove('hidden');
@@ -1932,7 +1958,8 @@
       const input = document.getElementById('drawerNotesInput');
       if (input) drawerDraft.notes = input.value;
       const gate = drawerSaveGateStatus(drawerViewTrade());
-      if (!gate.ok) { updateDrawerSaveGate(); return; }
+      // Requirements not met: nothing is saved and the drawer stays open.
+      if (!gate.ok) { updateDrawerSaveGate(); highlightMissingRequirement(gate); return; }
       const edits = {
         checklist: [...drawerDraft.checklist],
         notes: drawerDraft.notes,
@@ -1969,8 +1996,6 @@
           trades.unshift(newTrade);
           await saveState();
           renderAll();
-          drawerSaving = false;
-          openDrawer(newTrade.id); // now a stored trade
         } else {
           const t = trades.find(item => item.id === id);
           if (!t) return;
@@ -1978,11 +2003,10 @@
           await saveState();
           renderTradingConsole();
           renderJournalTable();
-          if (currentDrawerTradeId === id) drawerDraft = makeDrawerDraft(t);
         }
-        const footerSaveBtn = document.getElementById('drawerSaveBtn');
-        const footerSaveLabel = document.getElementById('drawerSaveBtnLabel');
-        if (footerSaveBtn && footerSaveLabel) persistDrawerSaveFeedback(footerSaveBtn, footerSaveLabel, 'Save Changes', 'Saved ✓');
+        // A successful Save is one of the only two ways to close the drawer (the other is X).
+        drawerSaving = false;
+        if (currentDrawerTradeId === id) closeDrawer();
       } finally {
         drawerSaving = false;
         updateDrawerSaveGate();
@@ -2027,17 +2051,8 @@
       updateDrawerSaveGate();
     }
 
-    document.getElementById('tradeDrawer').addEventListener('click', function(e) { if (e.target === this) closeDrawer(); });
-
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        const drawer = document.getElementById('tradeDrawer');
-        if (drawer && !drawer.classList.contains('hidden')) {
-          e.preventDefault();
-          closeDrawer();
-        }
-      }
-    });
+    // The trade drawer closes only via its X button or a successful Save
+    // (no backdrop click, no Escape), so a checklist in progress is never lost.
 
     async function analyzeTradeWithAI() {
       if (drawerAiBusy) return;
@@ -2131,7 +2146,9 @@
         trades = trades.filter(t => t.id !== id);
         saveState();
         renderAll();
+        return true;
       }
+      return false;
     }
     function updateSettings() {
       initialCapital = parseFloat(document.getElementById('settingInitialCapital').value) || 100000;
