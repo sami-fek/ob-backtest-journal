@@ -16,7 +16,15 @@
     const btn = document.getElementById('drawerSaveBtn');
     if (!btn) return;
     injectStyle();
-    // Save is always available once a drawer is open — no strict gate.
+    // The save rule lives in index.html (updateDrawerSaveGate): at least 50% of
+    // the strategy checklist checked AND a non-empty note. Delegate to it.
+    if (typeof window.updateDrawerSaveGate === 'function') {
+      btn.classList.add('ob-save-ready');
+      window.__checkDrawerSaveReady = window.updateDrawerSaveGate;
+      window.updateDrawerSaveGate();
+      return;
+    }
+    // Fallback (older page without the gate): always enabled.
     const enableBtn = () => {
       const b = document.getElementById('drawerSaveBtn');
       if (!b) return;

@@ -653,6 +653,7 @@
         <button type="button" id="drawerAiBtn" data-inline-ai="true" onclick="analyzeTradeWithAI()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
           <i class="fa-solid fa-wand-magic-sparkles"></i><span id="drawerAiBtnLabel">Analyze with AI</span>
         </button>
+        <div id="drawerSaveGateMsg" class="hidden text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5"></div>
         <div class="flex items-center gap-2">
           <button id="drawerSaveBtn" onclick="saveDrawerFromFooter()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 font-bold text-xs rounded-lg transition-all active:scale-[0.98]"><span id="drawerSaveBtnLabel">Save Changes</span></button>
           <button id="drawerDeleteBtn" class="px-4 py-1.5 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 text-slate-400 border border-slate-200 hover:border-rose-200 rounded-lg text-xs font-semibold transition-all">Delete Trade</button>
@@ -717,6 +718,13 @@
     let drawerOriginalNote = '';
     let drawerEditMode = false;
     let drawerAiBusy = false;
+    // Nothing is stored until Save is clicked:
+    // - pendingNewTrade: a trade created by "Add trade", not yet saved
+    // - drawerDraft: checklist/notes/screenshots edits held in memory for the open drawer
+    let pendingNewTrade = null;
+    let drawerDraft = null;
+    let drawerSaving = false;
+    const SAVE_GATE_MIN_CHECKLIST_RATIO = 0.5;
 
     // ---- EARLY TAB RESTORE ----
     (function restoreTabNow() {
@@ -879,7 +887,9 @@
         openTime: t.openTime || null,
         closeTime: t.closeTime || null,
         commission: typeof t.commission === 'number' ? t.commission : null,
-        swap: typeof t.swap === 'number' ? t.swap : null
+        swap: typeof t.swap === 'number' ? t.swap : null,
+        // keep the post-hard-stop flag across reloads (was dropped before)
+        ...(t.disciplineViolation ? { disciplineViolation: t.disciplineViolation } : {})
       };
     }
     function checklistFor(strategy) { return CHECKLISTS[strategy] || CHECKLISTS['Model OB']; }
@@ -1018,44 +1028,40 @@
         checklist: steps.map(() => 'notset'),
         screenshots: []
       };
+      const accId = activeAccountIdFor(activeMode);
+      if (accId) newTrade.accountId = accId;
 
-      // ── Server-side daily limit check (Backtest is exempt) ──────────────────
+      // ── Early daily-limit check (Backtest is exempt) ────────────────────────
+      // The authoritative check happens on Save (POST /api/trades → 429).
       if (activeMode !== 'Backtest') {
-        let serverRejected = false;
         try {
-          const r = await fetch('/api/trades', {
-            method: 'POST',
-            credentials: 'same-origin',
-            cache: 'no-store',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ trade: newTrade, mode: activeMode })
-          });
-
-          if (r.status === 429) {
+          const r = await fetch(`/api/trades/daily-count?mode=${encodeURIComponent(activeMode)}&date=${encodeURIComponent(tradeDate)}`,
+            { credentials: 'same-origin', cache: 'no-store' });
+          if (r.ok) {
             const body = await r.json().catch(() => ({}));
-            // Hard block — no override allowed
-            showDailyLimitBlock(body);
-            return; // STOP — trade not logged
+            if (body.limitReached) { showDailyLimitBlock(body); return; }
           }
-
-          if (!r.ok) {
-            // Non-limit server error — fall through to local save but warn
-            console.warn('[Journal] /api/trades returned', r.status, '— saving locally');
-          }
-          // If server returned 201, trades array was already updated server-side.
-          // We still add locally so the UI refreshes immediately without a reload.
         } catch (err) {
-          // Network / server unavailable — fall through to local save
-          console.warn('[Journal] /api/trades unreachable, saving locally:', err.message);
+          console.warn('[Journal] daily-count unreachable; the limit is checked again on Save:', err.message);
         }
       }
 
-      // ── Add to local trades array and persist ────────────────────────────────
-      trades.unshift(newTrade);
-      saveState();
-      renderAll();
+      // ── Open as an unsaved draft — nothing is stored until Save ─────────────
+      pendingNewTrade = newTrade;
       openDrawer(newTrade.id);
     }
+
+    function activeAccountIdFor(mode) {
+      if (mode === 'Backtest') return null;
+      try {
+        const id = localStorage.getItem(`my_journal_active_account_${mode}_v1`);
+        if (id) return id;
+        const all = JSON.parse(localStorage.getItem('my_journal_accounts_v1') || '{}');
+        return (all && Array.isArray(all[mode]) && all[mode][0] && all[mode][0].id) || null;
+      } catch (_) { return null; }
+    }
+    // Lets discipline-engine.js flag a post-hard-stop draft before it is saved.
+    Object.defineProperty(window, '__obPendingNewTrade', { configurable: true, get() { return pendingNewTrade; } });
 
     // Hard-block modal shown when server rejects the trade (no override allowed)
     function showDailyLimitBlock(body) {
@@ -1478,15 +1484,66 @@
       }
     }
 
+    // ── Drawer draft helpers ─────────────────────────────────────────────────
+    function drawerStoredTrade(id) {
+      if (pendingNewTrade && pendingNewTrade.id === id) return pendingNewTrade;
+      return trades.find(item => item.id === id) || null;
+    }
+    // The open trade as shown in the drawer: stored values + unsaved draft edits.
+    function drawerViewTrade() {
+      const base = drawerStoredTrade(currentDrawerTradeId);
+      if (!base) return null;
+      return drawerDraft ? { ...base, ...drawerDraft } : base;
+    }
+    function makeDrawerDraft(t) {
+      const steps = checklistFor(t.strategy);
+      const saved = Array.isArray(t.checklist) ? t.checklist : [];
+      return {
+        checklist: steps.map((_, i) => saved[i] || 'notset'),
+        notes: typeof t.notes === 'string' ? t.notes : '',
+        screenshots: Array.isArray(t.screenshots) ? [...t.screenshots] : []
+      };
+    }
+    // Save rule: at least 50% of the strategy's checklist items checked (✓)
+    // AND a non-empty note.
+    function drawerSaveGateStatus(view) {
+      if (!view) return { ok: false, missing: ['No trade open.'] };
+      const total = checklistFor(view.strategy).length;
+      const passed = (view.checklist || []).filter(s => s === 'pass').length;
+      const need = Math.ceil(total * SAVE_GATE_MIN_CHECKLIST_RATIO);
+      const missing = [];
+      if (total > 0 && passed < need) missing.push(`Check at least ${need} of ${total} checklist items (${passed} checked).`);
+      if (!String(view.notes || '').trim()) missing.push('Write a note.');
+      return { ok: missing.length === 0, passed, total, need, missing };
+    }
+    function updateDrawerSaveGate() {
+      const btn = document.getElementById('drawerSaveBtn');
+      const msg = document.getElementById('drawerSaveGateMsg');
+      if (!btn) return;
+      const gate = drawerSaveGateStatus(drawerViewTrade());
+      const enabled = gate.ok && !drawerSaving;
+      btn.disabled = !enabled;
+      btn.classList.toggle('opacity-40', !enabled);
+      btn.classList.toggle('cursor-not-allowed', !enabled);
+      const label = document.getElementById('drawerSaveBtnLabel');
+      if (label && !drawerSaving && label.textContent !== 'Saved ✓') label.textContent = 'Save Changes';
+      if (msg) {
+        msg.textContent = gate.ok ? '' : 'To save: ' + gate.missing.join(' ');
+        msg.classList.toggle('hidden', gate.ok);
+      }
+    }
+    window.updateDrawerSaveGate = updateDrawerSaveGate;
+    window.__checkDrawerSaveReady = updateDrawerSaveGate;
+
     function openDrawer(id) {
-      const t = trades.find(item => item.id === id);
+      const t = drawerStoredTrade(id);
       if (!t) return;
+      if (pendingNewTrade && pendingNewTrade.id !== id) pendingNewTrade = null; // opening another trade discards an unsaved new one
       currentDrawerTradeId = id;
       drawerOriginalNote = '';
       drawerEditMode = false;
-      const steps = checklistFor(t.strategy);
-      if (!t.checklist || t.checklist.length !== steps.length) t.checklist = steps.map(() => 'notset');
-      if (!t.screenshots) t.screenshots = [];
+      drawerDraft = makeDrawerDraft(t);
+      const view = drawerViewTrade();
       document.getElementById('drawerPair').textContent = t.pair || '—';
       document.getElementById('drawerTFLabel').textContent = t.timeframe || '—';
       document.getElementById('drawerRegimeLabel').textContent = t.regime || '—';
@@ -1495,14 +1552,22 @@
       const dirLabel = safeDir.length >= 1 ? (safeDir.charAt(0).toUpperCase() + safeDir.slice(1).toLowerCase()) : '—';
       const resultLabel = t.result || (safeR > 0 ? 'Win' : (safeR < 0 ? 'Loss' : 'Breakeven'));
       document.getElementById('drawerSubtitle').textContent = `${t.date || ''} — ${dirLabel} — ${resultLabel || '—'} — ${safeR >= 0 ? '+' : ''}${(Number(safeR) || 0).toFixed(2)}R${t.session ? ' — ' + t.session : ''}`;
-      renderDrawerChecklist(t);
-      renderDrawerScreenshots(t);
+      renderDrawerChecklist(view);
+      renderDrawerScreenshots(view);
       const input = document.getElementById('drawerNotesInput');
-      if (input) input.oninput = autosizeDrawerNotes; // grow only — saved on Save
-      renderDrawerNotesView(t);
+      if (input) input.oninput = () => {   // held in memory — stored only on Save
+        if (drawerDraft) drawerDraft.notes = input.value;
+        autosizeDrawerNotes();
+        updateDrawerSaveGate();
+      };
+      renderDrawerNotesView(view);
       resetDrawerAiPanel();
       showDrawerAi('empty');
-      document.getElementById('drawerDeleteBtn').onclick = () => { deleteTrade(t.id); closeDrawer(); };
+      const isNew = !!(pendingNewTrade && pendingNewTrade.id === id);
+      const delBtn = document.getElementById('drawerDeleteBtn');
+      delBtn.textContent = isNew ? 'Discard' : 'Delete Trade';
+      delBtn.onclick = isNew ? () => closeDrawer() : () => { deleteTrade(t.id); closeDrawer(); };
+      updateDrawerSaveGate();
       const drawer = document.getElementById('tradeDrawer');
       drawer.classList.remove('hidden');
       document.body.classList.add('ob-drawer-open');
@@ -1520,6 +1585,9 @@
         drawerOriginalNote = '';
         drawerAiBusy = false;
       }, 280);
+      // Closing without Save discards unsaved edits and unsaved new trades.
+      pendingNewTrade = null;
+      drawerDraft = null;
       currentDrawerTradeId = null;
     }
 
@@ -1564,13 +1632,13 @@
       });
     }
 
+    // Checklist clicks change the in-memory draft only; stored on Save.
     function setChecklistItem(tradeId, index, newStatus) {
-      const t = trades.find(item => item.id === tradeId);
-      if (!t) return;
-      t.checklist[index] = (t.checklist[index] === newStatus) ? 'notset' : newStatus;
-      saveState();
-      renderDrawerChecklist(t);
-      renderJournalTable();
+      if (!drawerDraft || tradeId !== currentDrawerTradeId) return;
+      const list = drawerDraft.checklist;
+      list[index] = (list[index] === newStatus) ? 'notset' : newStatus;
+      renderDrawerChecklist(drawerViewTrade());
+      updateDrawerSaveGate();
     }
 
     function persistDrawerSaveFeedback(btn, label, textBefore, textAfter) {
@@ -1580,45 +1648,85 @@
       btn.disabled = true;
       setTimeout(() => {
         btn.classList.remove('opacity-80');
-        btn.disabled = false;
-        if (label) label.textContent = textBefore || 'Save Changes';
+        if (label) label.textContent = 'Save Changes';
+        updateDrawerSaveGate();
       }, 1200);
     }
 
-    function saveDrawer() {
-      if (!currentDrawerTradeId) return;
-      const t = trades.find(item => item.id === currentDrawerTradeId);
-      if (!t) return;
-      // The notes field is always editable; commit its content on Save.
+    async function saveDrawer() {
+      if (!currentDrawerTradeId || !drawerDraft || drawerSaving) return;
+      const id = currentDrawerTradeId;
       const input = document.getElementById('drawerNotesInput');
-      if (input) t.notes = input.value;
-      saveState();
-      renderTradingConsole();
-      renderJournalTable();
-      renderDrawerNotesView(t);
-      // Feedback (footer button)
-      const footerSaveBtn = document.getElementById('drawerSaveBtn');
-      const footerSaveLabel = document.getElementById('drawerSaveBtnLabel');
-      if (footerSaveBtn && footerSaveLabel) {
-        const txt = footerSaveLabel.textContent;
-        persistDrawerSaveFeedback(footerSaveBtn, footerSaveLabel, txt, 'Saved ✓');
+      if (input) drawerDraft.notes = input.value;
+      const gate = drawerSaveGateStatus(drawerViewTrade());
+      if (!gate.ok) { updateDrawerSaveGate(); return; }
+      const edits = {
+        checklist: [...drawerDraft.checklist],
+        notes: drawerDraft.notes,
+        screenshots: [...drawerDraft.screenshots]
+      };
+      drawerSaving = true;
+      updateDrawerSaveGate();
+      try {
+        if (pendingNewTrade && pendingNewTrade.id === id) {
+          const newTrade = { ...pendingNewTrade, ...edits };
+          // ── Server-side daily limit check on Save (Backtest is exempt) ──────
+          if (newTrade.mode !== 'Backtest') {
+            try {
+              const r = await fetch('/api/trades', {
+                method: 'POST', credentials: 'same-origin', cache: 'no-store',
+                headers: { 'Content-Type': 'application/json' },
+                // Screenshots are stored by saveState below; keep this request small.
+                body: JSON.stringify({ trade: { ...newTrade, screenshots: [] }, mode: newTrade.mode })
+              });
+              if (r.status === 429) {
+                const body = await r.json().catch(() => ({}));
+                showDailyLimitBlock(body); // hard block — trade not saved
+                return;
+              }
+              if (!r.ok) console.warn('[Journal] /api/trades returned', r.status, '— saving locally');
+            } catch (err) {
+              console.warn('[Journal] /api/trades unreachable, saving locally:', err.message);
+            }
+          }
+          if (currentDrawerTradeId !== id) return; // drawer was closed meanwhile → discarded
+          pendingNewTrade = null;
+          trades.unshift(newTrade);
+          await saveState();
+          renderAll();
+          drawerSaving = false;
+          openDrawer(newTrade.id); // now a stored trade
+        } else {
+          const t = trades.find(item => item.id === id);
+          if (!t) return;
+          Object.assign(t, edits);
+          await saveState();
+          renderTradingConsole();
+          renderJournalTable();
+          if (currentDrawerTradeId === id) drawerDraft = makeDrawerDraft(t);
+        }
+        const footerSaveBtn = document.getElementById('drawerSaveBtn');
+        const footerSaveLabel = document.getElementById('drawerSaveBtnLabel');
+        if (footerSaveBtn && footerSaveLabel) persistDrawerSaveFeedback(footerSaveBtn, footerSaveLabel, 'Save Changes', 'Saved ✓');
+      } finally {
+        drawerSaving = false;
+        updateDrawerSaveGate();
       }
     }
 
-    function saveDrawerFromFooter() { saveDrawer(); }
+    function saveDrawerFromFooter() { return saveDrawer(); }
     function handleScreenshotUpload(event) {
-      if (!currentDrawerTradeId) return;
-      const t = trades.find(item => item.id === currentDrawerTradeId);
-      if (!t) return;
+      if (!currentDrawerTradeId || !drawerDraft) return;
+      const id = currentDrawerTradeId;
       const files = event.target.files;
       if (!files || files.length === 0) return;
       Array.from(files).forEach(file => {
         const reader = new FileReader();
         reader.onload = (e) => {
-          if (!t.screenshots) t.screenshots = [];
-          t.screenshots.push(e.target.result);
-          saveState();
-          renderDrawerScreenshots(t);
+          if (!drawerDraft || currentDrawerTradeId !== id) return; // drawer closed
+          drawerDraft.screenshots.push(e.target.result);
+          renderDrawerScreenshots(drawerViewTrade());
+          updateDrawerSaveGate();
         };
         reader.readAsDataURL(file);
       });
@@ -1638,11 +1746,10 @@
       });
     }
     function removeScreenshot(tradeId, index) {
-      const t = trades.find(item => item.id === tradeId);
-      if (!t || !t.screenshots) return;
-      t.screenshots.splice(index, 1);
-      saveState();
-      renderDrawerScreenshots(t);
+      if (!drawerDraft || tradeId !== currentDrawerTradeId) return;
+      drawerDraft.screenshots.splice(index, 1);
+      renderDrawerScreenshots(drawerViewTrade());
+      updateDrawerSaveGate();
     }
 
     document.getElementById('tradeDrawer').addEventListener('click', function(e) { if (e.target === this) closeDrawer(); });
@@ -1660,7 +1767,7 @@
     async function analyzeTradeWithAI() {
       if (drawerAiBusy) return;
       if (!currentDrawerTradeId) return;
-      const t = trades.find(item => item.id === currentDrawerTradeId);
+      const t = drawerViewTrade(); // includes unsaved checklist/notes edits
       if (!t) return;
       drawerAiBusy = true;
       const btnLabel = document.getElementById('drawerAiBtnLabel');
@@ -1847,37 +1954,10 @@
       const note = trades.length < 20 ? ' Sample size is small — treat this as a lead, not proof.' : '';
       el.innerHTML = `Across <span class="font-bold text-white font-mono">${trades.length}</span> trades, the strongest net R is currently <span class="font-bold text-white font-mono">${bestStrat[0]}</span> (${bestStrat[1].r >= 0 ? '+' : ''}${bestStrat[1].r.toFixed(2)} R), with the best timeframe <span class="font-bold text-white font-mono">${bestTf[0]}</span> and regime <span class="font-bold text-white font-mono">${bestReg[0]}</span>.${note}`;
     }
-    async function analyzeTradeWithAI() {
-      if (!currentDrawerTradeId) return;
-      const t = trades.find(item => item.id === currentDrawerTradeId);
-      if (!t) return;
-      const btn = document.getElementById('drawerAiBtnLabel');
-      if (btn) btn.textContent = 'Analyzing…';
-      const prompt = `You are a practical trading coach. Analyze this one journaled trade. Separate result (win/loss/BE) from discipline (clean/violation/pending). Be concise.\nTrade: ${JSON.stringify({ mode: t.mode, date: t.date, pair: t.pair, timeframe: t.timeframe, regime: t.regime, direction: t.direction, result: t.result, rMultiple: t.rMultiple, pnl: t.pnl, strategy: t.strategy, notes: t.notes, checklist: t.checklist })}`;
-      try {
-        const res = await fetch('/api/ai', {
-          method: 'POST', credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: 'groq', model: 'openai/gpt-oss-20b',
-            messages: [
-              { role: 'system', content: 'You are a trading journal coach. Plain text. No markdown.' },
-              { role: 'user', content: prompt }
-            ],
-            max_completion_tokens: 800, temperature: 0.4
-          })
-        });
-        const data = await res.json();
-        const text = data?.choices?.[0]?.message?.content || data?.error || 'No AI response.';
-        const notes = document.getElementById('drawerNotesInput');
-        if (notes) {
-          notes.value = (t.notes ? t.notes + '\n\n' : '') + 'AI Coach:\n' + text;
-          t.notes = notes.value;
-          await saveState();
-        }
-      } catch (err) { alert('AI request failed: ' + err.message); }
-      finally { if (btn) btn.textContent = 'Analyze with AI'; }
-    }
+    // (A second analyzeTradeWithAI used to be defined here. It overrode the
+    // version above, appended the AI reply into Notes and saved the trade
+    // immediately. Removed so the AI Analysis panel version runs and nothing
+    // is stored before Save.)
     function resetToDemoData() {
       if (confirm('Clear all logged trades permanently? This cannot be undone.')) {
         trades = [];

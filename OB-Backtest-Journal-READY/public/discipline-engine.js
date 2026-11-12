@@ -376,6 +376,10 @@
           // server-side daily-limit check internally)
           const beforeIds = new Set((Array.isArray(window.trades) ? window.trades : []).map(t => t.id));
           await original.apply(this, [event]);
+          // "Add trade" now opens an unsaved draft (stored only on Save):
+          // flag the draft so the violation is saved together with it.
+          const draft = window.__obPendingNewTrade;
+          if (draft) { draft.disciplineViolation = 'hardstop'; return; }
           // Mark the new trade as a post-stop violation
           setTimeout(() => {
             const newTrade = (Array.isArray(window.trades) ? window.trades : []).find(t => !beforeIds.has(t.id));

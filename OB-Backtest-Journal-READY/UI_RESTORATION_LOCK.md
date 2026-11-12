@@ -22,7 +22,7 @@ Git history is the source of truth. Do not reconstruct the UI from memory and do
 7. No duplicate P&L heatmap on Journal or Analytics.
 8. Client-side navigation: no full reload when changing tabs; refresh preserves active page; browser back/forward works.
 9. Smooth but lightweight page/account transitions.
-10. Journal save gate must enforce the correct strategy checklist length, screenshot requirement, and note requirement.
+10. Journal save gate (Sami, 2026-11-12): nothing is stored until Save; Save is enabled only when at least 50% of the strategy checklist items are checked AND the note is not empty (`updateDrawerSaveGate` in `public/index.html`). No screenshot requirement.
 
 ## Persistence / anti-regression rules
 - `app-entry.js` injects `backend-sync.js` into HTML responses so the feature layer is always loaded through the deployed gateway.

@@ -271,9 +271,14 @@
   function setupRequiredSave() {
     const btn = document.getElementById('drawerSaveBtn');
     if (!btn) return;
-    // Save is always available once a trade is open in the drawer.
-    // Remove the old strict gate (checklist + screenshot + note requirement)
-    // that was permanently blocking saves due to the wrong CHECKLIST_COUNT.
+    // The save rule lives in index.html (updateDrawerSaveGate): at least 50% of
+    // the strategy checklist checked AND a non-empty note. Delegate to it.
+    if (typeof window.updateDrawerSaveGate === 'function') {
+      window.__checkDrawerSaveReady = window.updateDrawerSaveGate;
+      window.updateDrawerSaveGate();
+      return;
+    }
+    // Fallback (older page without the gate): always enabled.
     btn.disabled = false;
     btn.classList.remove('opacity-40', 'cursor-not-allowed', 'bg-slate-300', 'text-slate-500');
     btn.classList.add('bg-emerald-600', 'text-white');
