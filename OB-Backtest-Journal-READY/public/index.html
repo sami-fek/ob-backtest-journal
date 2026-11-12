@@ -286,11 +286,8 @@
             <select id="formStrategy" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-slate-800 focus:outline-none focus:border-blue-500">
               <option value="Model OB">Model OB</option><option value="Model A">Model A</option>
             </select>
-            <div class="flex flex-wrap gap-x-2 gap-y-0.5 mt-1 text-[10px] font-semibold">
-              <button type="button" onclick="openStrategyEditor('add')" class="text-blue-600 hover:underline">+ Add strategy</button>
-              <button type="button" onclick="openStrategyEditor('edit')" class="text-slate-500 hover:text-blue-600 hover:underline">Edit checklist</button>
-              <button type="button" onclick="removeSelectedStrategy()" class="text-slate-500 hover:text-rose-600 hover:underline">Remove strategy</button>
-            </div>
+            <!-- "+ Add strategy", "Edit checklist" and "Delete strategy" live inside
+                 this dropdown (ui-dropdowns.js actions, see installStrategyActions). -->
           </div>
           <div class="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-1 flex items-end">
             <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 transition-all">
@@ -1243,23 +1240,96 @@
       setTimeout(() => (modal.querySelector('#obStratName') || list.querySelector('input'))?.focus(), 30);
     }
 
-    async function removeSelectedStrategy() {
-      const sel = document.getElementById('formStrategy');
-      const s = findStrategy(sel && sel.value);
-      if (!s) return;
-      if (activeStrategies().length <= 1) { alert('Keep at least one strategy.'); return; }
+    // Delete a strategy by name. Strategies with trades (and the built-in
+    // models) are archived (hidden, trades keep their name and checklist
+    // snapshot); others are removed. The last remaining strategy is kept.
+    async function deleteStrategyByName(name) {
+      const s = findStrategy(name);
+      if (!s || s.archived) return false;
+      if (activeStrategies().length <= 1) return false;
       const count = trades.filter(t => t.strategy === s.name).length;
-      const msg = count
-        ? `Remove "${s.name}"? It has ${count} saved trade${count === 1 ? '' : 's'}. The trades are kept with their strategy name; the strategy is archived and hidden from this list.`
-        : `Remove "${s.name}"? It has no saved trades.`;
-      if (!confirm(msg)) return;
-      // Strategies with trades (and the built-in models) are archived, never deleted.
       if (count || s.builtIn) s.archived = true;
       else strategies = strategies.filter(x => x !== s);
       await saveStrategies();
-      renderStrategyOptions();
+      renderStrategyOptions(); // keeps the current choice if still active, else the first strategy
       renderAll();
+      return true;
     }
+
+    // "Delete strategy": pick which one, confirm, then delete.
+    function openStrategyDeletePicker() {
+      document.getElementById('ob-strategy-delete')?.remove();
+      const list = activeStrategies();
+      const modal = document.createElement('div');
+      modal.id = 'ob-strategy-delete';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.45);backdrop-filter:blur(6px)';
+      const onlyOne = list.length <= 1;
+      modal.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm text-xs" role="dialog" aria-modal="true" aria-labelledby="obDelTitle">
+          <div class="px-5 pt-5 pb-3 border-b border-slate-100">
+            <h3 id="obDelTitle" class="text-sm font-bold text-slate-900">Delete strategy</h3>
+            <p id="obDelSub" class="text-[11px] text-slate-500 mt-0.5">${onlyOne ? 'You need at least one strategy, so the last one cannot be deleted.' : 'Choose the strategy to delete.'}</p>
+          </div>
+          <div id="obDelStep1" class="px-5 py-3 space-y-1.5 max-h-[50vh] overflow-y-auto"></div>
+          <div id="obDelStep2" class="hidden px-5 py-4 text-[12.5px] text-slate-700 leading-relaxed"></div>
+          <div class="px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+            <button type="button" id="obDelCancel" class="px-4 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg font-semibold">Cancel</button>
+            <button type="button" id="obDelNext" disabled class="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 rounded-lg font-bold disabled:opacity-40 disabled:cursor-not-allowed">Continue</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      const step1 = modal.querySelector('#obDelStep1');
+      const step2 = modal.querySelector('#obDelStep2');
+      const next = modal.querySelector('#obDelNext');
+      let chosen = null;
+      let confirming = false;
+      list.forEach(s => {
+        const row = document.createElement('label');
+        row.className = 'flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer';
+        const count = trades.filter(t => t.strategy === s.name).length;
+        row.innerHTML = `<input type="radio" name="obDelStrategy" class="accent-rose-600">
+          <span class="flex-1 font-semibold text-slate-800"></span>
+          <span class="text-[10px] text-slate-400">${count} trade${count === 1 ? '' : 's'}</span>`;
+        row.querySelector('span').textContent = s.name;
+        const radio = row.querySelector('input');
+        radio.value = s.name;
+        radio.disabled = onlyOne;
+        radio.onchange = () => { chosen = s.name; next.disabled = false; };
+        step1.appendChild(row);
+      });
+      const close = () => { modal.remove(); document.removeEventListener('keydown', onKey, true); };
+      const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+      document.addEventListener('keydown', onKey, true);
+      modal.addEventListener('click', e => { if (e.target === modal) close(); });
+      modal.querySelector('#obDelCancel').onclick = close;
+      next.onclick = async () => {
+        if (!chosen) return;
+        if (!confirming) {
+          confirming = true;
+          step1.classList.add('hidden');
+          step2.classList.remove('hidden');
+          step2.textContent = `Delete ${chosen}? Existing trades keep their saved checklist snapshot.`;
+          modal.querySelector('#obDelSub').textContent = 'Please confirm.';
+          next.textContent = 'Delete';
+          return;
+        }
+        next.disabled = true;
+        await deleteStrategyByName(chosen);
+        close();
+      };
+    }
+
+    // Strategy actions shown under a divider inside the Strategy Model dropdown.
+    function installStrategyActions() {
+      if (!window.obDropdown) return;
+      window.obDropdown.setActions('formStrategy', [
+        { id: 'add', label: '+ Add strategy', onSelect: () => openStrategyEditor('add') },
+        { id: 'edit', label: 'Edit checklist', onSelect: () => openStrategyEditor('edit') },
+        { id: 'delete', label: 'Delete strategy', danger: true, onSelect: () => openStrategyDeletePicker() }
+      ]);
+    }
+    window.addEventListener('ob-dropdowns-ready', installStrategyActions);
+    installStrategyActions();
 
     // Hard-block modal shown when server rejects the trade (no override allowed)
     function showDailyLimitBlock(body) {
