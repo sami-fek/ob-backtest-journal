@@ -3,7 +3,7 @@
  *
  * Discipline enforcement for MY Journal.
  *
- * DAILY TRADE LIMIT (max 3 per day):
+ * DAILY TRADE LIMIT (default 3, configurable in Settings):
  *   - Enforced server-side by POST /api/trades returning HTTP 429.
  *   - handleTradeSubmit in index.html calls /api/trades and shows a
  *     hard-block modal when the server rejects the trade.

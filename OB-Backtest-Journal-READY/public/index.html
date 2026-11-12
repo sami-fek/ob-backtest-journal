@@ -920,10 +920,12 @@
           initialCapital = Number(s.initialCapital) || 100000;
           riskPercent = Number(s.riskPercent) || 1.0;
           defaultRR = Number(s.defaultRR) || 2.0;
-          maxDailyTrades = Number(s.maxDailyTrades) || 2;
+          maxDailyTrades = Number(s.maxDailyTrades) || 3;
           hardStopLosses = Number(s.hardStopLosses) || 2;
         } catch (e) {}
       }
+      window.maxDailyTrades = maxDailyTrades;
+      window.hardStopLosses = hardStopLosses;
       const capEl = document.getElementById('settingInitialCapital');
       const riskEl = document.getElementById('settingRiskPercent');
       const rrEl = document.getElementById('settingDefaultRR');
@@ -1827,8 +1829,10 @@
       initialCapital = parseFloat(document.getElementById('settingInitialCapital').value) || 100000;
       riskPercent = parseFloat(document.getElementById('settingRiskPercent').value) || 1.0;
       defaultRR = parseFloat(document.getElementById('settingDefaultRR').value) || 2.0;
-      maxDailyTrades = parseInt(document.getElementById('settingMaxDailyTrades').value, 10) || 2;
+      maxDailyTrades = parseInt(document.getElementById('settingMaxDailyTrades').value, 10) || 3;
       hardStopLosses = parseInt(document.getElementById('settingHardStopLosses').value, 10) || 2;
+      window.maxDailyTrades = maxDailyTrades;
+      window.hardStopLosses = hardStopLosses;
       saveSettings();
       renderAll();
     }
