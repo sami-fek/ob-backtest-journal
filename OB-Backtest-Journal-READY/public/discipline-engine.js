@@ -355,12 +355,19 @@
   // (via /api/trades returning 429). This wrapper only intercepts the
   // consecutive-loss hard-stop, which is a softer client-side discipline rule.
 
+  let _hardStopOverrideApproved = false;
+
   function patchTradeSubmit() {
     const original = window.handleTradeSubmit;
     if (typeof original !== 'function' || original.__disciplineV2Patched) return;
 
     const patched = async function (event) {
       if (getMode() === 'Backtest') return original.apply(this, arguments);
+      // This wrapper can end up in the chain twice (patched before and after
+      // ui-rules.js wraps handleTradeSubmit). Once the user approved the
+      // override, the inner copy must pass straight through instead of
+      // opening a second hard-stop modal.
+      if (_hardStopOverrideApproved) return original.apply(this, arguments);
 
       // Check consecutive-loss hard stop
       const streak   = computeConsecutiveLosses();
@@ -375,7 +382,9 @@
           // Proceed with the original submit (which already handles the
           // server-side daily-limit check internally)
           const beforeIds = new Set((Array.isArray(window.trades) ? window.trades : []).map(t => t.id));
-          await original.apply(this, [event]);
+          _hardStopOverrideApproved = true;
+          try { await original.apply(this, [event]); }
+          finally { _hardStopOverrideApproved = false; }
           // "Add trade" now opens an unsaved draft (stored only on Save):
           // flag the draft so the violation is saved together with it.
           const draft = window.__obPendingNewTrade;

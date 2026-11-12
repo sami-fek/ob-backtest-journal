@@ -674,6 +674,11 @@
     const TRADES_KEY = 'ob-trades';
     const SETTINGS_KEY = 'ob-os-settings';
     let trades = [];
+    // discipline-engine.js and analytics-advanced.js read window.trades, but a
+    // top-level `let` is not a window property, so they always saw no trades
+    // (the 2-loss hard stop never triggered). Expose it read-only; writes are
+    // ignored so no feature script can replace the journal's trade list.
+    Object.defineProperty(window, 'trades', { configurable: true, get() { return trades; }, set(_) {} });
     let activeTab = 'home';
     let activeMode = 'Real';
     let initialCapital = 100000;
