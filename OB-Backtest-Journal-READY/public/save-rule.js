@@ -18,6 +18,11 @@
   'use strict';
   const MIN_CHECKLIST_RATIO = 0.5;
 
+  function notePlain(note) {
+    if (root.obNotes && typeof root.obNotes.notePlainText === 'function') return root.obNotes.notePlainText(note);
+    return String(note == null ? '' : note).replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+  }
+
   function sameList(a, b) {
     a = Array.isArray(a) ? a : []; b = Array.isArray(b) ? b : [];
     const n = Math.max(a.length, b.length);
@@ -39,7 +44,8 @@
     const passed = checklist.filter(s => s === 'pass').length;
     const need = Math.ceil(total * MIN_CHECKLIST_RATIO);
     const shots = Array.isArray(p.screenshots) ? p.screenshots.length : 0;
-    const noteOk = !!String(p.notes || '').trim();
+    // Notes may be rich text (HTML): an empty editor such as <p><br></p> is not a note.
+    const noteOk = !!notePlain(p.notes);
 
     const items = [
       { key: 'checklist', ok: total === 0 || passed >= need, label: `Checklist 50%: ${passed}/${total}` },

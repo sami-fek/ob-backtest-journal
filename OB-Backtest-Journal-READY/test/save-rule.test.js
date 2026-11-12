@@ -33,6 +33,11 @@ test('save rule: new trade needs 50% checklist, a note AND a screenshot', () => 
   assert.equal(r.ok, false);
   assert.deepEqual(r.missingKeys, ['note']);
 
+  // rich-text notes: an empty editor is not a note, formatted text is
+  assert.equal(evaluate({ totalItems: 12, checklist: checks(6, 12), notes: '<p><br></p>', screenshots: ['x'] }).ok, false);
+  assert.equal(evaluate({ totalItems: 12, checklist: checks(6, 12), notes: '<div>&nbsp;</div>', screenshots: ['x'] }).ok, false);
+  assert.equal(evaluate({ totalItems: 12, checklist: checks(6, 12), notes: '<b>Clean</b> entry', screenshots: ['x'] }).ok, true);
+
   // ✗ marks do not count
   const failed = checks(5, 12); failed[6] = 'fail';
   assert.equal(evaluate({ totalItems: 12, checklist: failed, notes: 'n', screenshots: ['x'], stored: null }).ok, false);

@@ -73,6 +73,56 @@
     /* Keep the floating AI Coach button off the open trade drawer */
     body.ob-drawer-open #ob-ai-fab { right: 462px !important; }
     @media (max-width: 920px) { body.ob-drawer-open #ob-ai-fab { display: none !important; } }
+    /* ── Notes & Media / Tags & Psychology (trade drawer) — theme variables ── */
+    .ob-note-box { border: 1px solid var(--border, #e7e7e9); border-radius: 14px; background: var(--input, #fff); overflow: hidden; }
+    .ob-note-box:focus-within { border-color: var(--blue, #3b82f6); box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+    .ob-note-toolbar { display: flex; align-items: center; gap: 2px; padding: 6px; border-bottom: 1px solid var(--border-subtle, #f4f4f5); }
+    .ob-note-toolbar button { width: 28px; height: 26px; border-radius: 7px; border: 0; background: transparent; color: var(--muted, #6b7280); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .ob-note-toolbar button:hover, .ob-note-toolbar button.is-active { background: var(--hover, #eff6ff); color: var(--hover-text, #2563eb); }
+    .ob-note-sep { width: 1px; height: 16px; background: var(--border, #e7e7e9); margin: 0 4px; }
+    .ob-note-editor { min-height: 96px; max-height: 320px; overflow-y: auto; padding: 10px 12px; font-size: 12.5px; line-height: 1.6; color: var(--text, #101729); outline: none; word-break: break-word; }
+    .ob-note-editor:empty::before { content: attr(data-placeholder); color: var(--muted, #6b7280); pointer-events: none; }
+    .ob-note-editor ul { list-style: disc; padding-left: 1.2em; } .ob-note-editor ol { list-style: decimal; padding-left: 1.3em; }
+    .ob-note-editor a { color: var(--blue, #3b82f6); text-decoration: underline; }
+    .ob-shots-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+    .ob-shot-add { width: 28px; height: 28px; border-radius: 9999px; border: 1px dashed var(--border-strong, #d4d4d8); color: var(--muted, #6b7280); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; transition: all .15s; }
+    .ob-shot-add:hover { border-color: var(--blue, #3b82f6); color: var(--blue, #3b82f6); background: var(--hover, #eff6ff); }
+    .ob-shot-add.is-full { opacity: .4; cursor: not-allowed; pointer-events: none; }
+    .ob-shot-count { margin-left: auto; font: 700 10.5px/1 'JetBrains Mono', monospace; padding: 4px 9px; border-radius: 9999px; background: var(--raised, #fafafa); border: 1px solid var(--border, #e7e7e9); color: var(--muted, #6b7280); }
+    .ob-shot-count.is-full { color: var(--profit, #16a34a); border-color: currentColor; }
+    .ob-shots-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+    .ob-shots-grid:empty { display: none; }
+    .ob-shot-hint { margin-top: 8px; padding: 10px; border: 1px dashed var(--border, #e7e7e9); border-radius: 12px; text-align: center; font-size: 11px; color: var(--muted, #6b7280); }
+    #drawerNotesSection.is-dragover .ob-shot-hint { border-color: var(--blue, #3b82f6); color: var(--blue, #3b82f6); background: var(--hover, #eff6ff); }
+    .ob-psych-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted, #6b7280); margin-bottom: 6px; }
+    .ob-tag-field { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid var(--border, #e7e7e9); border-radius: 12px; background: var(--input, #fff); }
+    .ob-tag-field:focus-within { border-color: var(--blue, #3b82f6); }
+    .ob-tag-field input { flex: 1; min-width: 120px; border: 0 !important; outline: none; background: transparent !important; font-size: 12px; color: var(--text, #101729); padding: 4px 2px; }
+    .ob-tag-pills { display: contents; }
+    .ob-tag-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px 3px 9px; border-radius: 9999px; font-size: 11px; font-weight: 600; border: 1px solid; }
+    .ob-tag-pill button { border: 0; background: transparent; cursor: pointer; color: inherit; opacity: .7; font-size: 12px; line-height: 1; padding: 0 2px; }
+    .ob-tag-pill button:hover { opacity: 1; }
+    .ob-sent-positive { color: #16a34a; border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08); }
+    .ob-sent-negative { color: #dc2626; border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.08); }
+    .ob-sent-neutral { color: var(--text-2, #334155); border-color: var(--border, #e7e7e9); background: var(--raised, #fafafa); }
+    html[data-theme="dark"] .ob-sent-positive { color: #4ade80; } html[data-theme="dark"] .ob-sent-negative { color: #f87171; }
+    .ob-tag-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .ob-chip { padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 600; border: 1px solid var(--border, #e7e7e9); background: transparent; color: var(--muted, #6b7280); cursor: pointer; transition: all .15s; }
+    .ob-chip:hover { background: var(--hover, #eff6ff); color: var(--hover-text, #2563eb); border-color: var(--hover-border, #bfdbfe); }
+    .ob-chip-add { border-style: dashed; }
+    .ob-inline-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .ob-inline-form input, .ob-inline-form select { flex: 1; min-width: 90px; font-size: 12px; padding: 6px 9px; border-radius: 9px; border: 1px solid var(--border, #e7e7e9); background: var(--input, #fff); color: var(--text, #101729); }
+    .ob-inline-form .ob-emoji-input { flex: 0 0 52px; min-width: 52px; text-align: center; }
+    .ob-mini-btn { padding: 6px 12px; border-radius: 9px; font-size: 12px; font-weight: 700; border: 1px solid var(--primary-bg, #101729); background: var(--primary-bg, #101729); color: var(--primary-text, #fff); cursor: pointer; }
+    .ob-mini-ghost { background: transparent; color: var(--muted, #6b7280); border-color: var(--border, #e7e7e9); }
+    .ob-feelings { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ob-feeling { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 54px; padding: 7px 6px; border-radius: 12px; border: 1px solid var(--border, #e7e7e9); background: transparent; cursor: pointer; transition: all .15s; }
+    .ob-feeling span:first-child { font-size: 20px; line-height: 1; }
+    .ob-feeling span:last-child { font-size: 10px; font-weight: 600; color: var(--muted, #6b7280); }
+    .ob-feeling:hover { background: var(--hover, #eff6ff); border-color: var(--hover-border, #bfdbfe); }
+    .ob-feeling[aria-checked="true"] { border-color: var(--blue, #3b82f6); background: var(--pill-active-bg, #eff6ff); box-shadow: 0 0 0 2px rgba(59,130,246,.25); }
+    .ob-feeling[aria-checked="true"] span:last-child { color: var(--pill-active-text, #2563eb); }
+    .ob-feeling-add { justify-content: center; border-style: dashed; color: var(--muted, #6b7280); font-size: 11px; font-weight: 700; }
     /* Flash the first missing save requirement */
     .ob-req-flash { border-radius: 12px; animation: ob-req-flash 1.6s ease-out; }
     @keyframes ob-req-flash {
@@ -596,18 +646,60 @@
           <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-3">Entry Checklist</div>
           <div id="drawerChecklist"></div>
         </div>
-        <div>
-          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Screenshots</div>
-          <div id="drawerScreenshotsGrid" class="grid grid-cols-2 gap-2 mb-2"></div>
-          <label id="drawerScreenshotUploadLabel" class="w-full flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl py-3 text-xs text-slate-400 hover:text-blue-500 cursor-pointer transition-colors font-medium">
-            <i class="fa-solid fa-image"></i> Add screenshot
-            <input type="file" id="drawerScreenshotInput" accept="image/*" multiple class="hidden" onchange="handleScreenshotUpload(event)">
-          </label>
-        </div>
+        <!-- Notes & Media: rich-text notes (sanitised), up to 3 chart screens -->
         <div id="drawerNotesSection">
-          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Notes</div>
-          <!-- Always-editable notes field; grows with its content. -->
-          <textarea id="drawerNotesInput" placeholder="What did you see? Anything irregular about this OB?" rows="3" class="w-full min-h-[90px] bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none overflow-hidden leading-relaxed"></textarea>
+          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Notes &amp; Media</div>
+          <div class="ob-note-box">
+            <div class="ob-note-toolbar" role="toolbar" aria-label="Note formatting">
+              <button type="button" data-cmd="bold" title="Bold" aria-label="Bold"><b>B</b></button>
+              <button type="button" data-cmd="italic" title="Italic" aria-label="Italic"><i>I</i></button>
+              <button type="button" data-cmd="insertUnorderedList" title="Bullet list" aria-label="Bullet list"><i class="fa-solid fa-list-ul"></i></button>
+              <button type="button" data-cmd="insertOrderedList" title="Numbered list" aria-label="Numbered list"><i class="fa-solid fa-list-ol"></i></button>
+              <button type="button" data-cmd="createLink" title="Link" aria-label="Insert link"><i class="fa-solid fa-link"></i></button>
+              <span class="ob-note-sep"></span>
+              <button type="button" data-cmd="undo" title="Undo" aria-label="Undo"><i class="fa-solid fa-rotate-left"></i></button>
+              <button type="button" data-cmd="redo" title="Redo" aria-label="Redo"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+            <div id="drawerNotesEditor" class="ob-note-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Trade notes" data-placeholder="Share your thoughts on this trade..."></div>
+          </div>
+          <!-- Hidden model of the note (sanitised HTML); other code reads/writes this. -->
+          <textarea id="drawerNotesInput" class="hidden" aria-hidden="true" tabindex="-1"></textarea>
+
+          <div class="ob-shots-row">
+            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Add chart screens</span>
+            <label id="drawerScreenshotUploadLabel" class="ob-shot-add" title="Add screenshot (or paste / drop an image)">
+              <i class="fa-solid fa-plus"></i>
+              <input type="file" id="drawerScreenshotInput" accept="image/*" multiple class="hidden" onchange="handleScreenshotUpload(event)">
+            </label>
+            <span id="drawerShotCount" class="ob-shot-count">0/3</span>
+          </div>
+          <div id="drawerScreenshotsGrid" class="ob-shots-grid"></div>
+          <div id="drawerShotHint" class="ob-shot-hint">Drop or paste an image here (max 3).</div>
+        </div>
+
+        <!-- Tags & psychology (optional) -->
+        <div id="drawerPsychSection">
+          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Tags &amp; Psychology</div>
+          <div class="ob-psych-label">Trade tags</div>
+          <div class="ob-tag-field" id="drawerTagField">
+            <div id="drawerTags" class="ob-tag-pills"></div>
+            <input id="drawerTagInput" type="text" maxlength="30" placeholder="Type a tag and press Enter" aria-label="Add a trade tag">
+          </div>
+          <div class="ob-tag-chips" id="drawerTagChips"></div>
+          <div class="ob-inline-form hidden" id="drawerTagAddForm">
+            <input id="drawerNewTagName" type="text" maxlength="30" placeholder="New tag" aria-label="New tag name">
+            <select id="drawerNewTagSentiment" aria-label="Tag type"><option value="positive">Positive</option><option value="neutral" selected>Neutral</option><option value="negative">Negative</option></select>
+            <button type="button" id="drawerNewTagSave" class="ob-mini-btn">Add</button>
+            <button type="button" id="drawerNewTagCancel" class="ob-mini-btn ob-mini-ghost">Cancel</button>
+          </div>
+          <div class="ob-psych-label mt-3">How it felt</div>
+          <div class="ob-feelings" id="drawerFeelings" role="radiogroup" aria-label="How it felt"></div>
+          <div class="ob-inline-form hidden" id="drawerFeelingAddForm">
+            <input id="drawerNewFeelingEmoji" type="text" maxlength="4" placeholder="🙂" aria-label="Emoji" class="ob-emoji-input">
+            <input id="drawerNewFeelingLabel" type="text" maxlength="30" placeholder="Label" aria-label="Feeling label">
+            <button type="button" id="drawerNewFeelingSave" class="ob-mini-btn">Add</button>
+            <button type="button" id="drawerNewFeelingCancel" class="ob-mini-btn ob-mini-ghost">Cancel</button>
+          </div>
         </div>
         <div id="drawerAiSection">
           <div class="flex items-center justify-between mb-2">
@@ -682,6 +774,7 @@
 
   <!-- JAVASCRIPT APPLICATION LOGIC -->
   <!-- Trade save rule (50% checklist + note + screenshot); also unit-tested -->
+  <script src="/note-utils.js"></script>
   <script src="/save-rule.js"></script>
   <script>
     const TRADES_KEY = 'ob-trades';
@@ -700,6 +793,9 @@
     let maxDailyTrades = 3;
     let hardStopLosses = 2;
     let hasServerStorage = false;
+    // Tag library (name + Positive/Neutral/Negative) and "How it felt" options, stored in settings
+    let tagLibrary = window.obNotes.normalizeTagLibrary([]);
+    let feelingOptions = window.obNotes.normalizeFeelings([]);
     // Same issue as window.trades: discipline-engine.js, analytics-advanced.js and
     // mt5-r-assign.js read window.activeMode and always fell back to 'Demo'.
     Object.defineProperty(window, 'activeMode', { configurable: true, get() { return activeMode; }, set(_) {} });
@@ -934,7 +1030,10 @@
         // keep the post-hard-stop flag across reloads (was dropped before)
         ...(t.disciplineViolation ? { disciplineViolation: t.disciplineViolation } : {}),
         // checklist items as they were when the trade was saved (snapshot)
-        ...(Array.isArray(t.checklistItems) && t.checklistItems.length ? { checklistItems: t.checklistItems.map(String) } : {})
+        ...(Array.isArray(t.checklistItems) && t.checklistItems.length ? { checklistItems: t.checklistItems.map(String) } : {}),
+        // optional psychology fields (old trades simply do not have them)
+        ...(Array.isArray(t.tags) && t.tags.length ? { tags: t.tags.map(x => String(x)).filter(Boolean) } : {}),
+        ...(typeof t.feeling === 'string' && t.feeling ? { feeling: t.feeling } : {})
       };
     }
     function checklistFor(strategy) {
@@ -1004,6 +1103,8 @@
           defaultRR = Number(s.defaultRR) || 2.0;
           maxDailyTrades = Number(s.maxDailyTrades) || 3;
           hardStopLosses = Number(s.hardStopLosses) || 2;
+          tagLibrary = window.obNotes.normalizeTagLibrary(s.tagLibrary);
+          feelingOptions = window.obNotes.normalizeFeelings(s.feelings);
         } catch (e) {}
       }
       window.maxDailyTrades = maxDailyTrades;
@@ -1021,7 +1122,7 @@
     }
 
     async function saveState() { await storageSet(TRADES_KEY, JSON.stringify(trades)); }
-    async function saveSettings() { await storageSet(SETTINGS_KEY, JSON.stringify({ initialCapital, riskPercent, defaultRR, maxDailyTrades, hardStopLosses })); }
+    async function saveSettings() { await storageSet(SETTINGS_KEY, JSON.stringify({ initialCapital, riskPercent, defaultRR, maxDailyTrades, hardStopLosses, tagLibrary, feelings: feelingOptions })); }
 
     function initDateInputs() {
       const today = new Date().toISOString().split('T')[0];
@@ -1497,7 +1598,7 @@
       const session = document.getElementById('journalSessionFilter')?.value || 'ALL';
       const result = document.getElementById('journalResultFilter').value;
       const filtered = trades.filter(t => {
-        const mS = !search || t.pair.toLowerCase().includes(search) || t.notes.toLowerCase().includes(search) || t.strategy.toLowerCase().includes(search);
+        const mS = !search || t.pair.toLowerCase().includes(search) || window.obNotes.notePlainText(t.notes).toLowerCase().includes(search) || t.strategy.toLowerCase().includes(search);
         const mP = pair === 'ALL' || t.pair === pair;
         const mT = tf === 'ALL' || t.timeframe === tf;
         const mR = regime === 'ALL' || t.regime === regime;
@@ -1725,18 +1826,27 @@
     }
 
     // Grow the notes textarea with its content (no inner scrollbar).
-    function autosizeDrawerNotes() {
-      const input = document.getElementById('drawerNotesInput');
-      if (!input) return;
-      input.style.height = 'auto';
-      input.style.height = Math.max(input.scrollHeight, 90) + 'px';
-    }
+    // Notes: the hidden #drawerNotesInput holds the note (sanitised HTML, or an
+    // old plain-text note); the contenteditable #drawerNotesEditor shows it.
+    function autosizeDrawerNotes() { /* the editor grows by itself (CSS) */ }
 
     function renderDrawerNotesView(t) {
       const input = document.getElementById('drawerNotesInput');
-      if (!input) return;
-      input.value = (t && typeof t.notes === 'string') ? t.notes : '';
-      autosizeDrawerNotes();
+      const editor = document.getElementById('drawerNotesEditor');
+      const note = (t && typeof t.notes === 'string') ? t.notes : '';
+      if (input) input.value = note;
+      if (editor) editor.innerHTML = window.obNotes.noteToHtml(note);
+    }
+    // Editor changed → sanitise into the model (an empty editor is an empty note).
+    function onDrawerNoteEdited() {
+      const input = document.getElementById('drawerNotesInput');
+      const editor = document.getElementById('drawerNotesEditor');
+      if (!editor || !drawerDraft) return;
+      let html = window.obNotes.sanitizeNoteHtml(editor.innerHTML);
+      if (!window.obNotes.notePlainText(html)) html = '';
+      if (input) input.value = html;
+      drawerDraft.notes = html;
+      updateDrawerSaveGate();
     }
 
     function resetDrawerAiPanel() {
@@ -1785,6 +1895,8 @@
       return {
         checklist: steps.map((_, i) => saved[i] || 'notset'),
         notes: typeof t.notes === 'string' ? t.notes : '',
+        tags: Array.isArray(t.tags) ? [...t.tags] : [],
+        feeling: typeof t.feeling === 'string' ? t.feeling : '',
         screenshots: Array.isArray(t.screenshots) ? [...t.screenshots] : []
       };
     }
@@ -1840,7 +1952,7 @@
     function highlightMissingRequirement(gate) {
       const key = gate && gate.missingKeys && gate.missingKeys[0];
       const target = key === 'checklist' ? document.getElementById('drawerChecklist')
-                   : key === 'note' ? document.getElementById('drawerNotesInput')
+                   : key === 'note' ? document.getElementById('drawerNotesEditor')
                    : key === 'screenshot' ? document.getElementById('drawerScreenshotUploadLabel')
                    : null;
       const msg = document.getElementById('drawerSaveGateMsg');
@@ -1874,12 +1986,14 @@
       renderDrawerChecklist(view);
       renderDrawerScreenshots(view);
       const input = document.getElementById('drawerNotesInput');
-      if (input) input.oninput = () => {   // held in memory — stored only on Save
+      if (input) input.oninput = () => {   // programmatic note changes; held in memory until Save
         if (drawerDraft) drawerDraft.notes = input.value;
-        autosizeDrawerNotes();
+        const editor = document.getElementById('drawerNotesEditor');
+        if (editor) editor.innerHTML = window.obNotes.noteToHtml(input.value);
         updateDrawerSaveGate();
       };
       renderDrawerNotesView(view);
+      renderDrawerPsychology();
       resetDrawerAiPanel();
       showDrawerAi('empty');
       const isNew = !!(pendingNewTrade && pendingNewTrade.id === id);
@@ -1985,6 +2099,8 @@
         checklist: [...drawerDraft.checklist],
         notes: drawerDraft.notes,
         screenshots: [...drawerDraft.screenshots],
+        tags: [...(drawerDraft.tags || [])],
+        feeling: drawerDraft.feeling || '',
         // snapshot of the checklist items this trade was scored against
         checklistItems: [...stepsForTrade(drawerViewTrade())]
       };
@@ -2040,7 +2156,13 @@
       const id = currentDrawerTradeId;
       const files = event.target.files;
       if (!files || files.length === 0) return;
-      Array.from(files).forEach(file => {
+      // Max 3 per trade. Older trades that already have more keep them; no new ones.
+      const max = window.obNotes.MAX_SCREENSHOTS;
+      const room = Math.max(0, max - drawerDraft.screenshots.length);
+      const images = Array.from(files).filter(f => !f.type || String(f.type).startsWith('image/'));
+      if (images.length > room) showShotHint('Maximum ' + max + ' screenshots per trade.');
+      if (event.target && 'value' in event.target) event.target.value = '';
+      images.slice(0, room).forEach(file => {
         const reader = new FileReader();
         reader.onload = (e) => {
           if (!drawerDraft || currentDrawerTradeId !== id) return; // drawer closed
@@ -2050,21 +2172,213 @@
         };
         reader.readAsDataURL(file);
       });
-      event.target.value = '';
     }
     function renderDrawerScreenshots(t) {
       const grid = document.getElementById('drawerScreenshotsGrid');
       grid.innerHTML = '';
-      (t.screenshots || []).forEach((src, i) => {
+      const shots = t.screenshots || [];
+      shots.forEach((src, i) => {
         const wrapper = document.createElement('div');
-        wrapper.className = 'relative group';
-        wrapper.innerHTML = `
-          <img src="${src}" class="screenshot-thumb" alt="Screenshot ${i+1}">
-          <button onclick="removeScreenshot('${t.id}', ${i})" class="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-xmark"></i></button>
-        `;
+        wrapper.className = 'relative';
+        const img = document.createElement('img');
+        img.src = src; img.className = 'screenshot-thumb'; img.alt = 'Screenshot ' + (i + 1);
+        const rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-[10px] flex items-center justify-center';
+        rm.setAttribute('aria-label', 'Remove screenshot ' + (i + 1));
+        rm.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        rm.onclick = () => removeScreenshot(t.id, i);
+        wrapper.append(img, rm);
         grid.appendChild(wrapper);
       });
+      const max = window.obNotes.MAX_SCREENSHOTS;
+      const full = shots.length >= max;
+      const count = document.getElementById('drawerShotCount');
+      if (count) { count.textContent = shots.length + '/' + max; count.classList.toggle('is-full', full); }
+      document.getElementById('drawerScreenshotUploadLabel')?.classList.toggle('is-full', full);
+      const hint = document.getElementById('drawerShotHint');
+      if (hint) hint.textContent = full ? 'Maximum ' + max + ' screenshots reached.' : 'Drop or paste an image here (max ' + max + ').';
     }
+    function showShotHint(text) {
+      const hint = document.getElementById('drawerShotHint');
+      if (!hint) return;
+      hint.textContent = text;
+      hint.classList.remove('ob-req-flash'); void hint.offsetWidth; hint.classList.add('ob-req-flash');
+    }
+    function addScreenshotFiles(files) {
+      if (!files || !files.length) return;
+      (window.handleScreenshotUpload || handleScreenshotUpload)({ target: { files, value: '' } });
+    }
+
+    // ── Tags & psychology (optional; stored on the trade as tags[] and feeling) ──
+    function tagSentiment(name) {
+      const t = tagLibrary.find(x => x.name.toLowerCase() === String(name).toLowerCase());
+      return t ? t.sentiment : 'neutral';
+    }
+    function previouslyUsedTags() {
+      const seen = new Map();
+      tagLibrary.forEach(t => seen.set(t.name.toLowerCase(), t.name));
+      trades.forEach(t => (t.tags || []).forEach(n => { if (!seen.has(String(n).toLowerCase())) seen.set(String(n).toLowerCase(), String(n)); }));
+      return [...seen.values()];
+    }
+    function renderDrawerPsychology() {
+      if (!drawerDraft) return;
+      const pills = document.getElementById('drawerTags');
+      const chips = document.getElementById('drawerTagChips');
+      const feels = document.getElementById('drawerFeelings');
+      if (!pills || !chips || !feels) return;
+      const tags = drawerDraft.tags || (drawerDraft.tags = []);
+      pills.innerHTML = '';
+      tags.forEach((name, i) => {
+        const pill = document.createElement('span');
+        pill.className = 'ob-tag-pill ob-sent-' + tagSentiment(name);
+        pill.append(document.createTextNode(name));
+        const x = document.createElement('button');
+        x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Remove tag ' + name);
+        x.onclick = () => { tags.splice(i, 1); renderDrawerPsychology(); };
+        pill.appendChild(x);
+        pills.appendChild(pill);
+      });
+      chips.innerHTML = '';
+      previouslyUsedTags().filter(n => !tags.some(t => t.toLowerCase() === n.toLowerCase())).forEach(n => {
+        const c = document.createElement('button');
+        c.type = 'button'; c.className = 'ob-chip'; c.textContent = n;
+        c.onclick = () => { drawerDraft.tags = window.obNotes.addTag(drawerDraft.tags, n); renderDrawerPsychology(); };
+        chips.appendChild(c);
+      });
+      const add = document.createElement('button');
+      add.type = 'button'; add.className = 'ob-chip ob-chip-add'; add.textContent = '+ Add';
+      add.onclick = () => { document.getElementById('drawerTagAddForm').classList.remove('hidden'); document.getElementById('drawerNewTagName').focus(); };
+      chips.appendChild(add);
+
+      feels.innerHTML = '';
+      feelingOptions.forEach(f => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'ob-feeling'; b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', String(drawerDraft.feeling === f.id));
+        b.dataset.feeling = f.id;
+        const e = document.createElement('span'); e.textContent = f.emoji;
+        const l = document.createElement('span'); l.textContent = f.label;
+        b.append(e, l);
+        b.onclick = () => { drawerDraft.feeling = drawerDraft.feeling === f.id ? '' : f.id; renderDrawerPsychology(); };
+        feels.appendChild(b);
+      });
+      const fa = document.createElement('button');
+      fa.type = 'button'; fa.className = 'ob-feeling ob-feeling-add'; fa.textContent = '+ Add';
+      fa.onclick = () => { document.getElementById('drawerFeelingAddForm').classList.remove('hidden'); document.getElementById('drawerNewFeelingEmoji').focus(); };
+      feels.appendChild(fa);
+    }
+
+    // One-time wiring of the editor toolbar, paste / drop and the tag + feeling forms.
+    (function wireDrawerNotesAndPsychology() {
+      const editor = document.getElementById('drawerNotesEditor');
+      const toolbar = document.querySelector('#drawerNotesSection .ob-note-toolbar');
+      const section = document.getElementById('drawerNotesSection');
+      if (!editor || !toolbar || !section) return;
+      editor.addEventListener('input', onDrawerNoteEdited);
+      toolbar.addEventListener('mousedown', e => e.preventDefault()); // keep the text selection
+      toolbar.addEventListener('click', e => {
+        const b = e.target.closest('button[data-cmd]');
+        if (!b) return;
+        editor.focus();
+        const cmd = b.dataset.cmd;
+        if (cmd === 'createLink') {
+          const url = window.obNotes.safeHref(prompt('Link URL (https://…)', 'https://') || '');
+          if (!url) return;
+          document.execCommand('createLink', false, url);
+        } else {
+          document.execCommand(cmd, false, null);
+        }
+        onDrawerNoteEdited();
+      });
+      // Paste: images become screenshots; text is pasted as plain text (no foreign HTML).
+      editor.addEventListener('paste', e => {
+        const dt = e.clipboardData;
+        if (!dt) return;
+        const files = [...(dt.files || [])].filter(f => String(f.type).startsWith('image/'));
+        e.preventDefault();
+        if (files.length) { addScreenshotFiles(files); return; }
+        const text = dt.getData('text/plain');
+        if (text) document.execCommand('insertText', false, text);
+        onDrawerNoteEdited();
+      });
+      // Dropping text/HTML into the editor inserts plain text only (no foreign markup).
+      editor.addEventListener('drop', e => {
+        const dt = e.dataTransfer;
+        if (!dt || [...(dt.files || [])].length) return; // images: handled by the section below
+        const text = dt.getData('text/plain');
+        e.preventDefault();
+        if (text) { editor.focus(); document.execCommand('insertText', false, text); onDrawerNoteEdited(); }
+      });
+      // Paste an image anywhere in the open drawer (outside text fields).
+      document.addEventListener('paste', e => {
+        if (!currentDrawerTradeId || e.defaultPrevented) return;
+        const el = e.target;
+        if (el && (el.isContentEditable || /^(INPUT|TEXTAREA)$/.test(el.tagName))) return;
+        const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => String(f.type).startsWith('image/'));
+        if (files.length) { e.preventDefault(); addScreenshotFiles(files); }
+      });
+      // Drag and drop images onto the Notes & Media area.
+      section.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { e.preventDefault(); section.classList.add('is-dragover'); } });
+      section.addEventListener('dragleave', e => { if (!section.contains(e.relatedTarget)) section.classList.remove('is-dragover'); });
+      section.addEventListener('drop', e => {
+        section.classList.remove('is-dragover');
+        const files = [...((e.dataTransfer && e.dataTransfer.files) || [])].filter(f => String(f.type).startsWith('image/'));
+        if (!files.length) return;
+        e.preventDefault();
+        addScreenshotFiles(files);
+      });
+
+      // Tags: type + Enter (or comma) adds; Backspace on empty removes the last one.
+      const tagInput = document.getElementById('drawerTagInput');
+      tagInput.addEventListener('keydown', e => {
+        if (!drawerDraft) return;
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          drawerDraft.tags = window.obNotes.addTag(drawerDraft.tags, tagInput.value);
+          tagInput.value = '';
+          renderDrawerPsychology();
+        } else if (e.key === 'Backspace' && !tagInput.value && (drawerDraft.tags || []).length) {
+          drawerDraft.tags.pop();
+          renderDrawerPsychology();
+        }
+      });
+      document.getElementById('drawerTagField').addEventListener('click', e => { if (e.target.id === 'drawerTagField') tagInput.focus(); });
+
+      // "+ Add" custom tag with Positive / Neutral / Negative (stored in settings).
+      const tagForm = document.getElementById('drawerTagAddForm');
+      document.getElementById('drawerNewTagCancel').onclick = () => tagForm.classList.add('hidden');
+      document.getElementById('drawerNewTagSave').onclick = async () => {
+        const name = window.obNotes.cleanTag(document.getElementById('drawerNewTagName').value);
+        if (!name) return;
+        const sentiment = document.getElementById('drawerNewTagSentiment').value;
+        const existing = tagLibrary.find(t => t.name.toLowerCase() === name.toLowerCase());
+        if (existing) existing.sentiment = sentiment;
+        else tagLibrary = window.obNotes.normalizeTagLibrary([{ name, sentiment }, ...tagLibrary]);
+        if (drawerDraft) drawerDraft.tags = window.obNotes.addTag(drawerDraft.tags, name);
+        document.getElementById('drawerNewTagName').value = '';
+        tagForm.classList.add('hidden');
+        renderDrawerPsychology();
+        await saveSettings();
+      };
+      // "+ Add" custom feeling (emoji + label, stored in settings).
+      const feelForm = document.getElementById('drawerFeelingAddForm');
+      document.getElementById('drawerNewFeelingCancel').onclick = () => feelForm.classList.add('hidden');
+      document.getElementById('drawerNewFeelingSave').onclick = async () => {
+        const emoji = document.getElementById('drawerNewFeelingEmoji').value.trim();
+        const label = document.getElementById('drawerNewFeelingLabel').value.trim();
+        if (!emoji || !label) return;
+        const before = feelingOptions.length;
+        feelingOptions = window.obNotes.normalizeFeelings([...feelingOptions, { emoji, label }]);
+        const added = feelingOptions.length > before ? feelingOptions[feelingOptions.length - 1] : null;
+        if (added && drawerDraft) drawerDraft.feeling = added.id;
+        document.getElementById('drawerNewFeelingEmoji').value = '';
+        document.getElementById('drawerNewFeelingLabel').value = '';
+        feelForm.classList.add('hidden');
+        renderDrawerPsychology();
+        await saveSettings();
+      };
+    })();
     function removeScreenshot(tradeId, index) {
       if (!drawerDraft || tradeId !== currentDrawerTradeId) return;
       drawerDraft.screenshots.splice(index, 1);
@@ -2113,7 +2427,9 @@
         checklistSummary,
         ``,
         `USER NOTES`,
-        (t.notes && String(t.notes).trim()) ? String(t.notes).trim() : '(no note)'
+        window.obNotes.notePlainText(t.notes) || '(no note)',
+        ...(Array.isArray(t.tags) && t.tags.length ? ['', 'TAGS: ' + t.tags.join(', ')] : []),
+        ...(t.feeling ? ['HOW IT FELT: ' + t.feeling] : [])
       ];
 
       try {
