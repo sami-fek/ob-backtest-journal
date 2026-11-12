@@ -1334,7 +1334,7 @@
     function installStrategyActions() {
       if (!window.obDropdown) return;
       window.obDropdown.setActions('formStrategy', [
-        { id: 'add', label: '+ Add strategy', onSelect: () => openStrategyEditor('add') },
+        { id: 'add', label: '+ Create new', onSelect: () => openStrategyEditor('add') },
         { id: 'edit', label: 'Edit checklist', onSelect: () => openStrategyEditor('edit') },
         { id: 'delete', label: 'Delete strategy', danger: true, onSelect: () => openStrategyDeletePicker() }
       ]);
