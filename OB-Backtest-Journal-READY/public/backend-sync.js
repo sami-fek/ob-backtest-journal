@@ -81,7 +81,8 @@
     '/ui-carousel-stability.js',
     '/discipline-engine.js',
     '/analytics-advanced.js',
-    '/mt5-r-assign.js'
+    '/mt5-r-assign.js',
+    '/ui-dropdowns.js'
   ];
 
   function inject(src, onDone) {
