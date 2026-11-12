@@ -1,0 +1,265 @@
+/*
+ * theme.css — MY Journal light / dark theme.
+ * html[data-theme="light" | "dark"] is set before first paint (inline script
+ * in <head>) and kept in sync by theme.js.
+ *
+ * 1. Theme variables (from the colour reference)
+ * 2. Recolor variables for the patch scripts (--tc-*, see theme.js)
+ * 3. Dark remap of the Tailwind utility classes the app uses
+ * 4. App classes (glass cards, nav pills, checklist, calendar, scrollbars)
+ */
+
+/* ── 1. Theme variables ─────────────────────────────────────────────────── */
+:root, html[data-theme="light"] {
+  --page: #ffffff;
+  --sidebar: #fafafa;
+  --panel: #ffffff;
+  --raised: #fafafa;
+  --input: #ffffff;
+  --border-subtle: #f4f4f5;
+  --border: #e7e7e9;
+  --border-strong: #d4d4d8;
+  --hover: #eff6ff;
+  --hover-border: #bfdbfe;
+  --hover-text: #2563eb;
+  --text: #101729;
+  --text-2: #334155;
+  --muted: #6b7280;
+  --muted-2: #94a3b8;
+  --blue: #3b82f6;
+  --blue-strong: #2563eb;
+  --blue-tint: #eff6ff;
+  --profit: #16a34a;
+  --profit-solid: #16a34a;
+  --loss: #ef4444;
+  --amber: #f59e0b;
+  --promo: #26145f;
+  --pill-active-bg: #eff6ff;
+  --pill-active-text: #2563eb;
+  --primary-bg: #101729;
+  --primary-text: #ffffff;
+  --shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -2px rgba(15, 23, 42, 0.03);
+  --overlay: rgba(15, 23, 42, 0.35);
+
+  --chart-text: #94a3b8;
+  --chart-grid: #f1f5f9;
+  --chart-tooltip-bg: rgba(15, 23, 42, 0.92);
+  --chart-tooltip-text: #ffffff;
+  --chart-tooltip-border: transparent;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0a0a0a;
+  --sidebar: #0f0f0f;
+  --panel: #0f0f0f;
+  --raised: #171717;
+  --input: #171717;
+  --border-subtle: #181818;
+  --border: #262626;
+  --border-strong: #2e2e2e;
+  --hover: #262626;
+  --hover-border: #2e2e2e;
+  --hover-text: #fafafa;
+  --text: #fafafa;
+  --text-2: #e4e4e7;
+  --muted: #7c8596;
+  --muted-2: #6b7280;
+  --blue: #3b82f6;
+  --blue-strong: #60a5fa;
+  --blue-tint: #294367;
+  --profit: #22c55e;
+  --profit-solid: #16a34a;
+  --loss: #ef4444;
+  --amber: #f59e0b;
+  --promo: #26145f;
+  --pill-active-bg: #1b2538;
+  --pill-active-text: #60a5fa;
+  --primary-bg: #fafafa;
+  --primary-text: #0a0a0a;
+  --shadow: 0 8px 28px -6px rgba(0, 0, 0, 0.6), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --overlay: rgba(0, 0, 0, 0.6);
+
+  --chart-text: #7c8596;
+  --chart-grid: #1f1f1f;
+  --chart-tooltip-bg: #171717;
+  --chart-tooltip-text: #fafafa;
+  --chart-tooltip-border: #2e2e2e;
+
+  /* ── 2. Recolor variables used by theme.js for the patch scripts ── */
+  --tc-page: var(--page);
+  --tc-bg-white: var(--panel);
+  --tc-bg-50: var(--raised);
+  --tc-bg-100: var(--raised);
+  --tc-bg-200: var(--border);
+  --tc-bg-blue: rgba(59, 130, 246, 0.14);
+  --tc-bg-indigo: rgba(99, 102, 241, 0.16);
+  --tc-bg-green: rgba(34, 197, 94, 0.12);
+  --tc-bg-red: rgba(239, 68, 68, 0.12);
+  --tc-bg-amber: rgba(245, 158, 11, 0.12);
+  --tc-fg-1: #fafafa;
+  --tc-fg-2: #e4e4e7;
+  --tc-fg-3: #a1a1aa;
+  --tc-fg-4: #8b93a3;
+  --tc-fg-5: #7c8596;
+  --tc-fg-6: #52525b;
+  --tc-bd: #262626;
+  --tc-bd-subtle: #1c1c1c;
+  --tc-bd-strong: #2e2e2e;
+  --tc-bd-blue: rgba(59, 130, 246, 0.35);
+  --tc-bd-green: rgba(34, 197, 94, 0.35);
+  --tc-bd-red: rgba(239, 68, 68, 0.35);
+  --tc-bd-amber: rgba(245, 158, 11, 0.35);
+}
+
+/* Page */
+html, body { background-color: var(--page) !important; }
+body { color: var(--text) !important; transition: background-color .2s ease, color .2s ease; }
+
+/* ── 3. Dark remap of Tailwind utilities used by the app ─────────────────── */
+/* Surfaces */
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-white\/90,
+html[data-theme="dark"] .bg-white\/80,
+html[data-theme="dark"] .bg-white\/75,
+html[data-theme="dark"] .bg-white\/70,
+html[data-theme="dark"] .bg-white\/50 { background-color: var(--panel) !important; }
+html[data-theme="dark"] .bg-slate-50,
+html[data-theme="dark"] .bg-slate-50\/60,
+html[data-theme="dark"] .bg-slate-100,
+html[data-theme="dark"] .bg-slate-100\/90 { background-color: var(--raised) !important; }
+html[data-theme="dark"] .bg-slate-200,
+html[data-theme="dark"] .bg-slate-300 { background-color: var(--border) !important; }
+html[data-theme="dark"] .bg-blue-50,
+html[data-theme="dark"] .bg-blue-50\/50,
+html[data-theme="dark"] .bg-blue-100 { background-color: rgba(59, 130, 246, 0.14) !important; }
+html[data-theme="dark"] .bg-indigo-50,
+html[data-theme="dark"] .bg-purple-50 { background-color: rgba(99, 102, 241, 0.16) !important; }
+html[data-theme="dark"] .bg-emerald-50,
+html[data-theme="dark"] .bg-emerald-50\/60,
+html[data-theme="dark"] .bg-emerald-100 { background-color: rgba(34, 197, 94, 0.12) !important; }
+html[data-theme="dark"] .bg-rose-50,
+html[data-theme="dark"] .bg-rose-50\/60,
+html[data-theme="dark"] .bg-rose-100 { background-color: rgba(239, 68, 68, 0.12) !important; }
+html[data-theme="dark"] .bg-amber-50,
+html[data-theme="dark"] .bg-amber-50\/60 { background-color: rgba(245, 158, 11, 0.12) !important; }
+
+/* Text */
+html[data-theme="dark"] .text-slate-900,
+html[data-theme="dark"] .text-slate-800 { color: var(--text) !important; }
+html[data-theme="dark"] .text-slate-700,
+html[data-theme="dark"] .text-slate-600 { color: #d4d4d8 !important; }
+html[data-theme="dark"] .text-slate-500 { color: #9ca3af !important; }
+html[data-theme="dark"] .text-slate-400 { color: var(--muted) !important; }
+html[data-theme="dark"] .text-slate-300 { color: #52525b !important; }
+html[data-theme="dark"] .text-blue-600,
+html[data-theme="dark"] .text-blue-700,
+html[data-theme="dark"] .text-blue-800 { color: #60a5fa !important; }
+html[data-theme="dark"] .text-indigo-600,
+html[data-theme="dark"] .text-indigo-700 { color: #818cf8 !important; }
+html[data-theme="dark"] .text-emerald-600,
+html[data-theme="dark"] .text-emerald-700,
+html[data-theme="dark"] .text-emerald-800 { color: var(--profit) !important; }
+html[data-theme="dark"] .text-rose-500,
+html[data-theme="dark"] .text-rose-600,
+html[data-theme="dark"] .text-rose-700,
+html[data-theme="dark"] .text-rose-800 { color: #f87171 !important; }
+html[data-theme="dark"] .text-amber-600,
+html[data-theme="dark"] .text-amber-700 { color: #fbbf24 !important; }
+html[data-theme="dark"] .text-purple-600 { color: #a78bfa !important; }
+html[data-theme="dark"] .placeholder-slate-400::placeholder,
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder { color: var(--muted) !important; }
+
+/* Borders */
+html[data-theme="dark"] .border-slate-100,
+html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .border-slate-200\/80,
+html[data-theme="dark"] .border-slate-300,
+html[data-theme="dark"] .border-white\/80,
+html[data-theme="dark"] .border-white\/70 { border-color: var(--border) !important; }
+html[data-theme="dark"] .divide-slate-100 > * + * { border-color: var(--border) !important; }
+html[data-theme="dark"] .border-blue-100,
+html[data-theme="dark"] .border-blue-200,
+html[data-theme="dark"] .border-indigo-100\/60 { border-color: rgba(59, 130, 246, 0.35) !important; }
+html[data-theme="dark"] .border-emerald-100,
+html[data-theme="dark"] .border-emerald-200,
+html[data-theme="dark"] .border-emerald-300 { border-color: rgba(34, 197, 94, 0.35) !important; }
+html[data-theme="dark"] .border-rose-100,
+html[data-theme="dark"] .border-rose-200,
+html[data-theme="dark"] .border-rose-300 { border-color: rgba(239, 68, 68, 0.35) !important; }
+html[data-theme="dark"] .border-amber-100,
+html[data-theme="dark"] .border-amber-200 { border-color: rgba(245, 158, 11, 0.35) !important; }
+
+/* Hover / focus states: gray in dark (blue stays blue on blue buttons) */
+html[data-theme="dark"] .hover\:bg-slate-50:hover,
+html[data-theme="dark"] .hover\:bg-slate-100:hover,
+html[data-theme="dark"] .hover\:bg-slate-200:hover,
+html[data-theme="dark"] .hover\:bg-slate-300:hover,
+html[data-theme="dark"] .hover\:bg-white:hover,
+html[data-theme="dark"] .hover\:bg-white\/70:hover { background-color: var(--hover) !important; }
+html[data-theme="dark"] .hover\:bg-blue-100:hover,
+html[data-theme="dark"] .hover\:bg-indigo-100:hover { background-color: rgba(59, 130, 246, 0.22) !important; }
+html[data-theme="dark"] .hover\:bg-rose-50:hover,
+html[data-theme="dark"] .hover\:bg-rose-100:hover { background-color: rgba(239, 68, 68, 0.16) !important; }
+html[data-theme="dark"] .hover\:bg-emerald-100:hover { background-color: rgba(34, 197, 94, 0.16) !important; }
+html[data-theme="dark"] .hover\:text-slate-700:hover,
+html[data-theme="dark"] .hover\:text-slate-800:hover,
+html[data-theme="dark"] .hover\:text-slate-900:hover { color: var(--text) !important; }
+html[data-theme="dark"] .hover\:border-blue-300:hover,
+html[data-theme="dark"] .hover\:border-blue-400:hover { border-color: rgba(59, 130, 246, 0.6) !important; }
+html[data-theme="dark"] .hover\:border-rose-200:hover { border-color: rgba(239, 68, 68, 0.45) !important; }
+html[data-theme="dark"] .focus\:ring-blue-100:focus { --tw-ring-color: rgba(59, 130, 246, 0.3) !important; }
+
+/* Form controls */
+html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background-color: var(--input) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus { border-color: var(--blue) !important; }
+html[data-theme="dark"] option { background-color: var(--raised); color: var(--text); }
+
+/* Shadows: soft shadows disappear on black, use a deeper one */
+html[data-theme="dark"] .shadow-sm,
+html[data-theme="dark"] .shadow-md,
+html[data-theme="dark"] .shadow-lg,
+html[data-theme="dark"] .shadow-xl,
+html[data-theme="dark"] .shadow-2xl { --tw-shadow-color: rgba(0, 0, 0, 0.6) !important; }
+html[data-theme="dark"] .shadow-inner { box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5) !important; }
+
+/* ── 4. App classes ───────────────────────────────────────────────────────── */
+html[data-theme="dark"] .glass-card,
+html[data-theme="dark"] .glass-card-sm {
+  background: var(--panel) !important;
+  border-color: var(--border) !important;
+  box-shadow: var(--shadow) !important;
+}
+html[data-theme="dark"] header.sticky { background-color: rgba(10, 10, 10, 0.85) !important; border-color: var(--border) !important; }
+html[data-theme="dark"] footer { background-color: rgba(10, 10, 10, 0.6) !important; border-color: var(--border) !important; }
+html[data-theme="dark"] .drawer-backdrop { background-color: var(--overlay) !important; }
+
+html[data-theme="dark"] .mode-pill-active { background-color: var(--primary-bg) !important; color: var(--primary-text) !important; box-shadow: none !important; }
+
+html[data-theme="dark"] .chk-item { background: var(--raised) !important; border-color: var(--border) !important; }
+html[data-theme="dark"] .chk-item.chk-passed { background: rgba(34, 197, 94, 0.1) !important; border-color: rgba(34, 197, 94, 0.35) !important; }
+html[data-theme="dark"] .chk-item.chk-failed { background: rgba(239, 68, 68, 0.1) !important; border-color: rgba(239, 68, 68, 0.35) !important; }
+html[data-theme="dark"] .chk-item .chk-text { color: #d4d4d8 !important; }
+html[data-theme="dark"] .chk-item.chk-passed .chk-text { color: #4ade80 !important; }
+html[data-theme="dark"] .chk-item.chk-failed .chk-text { color: #f87171 !important; }
+html[data-theme="dark"] .chk-btn { background: var(--panel) !important; border-color: var(--border-strong) !important; color: #52525b !important; }
+html[data-theme="dark"] .chk-btn-pass.active { background: var(--profit-solid) !important; border-color: var(--profit-solid) !important; color: #fff !important; }
+html[data-theme="dark"] .chk-btn-fail.active { background: #dc2626 !important; border-color: #dc2626 !important; color: #fff !important; }
+html[data-theme="dark"] .screenshot-thumb { border-color: var(--border) !important; }
+
+html[data-theme="dark"] .calendar-cell-win { background-color: rgba(34, 197, 94, 0.1) !important; border-color: rgba(34, 197, 94, 0.4) !important; color: #4ade80 !important; }
+html[data-theme="dark"] .calendar-cell-loss { background-color: rgba(239, 68, 68, 0.1) !important; border-color: rgba(239, 68, 68, 0.4) !important; color: #f87171 !important; }
+html[data-theme="dark"] .calendar-cell-neutral { background-color: var(--panel) !important; border-color: var(--border) !important; color: var(--muted) !important; }
+
+html[data-theme="dark"] ::-webkit-scrollbar-track { background: var(--page) !important; }
+html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2e2e2e !important; }
+html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #3f3f46 !important; }
