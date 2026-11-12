@@ -1,4 +1,4 @@
-Status: Part 1: in progress · Part 2: not started · Part 3: not started · Part 4: not started
+Status: Part 1: DONE (2026-11-13, see OVERNIGHT-REPORT-PART-1.md) · Part 2: waiting for "next" · Part 3: not started · Part 4: not started
 
 > Note (2026-11-13): Part 2A steps 1-4 (login UI, dropdowns, strategy actions, drawer + screenshot save rule) were already built and pushed in the previous round (commits 117f659, ab1e812, eab4135, e35c2f5, 3ae6391; see OVERNIGHT-REPORT-2.md). In Part 2 they only need the theme/hover adjustments listed there (dark-mode gray hover, "+ Create new" label, light/dark checks).
 
