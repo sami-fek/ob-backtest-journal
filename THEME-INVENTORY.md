@@ -21,12 +21,16 @@ Status legend:
 | Trading | LOG A TRADE form + dropdowns | OK | OK | Dark: raised surface, gray hover per reference |
 | Trading | Strategy dropdown actions | OK | OK | |
 | Trading | KPI tiles | OK | OK | |
-| Trading | P&L calendar heatmap | OK | OK | Win/loss cells: dark tints. Full redesign in Part 2B |
-| Trading | Account balance widget + carousel | OK | OK | Green card unchanged on purpose |
+| Trading | P&L calendar (Part 2B redesign, day "+") | OK | OK | 1440 + 390, both themes |
+| Trading | Trading Activity heatmap (new, Part 2B) | OK | OK | 1440 + 390, both themes |
+| Trading | Account balance widget + carousel | OK | OK | Green card unchanged on purpose; light: Base Capital text fixed (Part 2) |
 | Trading | Execution log table | OK | OK | |
 | Trading | Discipline banners (hard stop / daily limit) | OK | OK | Explicit dark rules |
 | Trading | Discipline streak pills | OK | OK | |
 | Trade drawer | Checklist, screenshots, notes, AI panel, live save list, buttons | OK | OK | |
+| Trade drawer | Notes & Media (rich notes, chart screens 0/3) | OK | OK | Part 2B |
+| Trade drawer | Tags & Psychology (tags, feelings, + Add forms) | OK | OK | Part 2B |
+| Trade drawer | Calendar mode: Trade Details + Save that appears when complete | OK | OK | Part 2B |
 | Modals | Strategy editor (add / edit checklist) | OK (layer) | OK | |
 | Modals | Delete-strategy picker | OK (layer) | OK | |
 | Modals | Daily-limit block | OK (layer) | OK | White border remapped |
@@ -48,4 +52,3 @@ Status legend:
 | Analytics | All analytics views (KPIs, charts, filter bar, strategy compare, breakdowns, AI insights) | as before | Pending Part 4 | Not part of Part 1 |
 | Dashboard | (new page) | | Pending Part 4 | |
 | Account center | (new) | | Pending Part 3 | |
-| Calendar panel / tags | (new) | | Pending Part 2 | |
