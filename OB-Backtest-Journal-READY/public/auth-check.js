@@ -113,9 +113,7 @@
 
   function goToSettings() {
     // Use the same path as the nav's Settings button.
-    const navBtn = document.getElementById('navBtn-settings');
-    if (navBtn) navBtn.click();
-    else if (typeof window.switchTab === 'function') window.switchTab('settings');
+    if (typeof window.switchTab === 'function') window.switchTab('settings');
   }
 
   function injectAccountMenu(email) {
@@ -133,6 +131,10 @@
           <div class="ob-acc-label">Signed in as</div>
           <div class="ob-acc-email"></div>
         </div>
+        <button type="button" role="menuitem" class="ob-acc-item" data-action="accounts">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 12h2"/></svg>
+          Accounts
+        </button>
         <button type="button" role="menuitem" class="ob-acc-item" data-action="settings">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           Settings
@@ -172,6 +174,7 @@
       if (!item) return;
       close(false);
       if (item.dataset.action === 'settings') goToSettings();
+      if (item.dataset.action === 'accounts' && typeof window.switchTab === 'function') window.switchTab('accounts');
       if (item.dataset.action === 'logout') logout();
     });
     menu.addEventListener('keydown', e => {
@@ -185,6 +188,7 @@
 
     // Right-hand slot of the header (next to "Get started"); fall back to the header.
     const slot = header.querySelector(':scope > div > div:last-child') || header;
+    slot.classList.add('ob-has-account');
     slot.appendChild(wrap);
   }
 

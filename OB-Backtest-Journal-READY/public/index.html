@@ -132,13 +132,11 @@
         </div>
       </div>
 
-      <nav class="flex items-center bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200 text-xs font-medium text-slate-600 gap-1 shadow-inner">
-        <button id="navBtn-home" onclick="switchTab('home')" class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 nav-pill-active"><i class="fa-solid fa-house text-xs"></i><span>Home</span></button>
-        <button id="navBtn-trading" onclick="switchTab('trading')" class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-chart-line text-xs"></i><span>Trading</span></button>
-        <button id="navBtn-journal" onclick="switchTab('journal')" class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-book-bookmark text-xs"></i><span>Journal</span></button>
-        <button id="navBtn-analytics" onclick="switchTab('analytics')" class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-chart-pie text-xs"></i><span>Analytics</span></button>
-        <button id="navBtn-accounts" onclick="switchTab('accounts')" class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-wallet text-xs"></i><span>Accounts</span></button>
-        <button id="navBtn-settings" onclick="switchTab('settings')" class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-gear text-xs"></i><span>Settings</span></button>
+      <nav class="ob-pill-nav flex items-center p-1.5 rounded-full text-xs font-medium gap-1" aria-label="Main">
+        <button id="navBtn-home" onclick="switchTab('home')" class="px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 nav-pill-active"><i class="fa-solid fa-house text-xs"></i><span>Home</span></button>
+        <button id="navBtn-trading" onclick="switchTab('trading')" class="px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-chart-line text-xs"></i><span>Trading</span></button>
+        <button id="navBtn-journal" onclick="switchTab('journal')" class="px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-book-bookmark text-xs"></i><span>Journal</span></button>
+        <button id="navBtn-analytics" onclick="switchTab('analytics')" class="px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-chart-pie text-xs"></i><span>Analytics</span></button>
       </nav>
 
       <div class="flex items-center gap-3">
@@ -790,8 +788,8 @@
           if (p) p.classList.add('hidden');
           const b = document.getElementById('navBtn-' + t);
           if (b) b.className = (t === tab)
-            ? "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 nav-pill-active"
-            : "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900";
+            ? "px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 nav-pill-active"
+            : "px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 hover:text-slate-900";
         });
 
         const targetPage = document.getElementById('page' + tab.charAt(0).toUpperCase() + tab.slice(1));
@@ -1036,12 +1034,12 @@
       tabs.forEach(t => {
         const btn = document.getElementById(`navBtn-${t}`);
         const page = document.getElementById(`page${t.charAt(0).toUpperCase() + t.slice(1)}`);
-        if (!btn || !page) return;
+        if (!page) return; // accounts / settings have no nav button any more (account menu)
         if (t === tab) {
-          btn.className = "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 nav-pill-active";
+          if (btn) btn.className = "px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 nav-pill-active";
           page.classList.remove('hidden');
         } else {
-          btn.className = "px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-900";
+          if (btn) btn.className = "px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 hover:text-slate-900";
           page.classList.add('hidden');
         }
       });

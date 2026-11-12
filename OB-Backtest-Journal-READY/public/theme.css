@@ -263,3 +263,58 @@ html[data-theme="dark"] .calendar-cell-neutral { background-color: var(--panel) 
 html[data-theme="dark"] ::-webkit-scrollbar-track { background: var(--page) !important; }
 html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2e2e2e !important; }
 html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #3f3f46 !important; }
+
+/* ── 5. Pill navigation bar ───────────────────────────────────────────────── */
+:root, html[data-theme="light"] {
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --nav-border: #e7e7e9;
+  --nav-shadow: 0 6px 24px -8px rgba(15, 23, 42, 0.14), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --nav-text: #475569;
+  --nav-hover-bg: #f4f4f5;
+  --nav-hover-text: #101729;
+}
+html[data-theme="dark"] {
+  --nav-bg: rgba(15, 15, 15, 0.92);
+  --nav-border: #262626;
+  --nav-shadow: 0 8px 28px -8px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.5);
+  --nav-text: #a1a1aa;
+  --nav-hover-bg: #171717;
+  --nav-hover-text: #fafafa;
+}
+header nav.ob-pill-nav {
+  background: var(--nav-bg) !important;
+  border: 1px solid var(--nav-border) !important;
+  box-shadow: var(--nav-shadow) !important;
+  border-radius: 9999px !important;
+  color: var(--nav-text) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  flex-wrap: nowrap;
+}
+header nav.ob-pill-nav > button {
+  border-radius: 9999px !important;
+  color: var(--nav-text) !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color .15s ease, color .15s ease;
+}
+header nav.ob-pill-nav > button:hover:not(.nav-pill-active) {
+  background: var(--nav-hover-bg) !important;
+  color: var(--nav-hover-text) !important;
+}
+header nav.ob-pill-nav > button.nav-pill-active,
+.nav-pill-active {
+  background: var(--pill-active-bg) !important;
+  color: var(--pill-active-text) !important;
+  font-weight: 600;
+  box-shadow: none !important;
+}
+@media (max-width: 767px) {
+  header nav.ob-pill-nav { justify-content: space-between; }
+  header nav.ob-pill-nav > button { padding: 6px 11px !important; }
+}
+/* Phones, signed in: the avatar replaces "Get started" (it only opens Trading,
+   which the nav already has) so logo + avatar fit on one row. */
+@media (max-width: 479px) {
+  header .ob-has-account > button:not(#ob-account-btn) { display: none !important; }
+}
