@@ -160,21 +160,31 @@
   }
   const chartPlugin = {
     id: 'obTheme',
+    // Chart.js option objects are resolver proxies: only set leaf values on
+    // objects that already exist (re-assigning containers can recurse forever).
     beforeUpdate(chart) {
-      const c = chartPalette();
-      const o = chart.options || {};
-      Object.values(o.scales || {}).forEach(s => {
-        s.ticks = s.ticks || {}; s.ticks.color = c.text;
-        s.grid = s.grid || {}; if (s.grid.display !== false) s.grid.color = c.grid;
-        s.border = s.border || {}; s.border.color = c.grid;
-        if (s.pointLabels) s.pointLabels.color = c.text;
-        if (s.title) s.title.color = c.text;
-      });
-      o.plugins = o.plugins || {};
-      const lg = o.plugins.legend; if (lg) { lg.labels = lg.labels || {}; lg.labels.color = c.text; }
-      const tt = o.plugins.tooltip = o.plugins.tooltip || {};
-      tt.backgroundColor = c.tipBg; tt.titleColor = c.tipText; tt.bodyColor = c.tipText;
-      tt.borderColor = c.tipBorder; tt.borderWidth = c.tipBorder === 'transparent' ? 0 : 1;
+      try {
+        const c = chartPalette();
+        const o = chart.options;
+        if (!o) return;
+        const scales = o.scales || {};
+        Object.keys(scales).forEach(k => {
+          const s = scales[k];
+          if (!s) return;
+          if (s.ticks) s.ticks.color = c.text;
+          if (s.grid && s.grid.display !== false) s.grid.color = c.grid;
+          if (s.border) s.border.color = c.grid;
+          if (s.pointLabels) s.pointLabels.color = c.text;
+          if (s.title) s.title.color = c.text;
+        });
+        const p = o.plugins;
+        if (p && p.legend && p.legend.labels) p.legend.labels.color = c.text;
+        if (p && p.tooltip) {
+          const tt = p.tooltip;
+          tt.backgroundColor = c.tipBg; tt.titleColor = c.tipText; tt.bodyColor = c.tipText;
+          tt.borderColor = c.tipBorder; tt.borderWidth = c.tipBorder === 'transparent' ? 0 : 1;
+        }
+      } catch (_) { /* never break a chart render because of theming */ }
     }
   };
   let chartReady = false;
