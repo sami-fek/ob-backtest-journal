@@ -65,6 +65,9 @@
 
     #tradeDrawer .drawer-panel { transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.16,1,0.3,1); }
     #tradeDrawer.drawer-open .drawer-panel { transform: translateX(0); }
+    /* Keep the floating AI Coach button off the open trade drawer */
+    body.ob-drawer-open #ob-ai-fab { right: 462px !important; }
+    @media (max-width: 920px) { body.ob-drawer-open #ob-ai-fab { display: none !important; } }
 
     .chk-item { display:flex; align-items:flex-start; padding:10px 12px; border-radius:12px; border:1px solid #e2e8f0; background:#fff; margin-bottom:6px; gap:10px; transition: background 0.15s, border-color 0.15s; }
     .chk-item.chk-passed { background:#f0fdf4; border-color:#bbf7d0; }
@@ -591,26 +594,9 @@
           </label>
         </div>
         <div id="drawerNotesSection">
-          <div class="flex items-center justify-between mb-2">
-            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Notes</div>
-            <button type="button" id="drawerNotesEditBtn" onclick="enterDrawerEditMode()" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
-              <i class="fa-solid fa-pen text-[10px]"></i> Edit
-            </button>
-          </div>
-          <div id="drawerNotesView" class="min-h-[90px] bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-[12.5px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words">
-            <span class="text-slate-400 italic">No notes saved for this trade yet.</span>
-          </div>
-          <div id="drawerNotesEditWrap" class="hidden">
-            <textarea id="drawerNotesInput" placeholder="What did you see? Anything irregular about this OB?" rows="6" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-y leading-relaxed"></textarea>
-            <div class="flex items-center justify-end gap-2 mt-2">
-              <button type="button" onclick="cancelDrawerEditMode()" class="px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
-                Cancel
-              </button>
-              <button type="button" onclick="saveDrawer()" class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-500/20 transition-colors flex items-center gap-1.5">
-                <i class="fa-solid fa-check text-[10px]"></i> Save Note
-              </button>
-            </div>
-          </div>
+          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Notes</div>
+          <!-- Always-editable notes field; grows with its content. -->
+          <textarea id="drawerNotesInput" placeholder="What did you see? Anything irregular about this OB?" rows="3" class="w-full min-h-[90px] bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none overflow-hidden leading-relaxed"></textarea>
         </div>
         <div id="drawerAiSection">
           <div class="flex items-center justify-between mb-2">
@@ -667,12 +653,10 @@
         <button type="button" id="drawerAiBtn" data-inline-ai="true" onclick="analyzeTradeWithAI()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
           <i class="fa-solid fa-wand-magic-sparkles"></i><span id="drawerAiBtnLabel">Analyze with AI</span>
         </button>
-        <button id="drawerSaveBtn" onclick="saveDrawerFromFooter()" class="w-full py-2.5 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 hover:border-emerald-600 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
-          <i class="fa-solid fa-floppy-disk"></i><span id="drawerSaveBtnLabel">Save Checklist &amp; Screenshots</span>
-        </button>
-        <button id="drawerDeleteBtn" class="w-full py-2 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 text-slate-400 border border-slate-200 hover:border-rose-200 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2">
-          <i class="fa-solid fa-trash"></i> Delete Trade
-        </button>
+        <div class="flex items-center gap-2">
+          <button id="drawerSaveBtn" onclick="saveDrawerFromFooter()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 font-bold text-xs rounded-lg transition-all active:scale-[0.98]"><span id="drawerSaveBtnLabel">Save Changes</span></button>
+          <button id="drawerDeleteBtn" class="px-4 py-1.5 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 text-slate-400 border border-slate-200 hover:border-rose-200 rounded-lg text-xs font-semibold transition-all">Delete Trade</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1450,13 +1434,19 @@
       chartRegimeInstance.update();
     }
 
+    // Grow the notes textarea with its content (no inner scrollbar).
+    function autosizeDrawerNotes() {
+      const input = document.getElementById('drawerNotesInput');
+      if (!input) return;
+      input.style.height = 'auto';
+      input.style.height = Math.max(input.scrollHeight, 90) + 'px';
+    }
+
     function renderDrawerNotesView(t) {
-      const viewEl = document.getElementById('drawerNotesView');
-      if (!viewEl) return;
-      const note = (t && typeof t.notes === 'string') ? t.notes.trim() : '';
-      viewEl.innerHTML = note
-        ? note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
-        : '<span class="text-slate-400 italic">No notes saved for this trade yet.</span>';
+      const input = document.getElementById('drawerNotesInput');
+      if (!input) return;
+      input.value = (t && typeof t.notes === 'string') ? t.notes : '';
+      autosizeDrawerNotes();
     }
 
     function resetDrawerAiPanel() {
@@ -1488,45 +1478,6 @@
       }
     }
 
-    function enterDrawerEditMode() {
-      if (!currentDrawerTradeId) return;
-      const t = trades.find(item => item.id === currentDrawerTradeId);
-      if (!t) return;
-      const input = document.getElementById('drawerNotesInput');
-      const view = document.getElementById('drawerNotesView');
-      const editWrap = document.getElementById('drawerNotesEditWrap');
-      const editBtn = document.getElementById('drawerNotesEditBtn');
-      if (!input || !view || !editWrap || !editBtn) return;
-      drawerOriginalNote = t.notes || '';
-      drawerEditMode = true;
-      input.value = drawerOriginalNote;
-      view.classList.add('hidden');
-      editWrap.classList.remove('hidden');
-      editBtn.classList.add('hidden');
-      setTimeout(() => { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }, 30);
-    }
-
-    function cancelDrawerEditMode() {
-      const t = trades.find(item => item.id === currentDrawerTradeId);
-      if (!t) return;
-      const view = document.getElementById('drawerNotesView');
-      const editWrap = document.getElementById('drawerNotesEditWrap');
-      const editBtn = document.getElementById('drawerNotesEditBtn');
-      const input = document.getElementById('drawerNotesInput');
-      // Restore note state to persisted original (discard unsaved edits)
-      if (!t.notes) t.notes = '';
-      if (typeof drawerOriginalNote === 'string') {
-        t.notes = drawerOriginalNote;
-      }
-      if (view) view.classList.remove('hidden');
-      if (editWrap) editWrap.classList.add('hidden');
-      if (editBtn) editBtn.classList.remove('hidden');
-      if (input) input.value = t.notes;
-      renderDrawerNotesView(t);
-      drawerEditMode = false;
-      drawerOriginalNote = '';
-    }
-
     function openDrawer(id) {
       const t = trades.find(item => item.id === id);
       if (!t) return;
@@ -1546,33 +1497,25 @@
       document.getElementById('drawerSubtitle').textContent = `${t.date || ''} — ${dirLabel} — ${resultLabel || '—'} — ${safeR >= 0 ? '+' : ''}${(Number(safeR) || 0).toFixed(2)}R${t.session ? ' — ' + t.session : ''}`;
       renderDrawerChecklist(t);
       renderDrawerScreenshots(t);
-      renderDrawerNotesView(t);
-      const viewEl = document.getElementById('drawerNotesView');
-      const editWrap = document.getElementById('drawerNotesEditWrap');
-      const editBtn = document.getElementById('drawerNotesEditBtn');
       const input = document.getElementById('drawerNotesInput');
-      if (viewEl) viewEl.classList.remove('hidden');
-      if (editWrap) editWrap.classList.add('hidden');
-      if (editBtn) editBtn.classList.remove('hidden');
-      if (input) {
-        input.value = t.notes || '';
-        input.oninput = null; // No autosave on every keystroke — explicit Save/Cancel only
-      }
+      if (input) input.oninput = autosizeDrawerNotes; // grow only — saved on Save
+      renderDrawerNotesView(t);
       resetDrawerAiPanel();
       showDrawerAi('empty');
       document.getElementById('drawerDeleteBtn').onclick = () => { deleteTrade(t.id); closeDrawer(); };
       const drawer = document.getElementById('tradeDrawer');
       drawer.classList.remove('hidden');
-      requestAnimationFrame(() => drawer.classList.add('drawer-open'));
+      document.body.classList.add('ob-drawer-open');
+      requestAnimationFrame(() => { drawer.classList.add('drawer-open'); autosizeDrawerNotes(); });
       window.__obJournalOpenTradeId = id; // Keep ai-coach hook compatible
     }
 
     function closeDrawer() {
       const drawer = document.getElementById('tradeDrawer');
       drawer.classList.remove('drawer-open');
+      document.body.classList.remove('ob-drawer-open');
       setTimeout(() => {
         drawer.classList.add('hidden');
-        // If user had unsaved edits (still in edit mode), discard them silently on close.
         drawerEditMode = false;
         drawerOriginalNote = '';
         drawerAiBusy = false;
@@ -1646,30 +1589,13 @@
       if (!currentDrawerTradeId) return;
       const t = trades.find(item => item.id === currentDrawerTradeId);
       if (!t) return;
-      // If we are in edit mode, commit the textarea content as the new note.
-      // Otherwise checklist + screenshots are already applied to the trade object in-memory; just persist.
-      if (drawerEditMode) {
-        const input = document.getElementById('drawerNotesInput');
-        if (input) t.notes = input.value;
-      }
+      // The notes field is always editable; commit its content on Save.
+      const input = document.getElementById('drawerNotesInput');
+      if (input) t.notes = input.value;
       saveState();
       renderTradingConsole();
       renderJournalTable();
       renderDrawerNotesView(t);
-      // Exit edit mode back to view
-      if (drawerEditMode) {
-        const view = document.getElementById('drawerNotesView');
-        const editWrap = document.getElementById('drawerNotesEditWrap');
-        const editBtn = document.getElementById('drawerNotesEditBtn');
-        if (view) view.classList.remove('hidden');
-        if (editWrap) editWrap.classList.add('hidden');
-        if (editBtn) editBtn.classList.remove('hidden');
-        drawerEditMode = false;
-        drawerOriginalNote = '';
-      }
-      // Feedback (note edit button inside edit section)
-      const saveBtnInEdit = document.querySelector('#drawerNotesEditWrap button[onclick="saveDrawer()"]');
-      if (saveBtnInEdit) persistDrawerSaveFeedback(saveBtnInEdit, null, '', 'Saved ✓');
       // Feedback (footer button)
       const footerSaveBtn = document.getElementById('drawerSaveBtn');
       const footerSaveLabel = document.getElementById('drawerSaveBtnLabel');

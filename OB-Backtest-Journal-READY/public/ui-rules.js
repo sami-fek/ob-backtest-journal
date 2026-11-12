@@ -375,7 +375,7 @@
       if (eye) { eye.classList.remove('fa-eye'); eye.classList.add('fa-pen'); btn.title = 'Edit journal entry'; }
     });
     const label = document.getElementById('drawerSaveBtnLabel');
-    if (label) label.textContent = 'Save';
+    if (label) label.textContent = 'Save Changes';
   }
 
   function removeLegacyTopSelector() {
