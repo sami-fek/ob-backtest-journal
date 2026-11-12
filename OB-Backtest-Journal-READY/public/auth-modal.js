@@ -352,16 +352,22 @@
   // browser language, e.g. Dutch). Google sign-in also creates new accounts.
   // Rendered at the container's real width (GIS allows 200–400 px) so it lines
   // up with the divider and email button; re-rendered on open and on resize.
-  let lastGoogleWidth = 0;
+  let lastGoogleWidth = 0, lastGoogleTheme = '';
+  // Dark theme: Google's filled_black button; light: outline.
+  const googleButtonTheme = () => (typeof window.getResolvedTheme === 'function' && window.getResolvedTheme() === 'dark') ? 'filled_black' : 'outline';
+  window.addEventListener('ob-theme-change', () => renderGoogleButton());
   function renderGoogleButton() {
     const el = document.getElementById('ob-gsi-signin');
     if (!gisReady || !el || !overlay.classList.contains('open')) return;
     const width = Math.round(Math.min(400, Math.max(200, el.clientWidth || 0)));
-    if (width === lastGoogleWidth && el.childElementCount) return;
-    lastGoogleWidth = width;
+    const gTheme = googleButtonTheme();
+    // Same width and style as the last render: never clear it again (a second
+    // render while Google is still inserting the first can leave it empty).
+    if (width === lastGoogleWidth && gTheme === lastGoogleTheme) return;
+    lastGoogleWidth = width; lastGoogleTheme = gTheme;
     el.innerHTML = '';
     google.accounts.id.renderButton(el,
-      { type:'standard', theme:'outline', size:'large', text:'signin_with', shape:'rectangular', logo_alignment:'center', width, locale:'en' }
+      { type:'standard', theme: googleButtonTheme(), size:'large', text:'signin_with', shape:'rectangular', logo_alignment:'center', width, locale:'en' }
     );
   }
   let resizeTimer = null;
@@ -390,7 +396,7 @@
         }
       }, 100);
       // Stop trying after 5s
-      setTimeout(() => clearInterval(interval), 5000);
+      setTimeout(() => clearInterval(interval), 15000); // Google's script can be slow on mobile networks
     }
   }
 

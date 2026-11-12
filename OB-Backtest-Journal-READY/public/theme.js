@@ -69,7 +69,7 @@
       '#64748b': 'fg-4', '#6b7280': 'fg-4', '#94a3b8': 'fg-5', '#9ca3af': 'fg-5', '#cbd5e1': 'fg-6'
     },
     bd: {
-      '#e2e8f0': 'bd', '#e5e7eb': 'bd', '#e7e7e9': 'bd', '#dadce0': 'bd',
+      '#e2e8f0': 'bd', '#e5e7eb': 'bd', '#e7e7e9': 'bd', '#dadce0': 'bd', '#ffffff': 'bd',
       '#f1f5f9': 'bd-subtle', '#f4f4f5': 'bd-subtle', '#f8fafc': 'bd-subtle',
       '#cbd5e1': 'bd-strong', '#d1d5db': 'bd-strong',
       '#bfdbfe': 'bd-blue', '#c7d2fe': 'bd-blue', '#93c5fd': 'bd-blue', '#dbeafe': 'bd-blue',

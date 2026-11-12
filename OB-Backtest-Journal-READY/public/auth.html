@@ -453,17 +453,23 @@ function initGoogleSignIn(clientId) {
 
 // Render "Sign in with Google" at the container's real width, so it lines up
 // with the divider and the email button (GIS allows 200–400 px).
-let lastGoogleWidth = 0;
+let lastGoogleWidth = 0, lastGoogleTheme = '';
+// Dark theme: Google's filled_black button; light: outline.
+function googleButtonTheme() {
+  return (typeof window.getResolvedTheme === 'function' && window.getResolvedTheme() === 'dark') ? 'filled_black' : 'outline';
+}
+window.addEventListener('ob-theme-change', () => renderGoogleButton());
 function renderGoogleButton() {
   const el = document.getElementById('gSignInBtn');
   if (!el || typeof google === 'undefined' || !google?.accounts?.id) return;
   const width = Math.round(Math.min(400, Math.max(200, el.clientWidth || 0)));
-  if (width === lastGoogleWidth && el.childElementCount) return;
-  lastGoogleWidth = width;
+  const gTheme = googleButtonTheme();
+  if (width === lastGoogleWidth && gTheme === lastGoogleTheme) return; // never re-render an identical button
+  lastGoogleWidth = width; lastGoogleTheme = gTheme;
   el.innerHTML = '';
   google.accounts.id.renderButton(el, {
     type:   'standard',
-    theme:  'outline',
+    theme:  googleButtonTheme(),
     size:   'large',
     text:   'signin_with',   // "Sign in with Google" — also creates new accounts
     shape:  'rectangular',
