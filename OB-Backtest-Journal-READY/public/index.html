@@ -123,6 +123,19 @@
     .ob-feeling[aria-checked="true"] { border-color: var(--blue, #3b82f6); background: var(--pill-active-bg, #eff6ff); box-shadow: 0 0 0 2px rgba(59,130,246,.25); }
     .ob-feeling[aria-checked="true"] span:last-child { color: var(--pill-active-text, #2563eb); }
     .ob-feeling-add { justify-content: center; border-style: dashed; color: var(--muted, #6b7280); font-size: 11px; font-weight: 700; }
+    /* Calendar trade panel: log fields + Save that appears only when complete */
+    .ob-log-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .ob-log-grid label { display: block; font-size: 11px; font-weight: 600; color: var(--muted, #6b7280); margin-bottom: 4px; }
+    .ob-log-grid input[type=number] { width: 100%; height: 32px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--border, #e7e7e9); background: var(--input, #fff); color: var(--text, #101729); font: 700 12px 'JetBrains Mono', monospace; }
+    .ob-seg { display: flex; gap: 4px; }
+    .ob-seg button { flex: 1; height: 32px; border-radius: 10px; border: 1px solid var(--border, #e7e7e9); background: transparent; color: var(--muted, #6b7280); font-size: 11px; font-weight: 800; cursor: pointer; }
+    .ob-seg button[aria-pressed="true"].ob-seg-pos { background: #10b981; border-color: #10b981; color: #fff; }
+    .ob-seg button[aria-pressed="true"].ob-seg-neg { background: #f43f5e; border-color: #f43f5e; color: #fff; }
+    .ob-seg button[aria-pressed="true"].ob-seg-neu { background: #475569; border-color: #475569; color: #fff; }
+    .ob-log-missing { outline: 2px solid rgba(244,63,94,.45); outline-offset: 1px; border-radius: 12px; }
+    #drawerSaveBtn.ob-save-hidden { display: none !important; }
+    #drawerSaveBtn.ob-save-reveal { animation: ob-save-in .35s cubic-bezier(.2,.9,.3,1.3); }
+    @keyframes ob-save-in { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
     /* Flash the first missing save requirement */
     .ob-req-flash { border-radius: 12px; animation: ob-req-flash 1.6s ease-out; }
     @keyframes ob-req-flash {
@@ -642,6 +655,11 @@
         </div>
       </div>
       <div class="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <!-- Calendar "+" entries: the trade log fields live in the panel itself -->
+        <div id="drawerLogFields" class="hidden">
+          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-3">Trade Details</div>
+          <div id="drawerLogFieldsGrid" class="ob-log-grid"></div>
+        </div>
         <div>
           <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-3">Entry Checklist</div>
           <div id="drawerChecklist"></div>
@@ -1198,10 +1216,23 @@
 
     async function handleTradeSubmit(e) {
       e.preventDefault();
+      // Calendar "+" passes { obCalendarDate }: same checks as Add trade, but the
+      // log fields are filled in the panel itself (they start empty).
+      const fromCalendar = !!(e && e.obCalendarDate);
       const strategy = document.getElementById('formStrategy').value;
       const steps = checklistFor(strategy);
-      const tradeDate = document.getElementById('formDate').value;
-      const newTrade = {
+      const tradeDate = fromCalendar ? String(e.obCalendarDate) : document.getElementById('formDate').value;
+      const newTrade = fromCalendar ? {
+        id: 'tr-' + Date.now(),
+        mode: activeMode,
+        date: tradeDate,
+        pair: '', timeframe: '', regime: '', session: '', direction: '', result: '', rMultiple: null,
+        strategy,
+        notes: "",
+        checklist: steps.map(() => 'notset'),
+        screenshots: [],
+        calendarEntry: true
+      } : {
         id: 'tr-' + Date.now(),
         mode: activeMode,
         date: tradeDate,
@@ -1239,6 +1270,12 @@
       pendingNewTrade = newTrade;
       openDrawer(newTrade.id);
     }
+
+    // Calendar day "+": open one combined panel for a new trade on that date.
+    window.obAddTradeOnDate = function (dateStr) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr))) return;
+      return (window.handleTradeSubmit || handleTradeSubmit)({ preventDefault() {}, obCalendarDate: dateStr });
+    };
 
     function activeAccountIdFor(mode) {
       if (mode === 'Backtest') return null;
@@ -1908,6 +1945,19 @@
       if (!view) return { ok: false, missing: ['No trade open.'], missingKeys: ['none'], items: [] };
       if (!window.obSaveRule) return { ok: false, missing: ['Save rule not loaded — reload the page.'], missingKeys: ['none'], items: [] };
       const isNew = !!(pendingNewTrade && pendingNewTrade.id === view.id);
+      if (isNew && pendingNewTrade.calendarEntry) {
+        const base = window.obSaveRule.evaluate({
+          totalItems: stepsForTrade(view).length, checklist: view.checklist, notes: view.notes, screenshots: view.screenshots, stored: null
+        });
+        const missingFields = calendarMissingFields(pendingNewTrade);
+        const fieldsOk = missingFields.length === 0;
+        const items = [{ key: 'fields', ok: fieldsOk, label: fieldsOk ? 'Trade details complete' : 'Trade details: ' + missingFields.join(', ') }, ...base.items];
+        return {
+          ...base, items, ok: base.ok && fieldsOk,
+          missing: fieldsOk ? base.missing : ['Fill in: ' + missingFields.join(', ') + '.', ...base.missing],
+          missingKeys: fieldsOk ? base.missingKeys : ['fields', ...base.missingKeys]
+        };
+      }
       return window.obSaveRule.evaluate({
         totalItems: stepsForTrade(view).length,
         checklist: view.checklist,
@@ -1937,6 +1987,10 @@
       if (!btn) return;
       const gate = drawerSaveGateStatus(drawerViewTrade());
       const enabled = gate.ok && !drawerSaving;
+      const calendarMode = !!(pendingNewTrade && pendingNewTrade.calendarEntry && pendingNewTrade.id === currentDrawerTradeId);
+      const wasHidden = btn.classList.contains('ob-save-hidden');
+      btn.classList.toggle('ob-save-hidden', calendarMode && !gate.ok);
+      if (calendarMode && gate.ok && wasHidden) { btn.classList.remove('ob-save-reveal'); void btn.offsetWidth; btn.classList.add('ob-save-reveal'); }
       btn.disabled = drawerSaving;
       btn.setAttribute('aria-disabled', String(!enabled));
       btn.classList.toggle('opacity-40', !enabled);
@@ -1951,7 +2005,8 @@
     // Scroll to and flash the first missing requirement (the drawer stays open).
     function highlightMissingRequirement(gate) {
       const key = gate && gate.missingKeys && gate.missingKeys[0];
-      const target = key === 'checklist' ? document.getElementById('drawerChecklist')
+      const target = key === 'fields' ? document.getElementById('drawerLogFields')
+                   : key === 'checklist' ? document.getElementById('drawerChecklist')
                    : key === 'note' ? document.getElementById('drawerNotesEditor')
                    : key === 'screenshot' ? document.getElementById('drawerScreenshotUploadLabel')
                    : null;
@@ -1983,6 +2038,9 @@
       const dirLabel = safeDir.length >= 1 ? (safeDir.charAt(0).toUpperCase() + safeDir.slice(1).toLowerCase()) : '—';
       const resultLabel = t.result || (safeR > 0 ? 'Win' : (safeR < 0 ? 'Loss' : 'Breakeven'));
       document.getElementById('drawerSubtitle').textContent = `${t.date || ''} — ${dirLabel} — ${resultLabel || '—'} — ${safeR >= 0 ? '+' : ''}${(Number(safeR) || 0).toFixed(2)}R${t.session ? ' — ' + t.session : ''}`;
+      const logSection = document.getElementById('drawerLogFields');
+      if (logSection) logSection.classList.toggle('hidden', !t.calendarEntry);
+      if (t.calendarEntry) { renderCalendarLogFields(); updateDrawerHeader(); }
       renderDrawerChecklist(view);
       renderDrawerScreenshots(view);
       const input = document.getElementById('drawerNotesInput');
@@ -2020,6 +2078,8 @@
         drawerAiBusy = false;
       }, 280);
       // Closing without Save discards unsaved edits and unsaved new trades.
+      document.getElementById('drawerSaveBtn')?.classList.remove('ob-save-hidden', 'ob-save-reveal');
+      document.getElementById('drawerLogFields')?.classList.add('hidden');
       pendingNewTrade = null;
       drawerDraft = null;
       currentDrawerTradeId = null;
@@ -2109,6 +2169,10 @@
       try {
         if (pendingNewTrade && pendingNewTrade.id === id) {
           const newTrade = { ...pendingNewTrade, ...edits };
+          if (newTrade.calendarEntry) {
+            delete newTrade.calendarEntry;
+            newTrade.rMultiple = Number(newTrade.rMultiple) || 0;
+          }
           // ── Server-side daily limit check on Save (Backtest is exempt) ──────
           if (newTrade.mode !== 'Backtest') {
             try {
@@ -2208,6 +2272,90 @@
     function addScreenshotFiles(files) {
       if (!files || !files.length) return;
       (window.handleScreenshotUpload || handleScreenshotUpload)({ target: { files, value: '' } });
+    }
+
+    // ── Calendar trade panel: log fields (pair … strategy) ──────────────────
+    const CAL_FIELD_LABELS = { pair: 'pair', timeframe: 'timeframe', regime: 'regime', session: 'session', direction: 'direction', result: 'result', rMultiple: 'R-multiple', strategy: 'strategy' };
+    function calendarMissingFields(t) {
+      const missing = [];
+      ['pair', 'timeframe', 'regime', 'session', 'direction', 'result', 'strategy'].forEach(k => { if (!String(t[k] || '').trim()) missing.push(CAL_FIELD_LABELS[k]); });
+      const r = t.rMultiple;
+      if (r === null || r === '' || r === undefined || !Number.isFinite(Number(r))) missing.splice(6, 0, CAL_FIELD_LABELS.rMultiple);
+      return missing;
+    }
+    function updateDrawerHeader() {
+      const t = drawerStoredTrade(currentDrawerTradeId);
+      if (!t) return;
+      document.getElementById('drawerPair').textContent = t.pair || 'New trade';
+      document.getElementById('drawerTFLabel').textContent = t.timeframe || '—';
+      document.getElementById('drawerRegimeLabel').textContent = t.regime || '—';
+      const r = Number(t.rMultiple);
+      const parts = [t.date || '', t.direction ? t.direction.charAt(0) + t.direction.slice(1).toLowerCase() : '—', t.result || '—',
+        Number.isFinite(r) && t.rMultiple !== null && t.rMultiple !== '' ? (r >= 0 ? '+' : '') + r.toFixed(2) + 'R' : '—R'];
+      if (t.session) parts.push(t.session);
+      document.getElementById('drawerSubtitle').textContent = parts.join(' — ');
+    }
+    function renderCalendarLogFields() {
+      const t = pendingNewTrade;
+      const grid = document.getElementById('drawerLogFieldsGrid');
+      if (!t || !grid) return;
+      grid.innerHTML = '';
+      const optionsFrom = id => [...(document.getElementById(id)?.options || [])].map(o => ({ value: o.value, text: o.textContent }));
+      const changed = () => { updateDrawerHeader(); updateDrawerSaveGate(); };
+      function selectField(key, label, options, onChange) {
+        const wrap = document.createElement('div');
+        wrap.dataset.field = key;
+        const l = document.createElement('label'); l.textContent = label; l.htmlFor = 'calField-' + key;
+        const sel = document.createElement('select'); sel.id = 'calField-' + key;
+        sel.innerHTML = '<option value="">Select…</option>';
+        options.forEach(o => { const op = document.createElement('option'); op.value = o.value; op.textContent = o.text; sel.appendChild(op); });
+        sel.value = t[key] || '';
+        sel.addEventListener('change', () => { t[key] = sel.value; if (onChange) onChange(sel.value); changed(); });
+        wrap.append(l, sel);
+        grid.appendChild(wrap);
+        if (window.obDropdown) window.obDropdown.enhance(sel);
+      }
+      function segField(key, label, opts) {
+        const wrap = document.createElement('div');
+        wrap.dataset.field = key;
+        const l = document.createElement('label'); l.textContent = label;
+        const seg = document.createElement('div'); seg.className = 'ob-seg'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', label);
+        opts.forEach(o => {
+          const b = document.createElement('button');
+          b.type = 'button'; b.textContent = o.text; b.className = o.cls;
+          b.setAttribute('aria-pressed', String(t[key] === o.value));
+          b.onclick = () => {
+            t[key] = o.value;
+            if (key === 'result' && (t.rMultiple === null || t.rMultiple === '')) {
+              t.rMultiple = o.value === 'Win' ? 2 : o.value === 'Loss' ? -1 : 0;
+              const rIn = document.getElementById('calField-rMultiple'); if (rIn) rIn.value = t.rMultiple;
+            }
+            seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+            changed();
+          };
+          seg.appendChild(b);
+        });
+        wrap.append(l, seg);
+        grid.appendChild(wrap);
+      }
+      selectField('pair', 'Pair / Ticker', optionsFrom('formPair'));
+      selectField('timeframe', 'Timeframe', optionsFrom('formTimeframe'));
+      selectField('regime', 'Market Regime', optionsFrom('formRegime'));
+      selectField('session', 'Session', optionsFrom('formSession'));
+      segField('direction', 'Direction', [{ value: 'LONG', text: 'LONG', cls: 'ob-seg-pos' }, { value: 'SHORT', text: 'SHORT', cls: 'ob-seg-neg' }]);
+      segField('result', 'Result', [{ value: 'Win', text: 'WIN', cls: 'ob-seg-pos' }, { value: 'Loss', text: 'LOSS', cls: 'ob-seg-neg' }, { value: 'BE', text: 'BE', cls: 'ob-seg-neu' }]);
+      const rWrap = document.createElement('div'); rWrap.dataset.field = 'rMultiple';
+      const rl = document.createElement('label'); rl.textContent = 'R-Multiple'; rl.htmlFor = 'calField-rMultiple';
+      const rIn = document.createElement('input'); rIn.type = 'number'; rIn.step = '0.1'; rIn.id = 'calField-rMultiple'; rIn.placeholder = 'e.g. 2.0';
+      rIn.value = t.rMultiple === null || t.rMultiple === undefined ? '' : t.rMultiple;
+      rIn.addEventListener('input', () => { t.rMultiple = rIn.value === '' ? null : Number(rIn.value); changed(); });
+      rWrap.append(rl, rIn); grid.appendChild(rWrap);
+      // Strategy: changing it switches the checklist (the panel is still unsaved).
+      selectField('strategy', 'Strategy Model', activeStrategies().map(x => ({ value: x.name, text: x.name })), v => {
+        if (!drawerDraft) return;
+        drawerDraft.checklist = checklistFor(v).map(() => 'notset');
+        renderDrawerChecklist(drawerViewTrade());
+      });
     }
 
     // ── Tags & psychology (optional; stored on the trade as tags[] and feeling) ──

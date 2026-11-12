@@ -100,7 +100,8 @@
     for (let d = 1; d <= data.days; d++) {
       const s = data.stats[d] || { pnl: 0, count: 0 };
       const cls = s.pnl > 0 ? 'ob-jh-win' : s.pnl < 0 ? 'ob-jh-loss' : 'ob-jh-flat';
-      html += `<div class="ob-jh-cell ${cls}"><div class="ob-jh-day">${d}</div><div class="ob-jh-pnl">${s.count ? money(s.pnl) : '$0'}</div><div class="ob-jh-count">${s.count ? `${s.count} trade${s.count === 1 ? '' : 's'}` : 'No trades'}</div></div>`;
+      const iso = `${data.y}-${String(data.m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      html += `<div class="ob-jh-cell ${cls}" data-date="${iso}"><button type="button" class="ob-jh-add" data-add-date="${iso}" title="Add Trade" aria-label="Add trade on ${iso}">+</button><div class="ob-jh-day">${d}</div><div class="ob-jh-pnl">${s.count ? money(s.pnl) : '$0'}</div><div class="ob-jh-count">${s.count ? `${s.count} trade${s.count === 1 ? '' : 's'}` : 'No trades'}</div></div>`;
     }
     const rows = Math.ceil((data.first + data.days) / 7);
     for (let row = 0; row < rows; row++) {
@@ -111,6 +112,16 @@
     }
     grid.classList.add('ob-jh-grid');
     grid.innerHTML = html;
+    // Day "+" (shown on hover): one combined panel for a new trade on that date.
+    if (!grid.__obAddWired) {
+      grid.__obAddWired = true;
+      grid.addEventListener('click', e => {
+        const b = e.target.closest('[data-add-date]');
+        if (!b || typeof window.obAddTradeOnDate !== 'function') return;
+        e.stopPropagation();
+        window.obAddTradeOnDate(b.dataset.addDate);
+      });
+    }
 
     const subtitle = card?.querySelector('p');
     if (subtitle) subtitle.textContent = `${count} trades • Monthly P&L ${money(total)} • account/mode filtered`;
@@ -143,6 +154,10 @@
     render();
     patchNavigation('switchTab');
     patchNavigation('switchMode');
+    // The page redraws the calendar grid after saves/deletes (renderAll → renderHeatmaps):
+    // re-apply this calendar (and its day "+" buttons) afterwards.
+    patchNavigation('renderHeatmaps');
+    [300, 1000, 2500].forEach(ms => setTimeout(() => patchNavigation('renderHeatmaps'), ms));
     window.addEventListener('wallet-accounts-updated', () => setTimeout(render, 50));
     window.addEventListener('resize', () => setTimeout(render, 20));
   }
