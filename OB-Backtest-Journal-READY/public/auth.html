@@ -53,9 +53,11 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 28px;
-      gap: 10px;
+      text-align: center;
+      margin-bottom: 24px;
+      gap: 12px;
     }
+    .logo-text { display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .logo-mark {
       width: 54px; height: 54px;
       border-radius: 15px;
@@ -72,8 +74,8 @@
     }
     .logo-sub {
       font-size: 0.8125rem;
+      line-height: 1.4;
       color: #64748b;
-      margin-top: -4px;
     }
 
     /* ── Alerts ── */
@@ -90,33 +92,21 @@
     .alert-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
 
     /* ── Google button container ── */
-    /* We let GIS render the official button inside this div.
-       Width is controlled by the data-width attribute on the div element. */
+    /* GIS renders the official button (an iframe) here. It is rendered with
+       the container's real width (see renderGoogleButton) so it lines up with
+       the divider and the email form; never stretch the iframe with CSS. */
     .google-btn-wrap {
       display: flex;
       justify-content: center;
-      margin-bottom: 6px;
-    }
-    /* Override iframe sizing from GIS to fill our container */
-    .google-btn-wrap iframe {
-      width: 100% !important;
-    }
-
-    /* ── Section label ── */
-    .section-label {
-      font-size: 0.8rem;
-      color: #94a3b8;
-      text-align: center;
-      margin-bottom: 14px;
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
+      width: 100%;
+      min-height: 40px;
     }
 
     /* ── Divider ── */
     .divider {
       display: flex; align-items: center; gap: 10px;
-      color: #cbd5e1; font-size: 0.8125rem;
-      margin: 20px 0;
+      color: #94a3b8; font-size: 0.8125rem;
+      margin: 18px 0;
     }
     .divider::before, .divider::after {
       content: ''; flex: 1; height: 1px; background: #e2e8f0;
@@ -167,29 +157,46 @@
     .btn-pw:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
     .btn-pw:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* ── Toggle links ── */
+    /* ── Secondary actions ── */
+    .btn-secondary {
+      width: 100%;
+      height: 40px;
+      border: 1.5px solid #dadce0;
+      border-radius: 10px;
+      background: #fff;
+      color: #334155;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .btn-secondary:hover { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+    .pw-section.open { margin-top: 14px; }
     .toggle-row {
       text-align: center;
       margin-top: 14px;
     }
     .toggle-link {
-      font-size: 0.8125rem;
-      color: #6366f1;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #4f46e5;
       cursor: pointer;
-      text-decoration: underline;
-      text-underline-offset: 2px;
+      text-decoration: none;
       background: none;
       border: none;
+      padding: 4px 6px;
+      border-radius: 6px;
       font-family: inherit;
     }
-    .toggle-link:hover { color: #4f46e5; }
+    .toggle-link:hover { color: #3730a3; background: #eef2ff; }
 
     /* ── Footer note ── */
     .footer-note {
       font-size: 0.75rem;
       color: #94a3b8;
       text-align: center;
-      margin-top: 20px;
+      margin-top: 18px;
       line-height: 1.5;
     }
 
@@ -225,7 +232,7 @@
   <!-- Logo -->
   <div class="logo-wrap">
     <div class="logo-mark">MY</div>
-    <div>
+    <div class="logo-text">
       <div class="logo-title">MY Journal</div>
       <div class="logo-sub">Your private trading performance log</div>
     </div>
@@ -235,10 +242,8 @@
   <div class="alert alert-error"   id="alertError"></div>
   <div class="alert alert-success" id="alertSuccess"></div>
 
-  <!-- Google Sign-In / Sign-Up buttons (rendered by GIS) -->
+  <!-- Google Sign-In (rendered by GIS) -->
   <div id="googleSection">
-    <p class="section-label" id="googleLabel">Sign in or create an account</p>
-
     <!-- GIS renders the official "Sign in with Google" button here -->
     <div class="google-btn-wrap" id="gSignInBtn"></div>
 
@@ -251,7 +256,12 @@
   <!-- Divider -->
   <div class="divider" id="divider">or</div>
 
-  <!-- Password fallback (collapsed by default, expand via link) -->
+  <!-- Email & password: secondary button that opens the form below it -->
+  <button class="btn-secondary" id="togglePwBtn" type="button" onclick="togglePassword()">
+    Sign in with email &amp; password
+  </button>
+
+  <!-- Password form (collapsed until the button above is used) -->
   <div class="pw-section" id="pwSection">
     <form onsubmit="handlePasswordLogin(event)" novalidate autocomplete="on">
       <label class="field-label" for="pwEmail">Email</label>
@@ -266,12 +276,6 @@
     </form>
   </div>
 
-  <!-- Show/hide password form -->
-  <div class="toggle-row">
-    <button class="toggle-link" id="togglePwBtn" onclick="togglePassword()">
-      Sign in with email &amp; password instead
-    </button>
-  </div>
   <div class="toggle-row">
     <button class="toggle-link" id="toggleModeBtn" type="button" onclick="togglePwMode()">
       New here? Create an account
@@ -279,7 +283,6 @@
   </div>
 
   <p class="footer-note" id="footerNote">
-    Create an account with email and password, or sign in with Google.<br>
     Your data is stored privately and never shared.
   </p>
 
@@ -316,8 +319,8 @@ function setGoogleLoading(loading) {
 function setPasswordOpen(open) {
   document.getElementById('pwSection').classList.toggle('open', open);
   document.getElementById('togglePwBtn').textContent = open
-    ? 'Hide email & password sign-in'
-    : 'Sign in with email & password instead';
+    ? 'Hide email & password'
+    : 'Sign in with email & password';
   if (open) document.getElementById('pwEmail').focus();
 }
 function togglePassword() {
@@ -431,23 +434,38 @@ function initGoogleSignIn(clientId) {
     cancel_on_tap_outside:  true
   });
 
-  // Render "Sign in with Google" button
-  google.accounts.id.renderButton(
-    document.getElementById('gSignInBtn'),
-    {
-      type:   'standard',
-      theme:  'outline',
-      size:   'large',
-      text:   'signin_with',   // "Sign in with Google" — also creates new accounts
-      shape:  'rectangular',
-      logo_alignment: 'left',
-      width:  336,
-      locale: 'en'             // always English, regardless of browser language
-    }
-  );
+  renderGoogleButton();
+  // Re-render at the new width when the window size changes.
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderGoogleButton, 150);
+  });
 
   // Show one-tap prompt if the user has a Google session in the browser
   google.accounts.id.prompt();
+}
+
+// Render "Sign in with Google" at the container's real width, so it lines up
+// with the divider and the email button (GIS allows 200–400 px).
+let lastGoogleWidth = 0;
+function renderGoogleButton() {
+  const el = document.getElementById('gSignInBtn');
+  if (!el || typeof google === 'undefined' || !google?.accounts?.id) return;
+  const width = Math.round(Math.min(400, Math.max(200, el.clientWidth || 0)));
+  if (width === lastGoogleWidth && el.childElementCount) return;
+  lastGoogleWidth = width;
+  el.innerHTML = '';
+  google.accounts.id.renderButton(el, {
+    type:   'standard',
+    theme:  'outline',
+    size:   'large',
+    text:   'signin_with',   // "Sign in with Google" — also creates new accounts
+    shape:  'rectangular',
+    logo_alignment: 'center',
+    width,
+    locale: 'en'             // always English, regardless of browser language
+  });
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────────
@@ -461,7 +479,6 @@ window.addEventListener('load', () => {
     document.getElementById('googleSection').style.display = 'none';
     document.getElementById('divider').style.display       = 'none';
     document.getElementById('togglePwBtn').style.display   = 'none';
-    document.getElementById('googleLabel').style.display   = 'none';
     document.getElementById('footerNote').innerHTML =
       'Google sign-in is not configured on this server (GOOGLE_CLIENT_ID is not set). Use email and password.<br>Your data is stored privately and never shared.';
     // Open password section automatically

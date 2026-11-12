@@ -48,8 +48,9 @@
 
     .ob-auth-logo-wrap {
       display: flex; flex-direction: column; align-items: center;
-      margin-bottom: 24px; gap: 8px;
+      text-align: center; margin-bottom: 24px; gap: 12px;
     }
+    .ob-auth-logo-text { display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .ob-auth-logo-mark {
       width: 50px; height: 50px; border-radius: 14px;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
@@ -57,8 +58,8 @@
       font-size: 1.375rem; font-weight: 800; color: #fff;
       box-shadow: 0 4px 14px rgba(99,102,241,0.32);
     }
-    .ob-auth-title { font-size: 1.125rem; font-weight: 700; color: #1e293b; }
-    .ob-auth-sub { font-size: 0.8rem; color: #64748b; margin-top: -2px; }
+    .ob-auth-title { font-size: 1.125rem; font-weight: 700; color: #1e293b; line-height: 1.3; }
+    .ob-auth-sub { font-size: 0.8125rem; color: #64748b; line-height: 1.4; }
 
     .ob-alert {
       display: none; padding: 9px 13px; border-radius: 9px;
@@ -68,15 +69,14 @@
     .ob-alert-error   { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
     .ob-alert-success { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
 
-    /* Google buttons wrapper — GIS renders iframes inside */
-    .ob-google-wrap {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 8px; margin-bottom: 4px;
-    }
+    /* Google button wrapper — GIS renders an iframe inside, at the
+       container's real width (see renderGoogleButton). */
+    .ob-google-wrap { display: flex; justify-content: center; width: 100%; min-height: 40px; }
+    #ob-gsi-signin { width: 100%; display: flex; justify-content: center; }
 
     .ob-divider {
       display: flex; align-items: center; gap: 10px;
-      color: #cbd5e1; font-size: 0.8rem; margin: 16px 0;
+      color: #94a3b8; font-size: 0.8125rem; margin: 18px 0;
     }
     .ob-divider::before, .ob-divider::after {
       content:''; flex:1; height:1px; background:#e2e8f0;
@@ -102,16 +102,25 @@
     .ob-btn-pw:disabled { opacity:0.5; cursor:not-allowed; }
 
     .ob-pw-section { display:none; }
-    .ob-pw-section.open { display:block; }
+    .ob-pw-section.open { display:block; margin-top:14px; }
 
+    .ob-btn-secondary {
+      width:100%; height:40px; border:1.5px solid #dadce0; border-radius:10px;
+      background:#fff; color:#334155; font-size:0.875rem; font-weight:600;
+      font-family:inherit; cursor:pointer;
+      transition:background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .ob-btn-secondary:hover { background:#eef2ff; border-color:#c7d2fe; color:#4338ca; }
+    .ob-toggle-row { text-align:center; margin-top:14px; }
     .ob-toggle-link {
       background:none; border:none; cursor:pointer; font-family:inherit;
-      font-size:0.8rem; color:#6366f1; text-decoration:underline;
-      text-underline-offset:2px;
+      font-size:0.875rem; font-weight:600; color:#4f46e5; text-decoration:none;
+      padding:4px 6px; border-radius:6px;
     }
+    .ob-toggle-link:hover { color:#3730a3; background:#eef2ff; }
     .ob-footer-note {
-      font-size:0.72rem; color:#94a3b8; text-align:center;
-      margin-top:16px; line-height:1.5;
+      font-size:0.75rem; color:#94a3b8; text-align:center;
+      margin-top:18px; line-height:1.5;
     }
     .ob-spinner-wrap {
       display:none; justify-content:center; align-items:center;
@@ -147,8 +156,10 @@
 
       <div class="ob-auth-logo-wrap">
         <div class="ob-auth-logo-mark">MY</div>
-        <div class="ob-auth-title">MY Journal</div>
-        <div class="ob-auth-sub">Sign in to your trading journal</div>
+        <div class="ob-auth-logo-text">
+          <div class="ob-auth-title">MY Journal</div>
+          <div class="ob-auth-sub">Your private trading performance log</div>
+        </div>
       </div>
 
       <div class="ob-alert ob-alert-error"   id="ob-auth-error"></div>
@@ -166,6 +177,10 @@
 
       <div class="ob-divider" id="ob-auth-divider">or</div>
 
+      <button class="ob-btn-secondary" id="ob-pw-toggle" type="button">
+        Sign in with email &amp; password
+      </button>
+
       <div class="ob-pw-section" id="ob-pw-section">
         <form id="ob-pw-form" novalidate autocomplete="on">
           <label class="ob-field-label" for="ob-pw-email">Email</label>
@@ -178,19 +193,13 @@
         </form>
       </div>
 
-      <div style="text-align:center;margin-top:12px;">
-        <button class="ob-toggle-link" id="ob-pw-toggle">
-          Sign in with email &amp; password instead
-        </button>
-      </div>
-      <div style="text-align:center;margin-top:8px;">
+      <div class="ob-toggle-row">
         <button class="ob-toggle-link" id="ob-mode-toggle" type="button">
           New here? Create an account
         </button>
       </div>
 
       <p class="ob-footer-note" id="ob-auth-footer">
-        Create an account with email and password, or sign in with Google.<br>
         Your data is stored privately and never shared.
       </p>
     </div>
@@ -239,8 +248,8 @@
     pwOpen = open;
     document.getElementById('ob-pw-section').classList.toggle('open', pwOpen);
     document.getElementById('ob-pw-toggle').textContent = pwOpen
-      ? 'Hide email & password sign-in'
-      : 'Sign in with email & password instead';
+      ? 'Hide email & password'
+      : 'Sign in with email & password';
     if (pwOpen) document.getElementById('ob-pw-email').focus();
   }
   function setPwMode(mode) {
@@ -336,13 +345,27 @@
       cancel_on_tap_outside: true
     });
 
-    // One Google button only, always in English (Google otherwise follows the
-    // browser language, e.g. Dutch). Google sign-in also creates new accounts.
-    google.accounts.id.renderButton(
-      document.getElementById('ob-gsi-signin'),
-      { type:'standard', theme:'outline', size:'large', text:'signin_with', shape:'rectangular', logo_alignment:'left', width:336, locale:'en' }
+    renderGoogleButton();
+  }
+
+  // One Google button only, always in English (Google otherwise follows the
+  // browser language, e.g. Dutch). Google sign-in also creates new accounts.
+  // Rendered at the container's real width (GIS allows 200–400 px) so it lines
+  // up with the divider and email button; re-rendered on open and on resize.
+  let lastGoogleWidth = 0;
+  function renderGoogleButton() {
+    const el = document.getElementById('ob-gsi-signin');
+    if (!gisReady || !el || !overlay.classList.contains('open')) return;
+    const width = Math.round(Math.min(400, Math.max(200, el.clientWidth || 0)));
+    if (width === lastGoogleWidth && el.childElementCount) return;
+    lastGoogleWidth = width;
+    el.innerHTML = '';
+    google.accounts.id.renderButton(el,
+      { type:'standard', theme:'outline', size:'large', text:'signin_with', shape:'rectangular', logo_alignment:'center', width, locale:'en' }
     );
   }
+  let resizeTimer = null;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderGoogleButton, 150); });
 
   function tryInitGIS() {
     const meta = document.querySelector('meta[name="google-client-id"]');
@@ -378,6 +401,7 @@
     overlay.classList.add('open');
     document.body.style.overflow = 'hidden';
     tryInitGIS();
+    requestAnimationFrame(renderGoogleButton); // width is known once visible
     // Trigger one-tap if GIS is loaded
     const meta = document.querySelector('meta[name="google-client-id"]');
     if (meta?.content && typeof google !== 'undefined' && google?.accounts?.id) {
