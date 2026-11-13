@@ -270,10 +270,10 @@
       <section class="ds-section" id="dbPerf">
         ${head('Performance', period)}
         <div class="ds-grid">
-          ${stat('Net P&amp;L', money(sum.net), `${plural(sum.trades, 'trade')} · ${esc(period)}`, { valueCls: cls(sum.net) })}
+          ${stat('Net P&amp;L', money(sum.net), `${plural(sum.trades, 'trade')} · ${esc(period)}`, { valueCls: cls(sum.net), span: 'ds-span-3 ds-t-3' })}
           ${stat('Win rate', `${sum.winRate.toFixed(1)}%`, `<span class="ds-pos">${sum.wins}W</span> · <span class="ds-muted">${sum.breakeven}BE</span> · <span class="ds-neg">${sum.losses}L</span> · ${esc(period)}`, { extra: gauge(sum.wins, sum.breakeven, sum.losses) })}
           ${stat('Profit factor', sum.profitFactor === Infinity ? '∞' : sum.profitFactor.toFixed(2), `Gross ${money(sum.grossProfit, false)} / ${money(Math.abs(sum.grossLoss), false)} · ${esc(period)}`, { valueCls: sum.profitFactor >= 1 ? 'ds-pos' : sum.trades ? 'ds-neg' : '' })}
-          ${stat('Risk : reward', sum.riskReward == null ? '—' : `1 : ${sum.riskReward.toFixed(2)}`, `Avg win ${fmtR(sum.avgWinR)} · avg loss ${fmtR(sum.avgLossR)} · ${esc(period)}`)}
+          ${stat('Risk : reward', sum.riskReward == null ? '—' : `1 : ${sum.riskReward.toFixed(2)}`, `Avg win ${fmtR(sum.avgWinR)} · avg loss ${fmtR(sum.avgLossR)} · ${esc(period)}`, { span: 'ds-span-3 ds-t-3' })}
           <div class="ds-card ds-span-12 db2-chart-card">
             <div class="db2-stat-top"><span class="ds-label">Net P&amp;L &amp; account equity</span><span class="ds-period">${esc(period)}</span></div>
             <div class="db2-chart">${inRange.length || eq.cash ? '<canvas id="dbChart" aria-label="Daily P&amp;L bars and account equity line"></canvas>' : '<div class="db2-none">No trades in this range.</div>'}</div>

@@ -34,7 +34,7 @@ html[data-theme="dark"] { --db-track: var(--ds-track, #262626); }
 /* ── cards ──────────────────────────────────────────────────────────────── */
 .db2-stat-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; min-height: 16px; }
 .db2-stat { display: flex; flex-direction: column; }
-.db2-stat .ds-big { margin-bottom: 6px; overflow-wrap: anywhere; }
+.db2-stat .ds-big { margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .db2-gauge { width: 58px; height: 32px; margin: -6px 0 -10px; flex: none; }
 .db2-xl { font-size: clamp(28px, 2.4vw, 34px); margin-bottom: 8px; }
 .db2-equity, .db2-streak, .db2-disc { display: flex; flex-direction: column; }
