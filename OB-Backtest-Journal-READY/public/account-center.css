@@ -160,7 +160,7 @@ html[data-theme="dark"] .ac-badge.backtest { color: #a78bfa; }
 
 /* Modal */
 .ac-modal { position: fixed; inset: 0; z-index: 260; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--overlay); backdrop-filter: blur(6px); }
-.ac-dialog { width: 100%; max-width: 560px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 25px 70px rgba(0,0,0,.3); }
+.ac-dialog { width: 100%; max-width: 560px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 25px 70px rgba(0,0,0,.3); }
 .ac-dialog.sm { max-width: 440px; }
 .ac-dialog-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 20px 6px; }
 .ac-dialog-title { font-size: 16px; font-weight: 800; }

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <!-- Theme: set before first paint (light / dark / system), see theme.js -->
   <script>(function(){try{var m=localStorage.getItem("my-journal-theme");if(m!=="light"&&m!=="dark")m="system";var d=m==="dark"||(m==="system"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.setAttribute("data-theme",d?"dark":"light");r.setAttribute("data-theme-mode",m);r.style.colorScheme=d?"dark":"light";}catch(e){document.documentElement.setAttribute("data-theme","light");}})();</script>
   <meta name="theme-color" content="#ffffff">
@@ -181,6 +181,7 @@
       #ob-journal-equity-discipline-row { grid-template-columns: 1fr !important; }
     }
   </style>
+  <link rel="stylesheet" href="/mobile.css">
 </head>
 <body class="min-h-screen flex flex-col bg-[#f4f7fb] text-slate-800">
 
@@ -2948,6 +2949,7 @@
       dl.remove();
     }
   </script>
+  <script src="/mobile.js"></script>
   <script src="/ai-coach.js"></script>
   <script src="/account-center.js"></script>
   <script src="/psychology-ui.js"></script>

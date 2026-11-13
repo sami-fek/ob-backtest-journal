@@ -1,0 +1,160 @@
+/*
+ * mobile.css — phone and tablet layer (Mobile round, 2026-11-13).
+ *
+ * Loaded last in <head> on index.html and auth.html. Most components inject
+ * their own <style> tags at runtime (after this file), so rules that must win
+ * use a more specific selector and/or !important.
+ *
+ * Breakpoints:
+ *   phone  ≤ 767px   (360 / 390 / 430 test widths)
+ *   tablet 768–1023px
+ *   touch  (pointer: coarse) — tap-target sizes, whatever the width
+ *
+ * Sections are numbered by the step of the mobile round that added them.
+ */
+
+/* ── 0. Foundation ─────────────────────────────────────────────────────────── */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --tap: 44px;
+}
+/* Never a horizontal page scroll. `clip` (not hidden) keeps position:sticky working. */
+html, body { max-width: 100%; overflow-x: clip; }
+@supports not (overflow: clip) { body { overflow-x: hidden; } }
+/* Dynamic viewport units: the browser chrome on phones makes 100vh too tall. */
+@supports (height: 100dvh) {
+  .min-h-screen { min-height: 100dvh !important; }
+  .h-screen { height: 100dvh !important; }
+  .max-h-\[90vh\] { max-height: 90dvh !important; }
+  .max-h-\[50vh\] { max-height: 50dvh !important; }
+}
+/* Media never wider than its container. */
+main img, main video, main canvas { max-width: 100%; }
+
+/* iOS zooms into any field whose text is under 16px. Phones and touch devices
+   get 16px in every text field, select and rich-text editor. */
+@media (max-width: 767px), (pointer: coarse) {
+  html body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=button]):not([type=submit]),
+  html body select,
+  html body textarea,
+  html body [contenteditable="true"] {
+    font-size: 16px !important;
+  }
+  /* Kill the 300ms delay / double-tap zoom on controls. */
+  button, a, [role=button], [role=tab], select, input, label { touch-action: manipulation; }
+}
+
+/* Main content respects the side safe areas (landscape notch). */
+@media (max-width: 1023px) {
+  main {
+    padding-left: max(16px, var(--safe-left)) !important;
+    padding-right: max(16px, var(--safe-right)) !important;
+    padding-bottom: calc(24px + var(--safe-bottom)) !important;
+  }
+}
+
+/* ── 1. Header, pill nav, account menu, sign-in ───────────────────────────── */
+@media (max-width: 1023px) {
+  html body > header {
+    padding-top: calc(10px + var(--safe-top)) !important;
+    padding-left: max(16px, var(--safe-left)) !important;
+    padding-right: max(16px, var(--safe-right)) !important;
+  }
+}
+/* Phones: logo + actions on row 1, the nav pill on its own full-width row that
+   scrolls sideways (never wraps). Applies signed in AND signed out.
+   Tablets (768–1023) use the same two rows: logo + nav + actions do not fit
+   on one 768px row. */
+@media (max-width: 1023px) {
+  html body > header { padding-bottom: 8px !important; }
+  /* Signed in, the avatar replaces "Get started" (it only opens Trading,
+     which the nav already has). Extends theme.css's ≤479px rule to tablets. */
+  html body > header .ob-has-account > button:not(#ob-account-btn) { display: none !important; }
+  html body > header > div { flex-wrap: wrap !important; row-gap: 8px !important; column-gap: 8px !important; }
+  html body > header > div > div:first-child { min-width: 0; flex: 1 1 auto; }
+  html body > header > div > div:first-child { min-height: var(--tap); }
+  html body > header > div > div:first-child h1 { white-space: nowrap; }
+  html body > header > div > div:last-child { margin-left: auto; flex: 0 0 auto; }
+  html body > header nav.ob-pill-nav {
+    order: 3;
+    flex: 1 1 100% !important;
+    min-width: 0;
+    width: 100%;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 8px;
+    scrollbar-width: none;
+  }
+  html body > header nav.ob-pill-nav::-webkit-scrollbar { display: none; }
+  html body > header nav.ob-pill-nav > button {
+    flex: 1 0 auto;
+    justify-content: center;
+    scroll-snap-align: center;
+  }
+  /* Signed out: "Get started" stays on row 1 next to the logo. */
+  html body > header > div > div:last-child > button { white-space: nowrap; }
+}
+@media (max-width: 1023px), (pointer: coarse) {
+  html body > header nav.ob-pill-nav > button { min-height: var(--tap); padding-top: 0 !important; padding-bottom: 0 !important; }
+  html body > header > div > div:last-child > button:not(#ob-account-btn) { min-height: var(--tap); }
+  html body #ob-account-btn { width: var(--tap) !important; height: var(--tap) !important; font-size: 17px !important; }
+}
+@media (max-width: 359px) {
+  /* Very small phones: drop the "Pro OS" badge so the logo row never squeezes. */
+  html body > header h1 + span { display: none; }
+}
+
+/* Account (avatar) menu: never taller or wider than the screen; 44px rows on touch. */
+html body #ob-account-menu {
+  max-width: calc(100vw - 16px - var(--safe-right));
+  max-height: calc(100vh - 80px);
+  max-height: calc(100dvh - 80px - var(--safe-top) - var(--safe-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 1023px), (pointer: coarse) {
+  html body #ob-account-menu .ob-acc-item { min-height: var(--tap); font-size: 15px; }
+  html body #ob-account-menu .ob-acc-seg button { min-height: var(--tap); font-size: 13px; }
+}
+
+/* In-app sign-in modal (auth-modal.js) */
+html body #ob-auth-overlay {
+  padding: max(16px, var(--safe-top)) max(16px, var(--safe-right)) max(16px, var(--safe-bottom)) max(16px, var(--safe-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html body #ob-auth-card {
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px - var(--safe-top) - var(--safe-bottom));
+  overflow-y: auto;
+  margin: auto;
+}
+@media (max-width: 1023px), (pointer: coarse) {
+  html body #ob-auth-close { width: var(--tap) !important; height: var(--tap) !important; top: 8px !important; right: 8px !important; }
+  html body #ob-auth-card .ob-field,
+  html body #ob-auth-card .ob-btn-pw,
+  html body #ob-auth-card .ob-btn-secondary { min-height: var(--tap); }
+  html body #ob-auth-card .ob-toggle-link { min-height: var(--tap); padding: 8px 10px; }
+}
+
+/* /auth.html sign-in page */
+@supports (min-height: 100dvh) { body.ob-auth-page { min-height: 100dvh; } }
+body.ob-auth-page {
+  padding: max(16px, var(--safe-top)) max(16px, var(--safe-right)) max(16px, var(--safe-bottom)) max(16px, var(--safe-left)) !important;
+}
+@media (max-width: 1023px), (pointer: coarse) {
+  body.ob-auth-page .field,
+  body.ob-auth-page .btn-pw,
+  body.ob-auth-page .btn-secondary { min-height: var(--tap); }
+  body.ob-auth-page .toggle-link { min-height: var(--tap); padding: 8px 10px; }
+}
+@media (max-width: 400px) {
+  body.ob-auth-page .card { padding: 28px 20px 24px !important; }
+}
