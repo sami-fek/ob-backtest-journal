@@ -46,9 +46,9 @@
     s.id = STYLE_ID;
     s.textContent = `
       #${PANEL_ID} {
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 14px;
+        background: var(--ds-surface-2);
+        border: 1px solid var(--ds-line);
+        border-radius: var(--ds-radius-card);
         padding: 14px;
         margin-bottom: 4px;
       }
@@ -63,15 +63,16 @@
         font-weight: 800;
         letter-spacing: .06em;
         text-transform: uppercase;
-        background: #2563eb;
-        color: #fff;
+        background: var(--ds-accent-tint);
+        color: var(--ds-text);
         padding: 2px 8px;
         border-radius: 6px;
+        font-family: var(--ds-mono);
       }
       #${PANEL_ID} .rp-title {
         font-size: 11px;
-        font-weight: 700;
-        color: #1e40af;
+        font-weight: 600;
+        color: var(--ds-text);
       }
       #${PANEL_ID} .rp-grid {
         display: grid;
@@ -84,26 +85,27 @@
         font-size: 9px;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: .06em;
-        color: #64748b;
+        letter-spacing: .1em;
+        color: var(--ds-muted);
+        font-family: var(--ds-mono);
         margin-bottom: 3px;
       }
       #${PANEL_ID} .rp-field input,
       #${PANEL_ID} .rp-field select {
         width: 100%;
-        background: #fff;
-        border: 1px solid #bfdbfe;
-        border-radius: 9px;
+        background: var(--ds-surface-solid);
+        border: 1px solid var(--ds-line-strong);
+        border-radius: var(--ds-radius-ctl);
         padding: 6px 9px;
         font-size: 11px;
-        font-family: 'JetBrains Mono', monospace;
-        color: #1e293b;
+        font-family: var(--ds-mono);
+        color: var(--ds-text);
         outline: none;
         transition: border-color .15s;
         box-sizing: border-box;
       }
       #${PANEL_ID} .rp-field input:focus,
-      #${PANEL_ID} .rp-field select:focus { border-color: #2563eb; }
+      #${PANEL_ID} .rp-field select:focus { border-color: var(--ds-accent); }
       #${PANEL_ID} .rp-actions {
         display: flex;
         gap: 8px;
@@ -112,33 +114,34 @@
       #${PANEL_ID} .rp-calc {
         flex: 1;
         padding: 7px 12px;
-        background: #2563eb;
-        color: #fff;
+        background: var(--ds-btn-bg);
+        color: var(--ds-btn-text);
         border: 0;
-        border-radius: 10px;
-        font-size: 11px;
-        font-weight: 700;
+        border-radius: var(--ds-radius-ctl);
+        font: 600 10.5px/1.2 var(--ds-mono);
+        letter-spacing: .08em;
+        text-transform: uppercase;
         cursor: pointer;
         transition: background .15s;
       }
-      #${PANEL_ID} .rp-calc:hover { background: #1d4ed8; }
+      #${PANEL_ID} .rp-calc:hover { background: var(--ds-btn-hover); }
       #${PANEL_ID} .rp-result {
         font-size: 12px;
         font-weight: 800;
-        font-family: 'JetBrains Mono', monospace;
+        font-family: var(--ds-mono);
         min-width: 64px;
         text-align: right;
       }
-      #${PANEL_ID} .rp-result.positive { color: #16a34a; }
-      #${PANEL_ID} .rp-result.negative { color: #dc2626; }
-      #${PANEL_ID} .rp-result.neutral  { color: #94a3b8; }
+      #${PANEL_ID} .rp-result.positive { color: var(--ds-pos); }
+      #${PANEL_ID} .rp-result.negative { color: var(--ds-neg); }
+      #${PANEL_ID} .rp-result.neutral  { color: var(--ds-muted); }
       #${PANEL_ID} .rp-info {
         font-size: 10px;
-        color: #64748b;
+        color: var(--ds-muted);
         margin-top: 8px;
         line-height: 1.5;
       }
-      #${PANEL_ID} .rp-info strong { color: #1e40af; }
+      #${PANEL_ID} .rp-info strong { color: var(--ds-text); }
     `;
     document.head.appendChild(s);
   }

@@ -43,8 +43,8 @@
       .ob-dd-btn .ob-dd-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
       .ob-dd-btn svg { flex-shrink: 0; transition: transform .15s; }
       .ob-dd-btn:hover, .ob-dd-btn:focus-visible, .ob-dd-btn[aria-expanded="true"] {
-        background: #3b82f6; border-color: #3b82f6; color: #fff;
-        box-shadow: 0 4px 12px rgba(37,99,235,.25); outline: none;
+        background: var(--ds-surface-2, #f1f5f9); border-color: var(--ds-line-strong, #cbd5e1); color: var(--ds-text, #0f172a);
+        box-shadow: none; outline: none;
       }
       .ob-dd-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
       .ob-dd-panel {

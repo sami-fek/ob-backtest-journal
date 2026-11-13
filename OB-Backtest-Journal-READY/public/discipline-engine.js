@@ -178,27 +178,8 @@
       #${BANNER_ID} .ob-banner-close { background:transparent;border:0;cursor:pointer;color:inherit;opacity:.5;font-size:16px;padding:0 4px;flex-shrink:0; }
       #${BANNER_ID} .ob-banner-close:hover { opacity:1; }
 
-      /* Hard-stop confirmation modal */
-      #${MODAL_ID} {
-        position:fixed;inset:0;z-index:200;
-        display:flex;align-items:center;justify-content:center;
-        padding:16px; background:rgba(15,23,42,.35); backdrop-filter:blur(6px);
-      }
+      /* Hard-stop confirmation modal: .ds-overlay / .ds-dialog (design.css) */
       #${MODAL_ID}.hidden { display:none; }
-      #${MODAL_ID} .ob-dm-box {
-        width:min(420px,100%); border-radius:24px; border:1px solid rgba(255,255,255,.9);
-        background:rgba(255,255,255,.97); box-shadow:0 32px 80px rgba(15,23,42,.22);
-        overflow:hidden; padding:28px 26px;
-      }
-      #${MODAL_ID} .ob-dm-icon { width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:22px;margin-bottom:16px; }
-      #${MODAL_ID}.ob-modal-stop .ob-dm-icon { background:#fee2e2; color:#dc2626; }
-      #${MODAL_ID} h3 { font-size:18px; font-weight:800; color:#0f172a; margin:0 0 8px; }
-      #${MODAL_ID} p  { font-size:13px; color:#475569; line-height:1.6; margin:0 0 22px; }
-      #${MODAL_ID} .ob-dm-actions { display:flex; gap:10px; }
-      #${MODAL_ID} .ob-dm-back { flex:1;padding:11px;border-radius:12px;background:#f1f5f9;border:0;font-size:13px;font-weight:700;color:#475569;cursor:pointer; }
-      #${MODAL_ID} .ob-dm-back:hover { background:#e2e8f0; }
-      #${MODAL_ID} .ob-dm-override { flex:1;padding:11px;border-radius:12px;background:#dc2626;border:0;font-size:13px;font-weight:700;color:#fff;cursor:pointer; }
-      #${MODAL_ID} .ob-dm-override:hover { opacity:.9; }
 
       /* Discipline panel additions */
       .ob-streak-pill { display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:800;font-family:'JetBrains Mono',monospace; }
@@ -335,18 +316,19 @@
     document.getElementById(MODAL_ID)?.remove();
     const modal = document.createElement('div');
     modal.id = MODAL_ID;
-    modal.className = `${MODAL_ID} ob-modal-stop`;
+    modal.className = `${MODAL_ID} ob-modal-stop ds-overlay`;
     modal.innerHTML = `
-      <div class="ob-dm-box">
-        <div class="ob-dm-icon"><i class="fa-solid fa-hand"></i></div>
-        <h3>Hard Stop — ${state.hardStopThreshold} consecutive losses</h3>
-        <p>You have ${state.consecutiveLosses} consecutive ${state.consecutiveLosses > 1 ? 'losses' : 'loss'}.
+      <div class="ob-dm-box ds-dialog" role="alertdialog" aria-modal="true" aria-labelledby="obDmTitle">
+        <div class="ds-dialog-icon"><i class="fa-solid fa-hand"></i></div>
+        <div class="ds-label">Discipline · hard stop</div>
+        <h3 class="ds-dialog-title" id="obDmTitle">Hard stop: ${state.hardStopThreshold} consecutive losses</h3>
+        <p class="ds-dialog-text">You have ${state.consecutiveLosses} consecutive ${state.consecutiveLosses > 1 ? 'losses' : 'loss'}.
            Your rule is to stop trading after ${state.hardStopThreshold} consecutive losses.
-           Logging this trade will mark it as a rule violation.<br><br>
-           <strong>Do you want to log this as a violation anyway?</strong></p>
-        <div class="ob-dm-actions">
-          <button class="ob-dm-back" id="obDmBack">← Go Back</button>
-          <button class="ob-dm-override" id="obDmOverride">Log as Violation</button>
+           Logging this trade will mark it as a rule violation.</p>
+        <p class="ds-dialog-text"><strong>Do you want to log this as a violation anyway?</strong></p>
+        <div class="ob-dm-actions ds-dialog-actions">
+          <button type="button" class="ob-dm-back ds-btn ds-btn-secondary" id="obDmBack">← Go back</button>
+          <button type="button" class="ob-dm-override ds-btn ds-btn-danger" id="obDmOverride">Log as violation</button>
         </div>
       </div>`;
     document.body.appendChild(modal);

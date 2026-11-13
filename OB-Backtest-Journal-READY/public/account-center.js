@@ -284,7 +284,7 @@
     return full || String(email || '').split('@')[0] || 'Trader';
   }
   function avatarColor(email) {
-    const C = ['#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444'];
+    const C = ['#5d7fc4', '#7f74c4', '#8b80cf', '#c27a9c', '#c08a3e', '#3f9a72', '#4c9c98', '#c96060'] /* softened (design palette) */;
     let h = 0; for (const ch of String(email || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
     return C[h % C.length];
   }

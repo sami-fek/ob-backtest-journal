@@ -92,36 +92,25 @@
     const count = (accounts[mode] || []).length + 1;
     const overlay = document.createElement('div');
     overlay.id = 'accountAddModal';
-    overlay.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/30 backdrop-blur-md';
-    overlay.innerHTML = ` 
-      <div class="w-full max-w-[480px] rounded-[24px] border border-white/80 bg-white/80 backdrop-blur-2xl shadow-[0_25px_80px_rgba(15,23,42,.22)] overflow-hidden">
-        <div class="p-4 sm:p-6 sm:p-7">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <h3 class="text-xl font-bold tracking-tight text-slate-900">Add ${mode} account</h3>
-              <p class="mt-1 text-xs text-slate-500">Create another account for this mode.</p>
-            </div>
-            <button id="accountModalClose" class="h-9 w-9 rounded-xl bg-white/70 border border-slate-200/80 text-slate-400 hover:text-slate-700 hover:bg-white transition-colors" aria-label="Close">×</button>
+    overlay.className = 'ds-overlay';
+    overlay.style.zIndex = '90'; // below the account toast (z 100), as before
+    overlay.innerHTML = `
+      <div class="ds-dialog" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
+        <div class="ds-dialog-head">
+          <div>
+            <div class="ds-label">${mode} · accounts</div>
+            <h3 class="ds-dialog-title" id="accountModalTitle">Add ${mode} account</h3>
+            <p class="ds-dialog-text">Create another account for this mode.</p>
           </div>
-
-          <div class="mt-6 space-y-4">
-            <label class="block">
-              <span class="block mb-2 text-xs font-bold text-slate-600">Account name</span>
-              <input id="newAccountName" value="${mode} ${count}" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" autocomplete="off">
-            </label>
-            <label class="block">
-              <span class="block mb-2 text-xs font-bold text-slate-600">Starting balance</span>
-              <div class="relative">
-                <input id="newAccountBalance" value="100000" inputmode="decimal" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 pr-14 text-sm font-mono text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
-                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400" data-ob-sym></span>
-              </div>
-            </label>
-          </div>
-
-          <div class="mt-7 flex justify-end gap-2">
-            <button id="accountModalCancel" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-white/70 transition-colors">Cancel</button>
-            <button id="accountModalCreate" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">Add account</button>
-          </div>
+          <button type="button" id="accountModalClose" class="ds-close" aria-label="Close">×</button>
+        </div>
+        <div class="ds-dialog-body">
+          <label class="ds-field"><span class="ds-label">Account name</span><input id="newAccountName" value="${mode} ${count}" class="ds-input" autocomplete="off"></label>
+          <label class="ds-field"><span class="ds-label">Starting balance</span><span class="ds-input-wrap"><input id="newAccountBalance" value="100000" inputmode="decimal" class="ds-input ds-num"><span class="ds-input-suffix" data-ob-sym></span></span></label>
+        </div>
+        <div class="ds-dialog-actions">
+          <button type="button" id="accountModalCancel" class="ds-btn ds-btn-secondary">Cancel</button>
+          <button type="button" id="accountModalCreate" class="ds-btn ds-btn-primary">Add account</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -155,20 +144,19 @@
     closeAccountModal();
     const overlay = document.createElement('div');
     overlay.id = 'accountEditModal';
-    overlay.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-950/30 backdrop-blur-md';
-    overlay.innerHTML = 
-      '<div class="w-full max-w-[480px] rounded-[24px] border border-white/80 bg-white/80 backdrop-blur-2xl shadow-[0_25px_80px_rgba(15,23,42,.22)] overflow-hidden">' +
-        '<div class="p-6 sm:p-7">' +
-          '<div class="flex items-start justify-between gap-4">' +
-            '<div><h3 class="text-xl font-bold tracking-tight text-slate-900">Edit ' + mode + ' account</h3><p class="mt-1 text-xs text-slate-500">Rename the account or change its starting balance.</p></div>' +
-            '<button id="accountEditClose" class="h-9 w-9 rounded-xl bg-white/70 border border-slate-200/80 text-slate-400 hover:text-slate-700 hover:bg-white transition-colors" aria-label="Close">×</button>' +
-          '</div>' +
-          '<div class="mt-6 space-y-4">' +
-            '<label class="block"><span class="block mb-2 text-xs font-bold text-slate-600">Account name</span><input id="editAccountName" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" autocomplete="off"></label>' +
-            '<label class="block"><span class="block mb-2 text-xs font-bold text-slate-600">Starting balance</span><div class="relative"><input id="editAccountBalance" inputmode="decimal" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 pr-14 text-sm font-mono text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"><span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400" data-ob-sym></span></div></label>' +
-          '</div>' +
-          '<div class="mt-7 flex justify-end gap-2"><button id="accountEditCancel" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-white/70 transition-colors">Cancel</button><button id="accountEditSave" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">Save changes</button></div>' +
+    overlay.className = 'ds-overlay';
+    overlay.style.zIndex = '90'; // below the account toast (z 100), as before
+    overlay.innerHTML =
+      '<div class="ds-dialog" role="dialog" aria-modal="true" aria-labelledby="accountEditTitle">' +
+        '<div class="ds-dialog-head">' +
+          '<div><div class="ds-label">' + mode + ' · accounts</div><h3 class="ds-dialog-title" id="accountEditTitle">Edit ' + mode + ' account</h3><p class="ds-dialog-text">Rename the account or change its starting balance.</p></div>' +
+          '<button type="button" id="accountEditClose" class="ds-close" aria-label="Close">×</button>' +
         '</div>' +
+        '<div class="ds-dialog-body">' +
+          '<label class="ds-field"><span class="ds-label">Account name</span><input id="editAccountName" class="ds-input" autocomplete="off"></label>' +
+          '<label class="ds-field"><span class="ds-label">Starting balance</span><span class="ds-input-wrap"><input id="editAccountBalance" inputmode="decimal" class="ds-input ds-num"><span class="ds-input-suffix" data-ob-sym></span></span></label>' +
+        '</div>' +
+        '<div class="ds-dialog-actions"><button type="button" id="accountEditCancel" class="ds-btn ds-btn-secondary">Cancel</button><button type="button" id="accountEditSave" class="ds-btn ds-btn-primary">Save changes</button></div>' +
       '</div>';
     document.body.appendChild(overlay);
     overlay.querySelectorAll('[data-ob-sym]').forEach(el => { el.textContent = window.obTime ? window.obTime.sym() : '$'; }); // saved currency symbol

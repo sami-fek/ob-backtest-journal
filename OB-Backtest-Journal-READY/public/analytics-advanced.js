@@ -552,7 +552,7 @@
       const small = n < 10;
       const smallTag = small ? '<span class="ob-small-sample" title="Fewer than 10 trades — treat with caution">⚠ small</span>' : '';
       const rColor = netR >= 0 ? 'color:#16a34a' : 'color:#dc2626';
-      const expColor = exp >= 0 ? 'color:#2563eb' : 'color:#dc2626';
+      const expColor = exp >= 0 ? 'color:var(--ds-pos)' : 'color:var(--ds-neg)';
 
       return `<tr>
         <td class="font-semibold text-slate-800">${strat}${smallTag}</td>

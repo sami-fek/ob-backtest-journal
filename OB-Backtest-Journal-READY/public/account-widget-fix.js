@@ -47,7 +47,7 @@
       #${ROOT_ID} .wallet-arrow.left{left:3px;}#${ROOT_ID} .wallet-arrow.right{right:3px;}
       #${ROOT_ID} .wallet-controls{display:flex;align-items:center;justify-content:center;margin-top:0;}
       #${ROOT_ID} .wallet-dots{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:1px;}
-      #${ROOT_ID} .wallet-dot{width:6px;height:6px;border-radius:999px;background:#dbe4f2;transition:all .28s cubic-bezier(.16,1,.3,1);}.wallet-dot.active{width:15px;background:#2563eb;}
+      #${ROOT_ID} .wallet-dot{width:6px;height:6px;border-radius:999px;background:#dbe4f2;transition:all .28s cubic-bezier(.16,1,.3,1);}.wallet-dot.active{width:15px;background:var(--ds-text,#101729);}
       @media(max-width:639px){#${ROOT_ID} .wallet-card{flex-basis:82%;height:148px;}}
       @media(min-width:900px){#${ROOT_ID} .wallet-card{flex-basis:76%;}}
     `;document.head.appendChild(s);

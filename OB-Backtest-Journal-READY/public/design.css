@@ -49,6 +49,10 @@
   --ds-log-bg: #1d8a4c;
   --ds-log-hover: #197a43;
   --ds-log-text: #ffffff;
+  /* Danger (rule violation, delete): red toned to the palette */
+  --ds-danger-bg: #c94040;
+  --ds-danger-hover: #b23636;
+  --ds-danger-text: #ffffff;
 
   /* Charts */
   --ds-chart-pos: rgba(34, 160, 92, 0.78);
@@ -94,6 +98,9 @@ html[data-theme="dark"] {
   --ds-log-bg: #2fb768;
   --ds-log-hover: #3cc676;
   --ds-log-text: #03140a;
+  --ds-danger-bg: #e36060;
+  --ds-danger-hover: #ec7575;
+  --ds-danger-text: #1c0606;
 
   --ds-chart-pos: rgba(52, 199, 112, 0.72);
   --ds-chart-neg: rgba(240, 98, 98, 0.72);
@@ -265,6 +272,8 @@ html body > main:has(> #pageTrading:not(.hidden)) {
 .ds-btn-secondary:hover { background: var(--ds-btn2-hover); }
 .ds-btn-log { background: var(--ds-log-bg); color: var(--ds-log-text); }
 .ds-btn-log:hover { background: var(--ds-log-hover); }
+.ds-btn-danger { background: var(--ds-danger-bg); color: var(--ds-danger-text); }
+.ds-btn-danger:hover { background: var(--ds-danger-hover); }
 .ds-btn-sm { min-height: 30px; padding: 0 11px; font-size: 10.5px; }
 .ds-icon-btn { width: 34px; height: 34px; padding: 0; }
 @media (pointer: coarse), (max-width: 1023px) {
@@ -283,3 +292,36 @@ html body > main:has(> #pageTrading:not(.hidden)) {
   .ds-select { font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .ds-meter > i, .ds-btn { transition: none; } }
+
+/* ── 7. Dialogs ────────────────────────────────────────────────────────── */
+/* One dialog surface for the small confirmation / form dialogs (daily limit,
+   hard stop, add / edit account). Buttons are .ds-btn variants. */
+.ds-overlay { position: fixed; inset: 0; z-index: 250; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(5, 8, 15, .42); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ds-dialog { width: min(440px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; padding: var(--ds-s5); background: var(--ds-surface-solid); color: var(--ds-text); border: 1px solid var(--ds-line); border-radius: var(--ds-radius-card); box-shadow: 0 30px 80px -24px rgba(0, 0, 0, .35); font-family: var(--ds-sans); }
+.ds-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.ds-dialog-icon { width: 40px; height: 40px; border-radius: var(--ds-radius-ctl); display: grid; place-items: center; font-size: 16px; margin-bottom: var(--ds-s4); background: var(--ds-neg-tint); color: var(--ds-neg); }
+.ds-dialog-title { margin: 4px 0 0; font-size: 19px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.25; color: var(--ds-text); }
+.ds-dialog-text { margin: var(--ds-s3) 0 0; font-size: 13px; line-height: 1.6; color: var(--ds-text-2); }
+.ds-dialog-text strong { color: var(--ds-text); font-weight: 600; }
+.ds-dialog-body { margin-top: var(--ds-s5); display: grid; gap: var(--ds-s4); }
+.ds-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: var(--ds-s5); }
+.ds-close { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: var(--ds-radius-ctl); border: 1px solid var(--ds-line-strong); background: transparent; color: var(--ds-muted); font-size: 18px; line-height: 1; cursor: pointer; }
+.ds-close:hover { color: var(--ds-text); background: var(--ds-btn2-hover); }
+.ds-field { display: block; }
+.ds-field > .ds-label { display: block; margin-bottom: 6px; }
+.ds-input-wrap { position: relative; }
+.ds-input { width: 100%; min-height: 42px; padding: 0 12px; border-radius: var(--ds-radius-ctl); border: 1px solid var(--ds-line-strong); background: var(--ds-surface-solid); color: var(--ds-text); font: 500 14px/1.2 var(--ds-sans); outline: none; }
+.ds-input.ds-num { font-family: var(--ds-mono); font-variant-numeric: tabular-nums; }
+.ds-input-wrap .ds-input { padding-right: 44px; }
+.ds-input:focus { border-color: var(--ds-accent); box-shadow: 0 0 0 3px var(--ds-accent-tint); }
+.ds-input-suffix { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font: 600 12px/1 var(--ds-mono); color: var(--ds-muted); pointer-events: none; }
+.ds-note { padding: var(--ds-s3) var(--ds-s4); border-radius: var(--ds-radius-ctl); background: var(--ds-surface-2); border: 1px solid var(--ds-line); font-size: 12px; line-height: 1.55; color: var(--ds-text-2); }
+.ds-close:focus-visible, .ds-input:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
+@media (pointer: coarse), (max-width: 1023px) {
+  .ds-input { min-height: var(--ds-tap); font-size: 16px; }
+  .ds-close { width: var(--ds-tap); height: var(--ds-tap); }
+}
+@media (max-width: 480px) {
+  .ds-dialog { padding: var(--ds-s4) var(--ds-s4) var(--ds-s5); }
+  .ds-dialog-actions > .ds-btn { flex: 1 1 0; }
+}

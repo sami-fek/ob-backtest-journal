@@ -350,6 +350,19 @@ html[data-theme] :is(#ob-strategy-editor, #ob-strategy-delete, #ob-daily-limit-b
   background: var(--ds-surface-solid) !important; border-color: var(--ds-line-strong) !important; color: var(--ds-text) !important; border-radius: var(--ds-radius-ctl) !important;
 }
 html[data-theme] .mt5-modal .text-blue-600 { color: var(--ds-muted) !important; font-family: var(--ds-mono); }
+/* MT5 link / token / guide dialog box (was inline white styles) */
+#mt5IntegrationModal .mt5-modal-box { width: 100%; max-width: min(520px, calc(100vw - 24px)); max-height: 90vh; max-height: 90dvh; overflow-y: auto; color: var(--ds-text); }
+#mt5IntegrationModal .mt5-modal-box .p-6 { padding: var(--ds-s5) !important; }
+#mt5IntegrationModal .mt5-error { background: var(--ds-neg-tint) !important; border-color: transparent !important; color: var(--ds-neg) !important; font-weight: 600; }
+#mt5IntegrationModal .ds-note .font-bold { color: var(--ds-text); font-weight: 600 !important; }
+#mt5IntegrationModal .ob-token { color: var(--ds-text); }
+/* Trade drawer: feeling chips (selected = monochrome outline, not blue) */
+html[data-theme] #tradeDrawer .ob-feeling { border-color: var(--ds-line-strong) !important; border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] #tradeDrawer .ob-feeling:hover { background: var(--ds-btn2-hover) !important; border-color: var(--ds-line-strong) !important; }
+html[data-theme] #tradeDrawer .ob-feeling[aria-checked="true"] { border-color: var(--ds-text) !important; background: var(--ds-surface-2) !important; box-shadow: inset 0 0 0 1px var(--ds-text) !important; }
+html[data-theme] #tradeDrawer .ob-feeling[aria-checked="true"] span:last-child { color: var(--ds-text) !important; }
+/* Journal "Inspect": compact secondary button */
+#journalTableBody .jp-inspect { min-height: 28px; padding: 0 10px; font-size: 10px; }
 
 /* Trade drawer + calendar "+" panel (same panel) */
 html[data-theme] #tradeDrawer .drawer-panel { background: var(--ds-surface-solid) !important; border-left: 1px solid var(--ds-line) !important; }

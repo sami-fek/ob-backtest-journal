@@ -57,48 +57,48 @@
       #${STATUS_PANEL_ID} { margin-bottom: 20px; }
       #${STATUS_PANEL_ID} .mt5-sp-header {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 14px 18px; border-bottom: 1px solid #e2e8f0;
+        padding: 14px 18px; border-bottom: 1px solid var(--ds-line);
       }
       #${STATUS_PANEL_ID} .mt5-sp-title {
-        font-size: 13px; font-weight: 800; color: #0f172a;
+        font-size: 13px; font-weight: 600; color: var(--ds-text);
         display: flex; align-items: center; gap: 8px;
       }
       #${STATUS_PANEL_ID} .mt5-sp-actions { display: flex; gap: 8px; }
       #${STATUS_PANEL_ID} .mt5-btn {
-        height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid;
-        font-size: 11px; font-weight: 700; cursor: pointer; transition: all .15s;
+        height: 30px; padding: 0 12px; border-radius: var(--ds-radius-ctl); border: 1px solid;
+        font: 600 10.5px/1 var(--ds-mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: all .15s;
         display: inline-flex; align-items: center; gap: 5px;
       }
-      #${STATUS_PANEL_ID} .mt5-btn-primary  { background: #2563eb; border-color: #2563eb; color: #fff; }
-      #${STATUS_PANEL_ID} .mt5-btn-primary:hover { background: #1d4ed8; }
-      #${STATUS_PANEL_ID} .mt5-btn-ghost    { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
-      #${STATUS_PANEL_ID} .mt5-btn-ghost:hover { background: #f1f5f9; color: #1e293b; }
-      #${STATUS_PANEL_ID} .mt5-btn-danger   { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
-      #${STATUS_PANEL_ID} .mt5-btn-danger:hover { background: #fee2e2; }
+      #${STATUS_PANEL_ID} .mt5-btn-primary  { background: var(--ds-btn-bg); border-color: var(--ds-btn-bg); color: var(--ds-btn-text); }
+      #${STATUS_PANEL_ID} .mt5-btn-primary:hover { background: var(--ds-btn-hover); }
+      #${STATUS_PANEL_ID} .mt5-btn-ghost    { background: transparent; border-color: var(--ds-line-strong); color: var(--ds-text); }
+      #${STATUS_PANEL_ID} .mt5-btn-ghost:hover { background: var(--ds-btn2-hover); }
+      #${STATUS_PANEL_ID} .mt5-btn-danger   { background: transparent; border-color: var(--ds-line-strong); color: var(--ds-neg); }
+      #${STATUS_PANEL_ID} .mt5-btn-danger:hover { background: var(--ds-neg-tint); border-color: var(--ds-neg); }
       #${STATUS_PANEL_ID} .mt5-account-row {
         display: flex; align-items: center; gap: 12px; padding: 12px 18px;
-        border-bottom: 1px solid #f1f5f9; flex-wrap: wrap;
+        border-bottom: 1px solid var(--ds-line); flex-wrap: wrap;
       }
       #${STATUS_PANEL_ID} .mt5-account-row:last-child { border-bottom: 0; }
       #${STATUS_PANEL_ID} .mt5-dot {
         width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
       }
-      #${STATUS_PANEL_ID} .mt5-dot-synced  { background: #16a34a; box-shadow: 0 0 6px rgba(22,163,74,.4); }
-      #${STATUS_PANEL_ID} .mt5-dot-linked  { background: #f59e0b; }
-      #${STATUS_PANEL_ID} .mt5-dot-none    { background: #cbd5e1; }
-      #${STATUS_PANEL_ID} .mt5-acc-name  { font-size: 12px; font-weight: 700; color: #0f172a; min-width: 100px; }
-      #${STATUS_PANEL_ID} .mt5-acc-meta  { font-size: 10px; color: #64748b; flex: 1; }
-      #${STATUS_PANEL_ID} .mt5-acc-bal   { font-size: 12px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #2563eb; }
-      #${STATUS_PANEL_ID} .mt5-acc-sync  { font-size: 9px; color: #94a3b8; white-space: nowrap; }
+      #${STATUS_PANEL_ID} .mt5-dot-synced  { background: var(--ds-pos); }
+      #${STATUS_PANEL_ID} .mt5-dot-linked  { background: var(--ds-warn); }
+      #${STATUS_PANEL_ID} .mt5-dot-none    { background: var(--ds-line-strong); }
+      #${STATUS_PANEL_ID} .mt5-acc-name  { font-size: 12px; font-weight: 600; color: var(--ds-text); min-width: 100px; }
+      #${STATUS_PANEL_ID} .mt5-acc-meta  { font-size: 10px; color: var(--ds-muted); flex: 1; }
+      #${STATUS_PANEL_ID} .mt5-acc-bal   { font-size: 12px; font-weight: 800; font-family: var(--ds-mono); font-variant-numeric: tabular-nums; color: var(--ds-text); }
+      #${STATUS_PANEL_ID} .mt5-acc-sync  { font-size: 9px; color: var(--ds-muted); white-space: nowrap; }
       #${STATUS_PANEL_ID} .mt5-status-badge {
         font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
         padding: 2px 7px; border-radius: 6px;
       }
-      #${STATUS_PANEL_ID} .mt5-badge-synced  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-      #${STATUS_PANEL_ID} .mt5-badge-linked  { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
-      #${STATUS_PANEL_ID} .mt5-badge-none    { background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+      #${STATUS_PANEL_ID} .mt5-badge-synced  { background: var(--ds-pos-tint); color: var(--ds-pos); border: 0; }
+      #${STATUS_PANEL_ID} .mt5-badge-linked  { background: var(--ds-warn-tint); color: var(--ds-warn); border: 0; }
+      #${STATUS_PANEL_ID} .mt5-badge-none    { background: var(--ds-surface-2); color: var(--ds-muted); border: 0; }
       #${STATUS_PANEL_ID} .mt5-history-btn {
-        font-size: 10px; color: #2563eb; font-weight: 700;
+        font-size: 10px; color: var(--ds-accent); font-weight: 600;
         background: none; border: 0; cursor: pointer; text-decoration: underline;
         padding: 0;
       }
@@ -106,50 +106,50 @@
       #mt5-history-modal {
         position: fixed; inset: 0; z-index: 180;
         display: flex; align-items: center; justify-content: center;
-        padding: 16px; background: rgba(15,23,42,.3); backdrop-filter: blur(4px);
+        padding: 16px; background: rgba(5,8,15,.42); backdrop-filter: blur(6px);
       }
       #mt5-history-modal.hidden { display: none; }
       #mt5-history-modal .mt5-hm-box {
         width: min(760px, 100%); max-height: 80vh; overflow: hidden;
-        border-radius: 20px; background: #fff; box-shadow: 0 32px 80px rgba(15,23,42,.2);
+        border-radius: var(--ds-radius-card); background: var(--ds-surface-solid); border: 1px solid var(--ds-line); box-shadow: 0 30px 80px -24px rgba(0,0,0,.35); color: var(--ds-text);
         display: flex; flex-direction: column;
       }
       #mt5-history-modal .mt5-hm-head {
-        padding: 16px 20px; border-bottom: 1px solid #e2e8f0;
+        padding: 16px 20px; border-bottom: 1px solid var(--ds-line);
         display: flex; align-items: center; justify-content: space-between;
         flex-shrink: 0;
       }
       #mt5-history-modal .mt5-hm-body { overflow-y: auto; flex: 1; }
       #mt5-history-modal table { width: 100%; border-collapse: collapse; font-size: 11px; }
-      #mt5-history-modal th { padding: 8px 12px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; background: #f8fafc; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; }
+      #mt5-history-modal th { padding: 8px 12px; text-align: left; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--ds-muted); font-family: var(--ds-mono); background: var(--ds-surface-2); border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; }
       #mt5-history-modal th:not(:first-child) { text-align: right; }
-      #mt5-history-modal td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+      #mt5-history-modal td { padding: 9px 12px; border-bottom: 1px solid var(--ds-line); color: var(--ds-text-2); }
       #mt5-history-modal td:not(:first-child) { text-align: right; font-family: 'JetBrains Mono', monospace; }
-      #mt5-history-modal tbody tr:hover { background: #f8fafc; }
+      #mt5-history-modal tbody tr:hover { background: var(--ds-surface-2); }
 
       /* Open positions panel */
       #${POSITIONS_PANEL_ID} { margin-bottom: 20px; }
       #${POSITIONS_PANEL_ID} .mt5-pos-header {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 14px 18px; border-bottom: 1px solid #e2e8f0;
+        padding: 14px 18px; border-bottom: 1px solid var(--ds-line);
       }
       #${POSITIONS_PANEL_ID} .mt5-pos-row {
         display: grid;
         grid-template-columns: 1fr 60px 70px 80px 80px 80px 80px 70px;
         gap: 0; font-size: 11px; font-family: 'JetBrains Mono', monospace;
-        border-bottom: 1px solid #f8fafc; padding: 8px 18px;
+        border-bottom: 1px solid var(--ds-line); padding: 8px 18px;
         align-items: center;
       }
       #${POSITIONS_PANEL_ID} .mt5-pos-row.head {
         font-size: 9px; font-weight: 800; text-transform: uppercase;
-        letter-spacing: .06em; color: #94a3b8;
-        font-family: inherit; background: #f8fafc;
+        letter-spacing: .08em; color: var(--ds-muted);
+        font-family: var(--ds-mono); background: var(--ds-surface-2);
       }
       #${POSITIONS_PANEL_ID} .mt5-pos-row > *:not(:first-child) { text-align: right; }
-      #${POSITIONS_PANEL_ID} .mt5-pos-buy  { color: #16a34a; font-weight: 800; }
-      #${POSITIONS_PANEL_ID} .mt5-pos-sell { color: #dc2626; font-weight: 800; }
-      #${POSITIONS_PANEL_ID} .mt5-pos-pnl-pos { color: #16a34a; font-weight: 800; }
-      #${POSITIONS_PANEL_ID} .mt5-pos-pnl-neg { color: #dc2626; font-weight: 800; }
+      #${POSITIONS_PANEL_ID} .mt5-pos-buy  { color: var(--ds-pos); font-weight: 800; }
+      #${POSITIONS_PANEL_ID} .mt5-pos-sell { color: var(--ds-neg); font-weight: 800; }
+      #${POSITIONS_PANEL_ID} .mt5-pos-pnl-pos { color: var(--ds-pos); font-weight: 800; }
+      #${POSITIONS_PANEL_ID} .mt5-pos-pnl-neg { color: var(--ds-neg); font-weight: 800; }
 
       /* ── Mobile responsive ── */
       @media (max-width: 767px) {
@@ -202,7 +202,7 @@
     const o = document.createElement('div');
     o.id = 'mt5IntegrationModal';
     o.className = 'fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-950/30 backdrop-blur-md';
-    o.innerHTML = `<div style="width:100%;max-width:min(520px,calc(100vw - 24px));max-height:90vh;overflow-y:auto;border-radius:26px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.98);box-shadow:0 32px 80px rgba(15,23,42,.2);overflow:hidden">${html}</div>`;
+    o.innerHTML = `<div class="mt5-modal-box" role="dialog" aria-modal="true">${html}</div>`;
     document.body.appendChild(o);
     o.addEventListener('click', e => { if (e.target === o) o.remove(); });
     done?.(o);
@@ -218,40 +218,40 @@
       <div class="p-6">
         <div class="flex justify-between items-start mb-5">
           <div>
-            <div class="text-[10px] uppercase tracking-widest font-bold text-blue-600">${esc(mode())} · ${esc(acc.name)}</div>
-            <h3 class="mt-1 text-xl font-bold text-slate-900">Link MT5 account</h3>
-            <p class="mt-1 text-xs text-slate-500">Read-only bridge. The journal never places or closes MT5 trades.</p>
+            <div class="ds-label">${esc(mode())} · ${esc(acc.name)}</div>
+            <h3 class="ds-dialog-title">Link MT5 account</h3>
+            <p class="ds-dialog-text">Read-only bridge. The journal never places or closes MT5 trades.</p>
           </div>
-          <button data-x class="h-9 w-9 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-700">×</button>
+          <button data-x class="ds-close" aria-label="Close">×</button>
         </div>
         <div class="space-y-4">
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1.5">MT5 Login / Account number</label>
+            <label class="ds-label" style="display:block;margin-bottom:6px">MT5 Login / Account number</label>
             <input id="m5login" type="text" inputmode="numeric" placeholder="e.g. 12345678"
-              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-mono text-slate-800 focus:outline-none focus:border-blue-400">
+              class="ds-input ds-num">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1.5">Broker server name</label>
+            <label class="ds-label" style="display:block;margin-bottom:6px">Broker server name</label>
             <input id="m5server" type="text" placeholder="e.g. Exness-MT5Trial9"
-              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+              class="ds-input">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1.5">Label (optional)</label>
+            <label class="ds-label" style="display:block;margin-bottom:6px">Label (optional)</label>
             <input id="m5label" type="text" placeholder="e.g. My Demo Account"
-              class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:border-blue-400">
+              class="ds-input">
           </div>
         </div>
-        <div class="mt-5 rounded-2xl bg-blue-50 border border-blue-100 p-4 text-xs text-blue-800 space-y-1">
+        <div class="ds-note mt-5 space-y-1">
           <div class="font-bold">How it works:</div>
           <div>1. Enter your MT5 login and broker server, then click Link account.</div>
           <div>2. Copy the token that appears.</div>
           <div>3. Paste the token into the OB_Journal_Bridge EA in MetaTrader 5.</div>
           <div>4. Trades will sync automatically every 5 seconds.</div>
         </div>
-        <div id="m5error" class="hidden mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-semibold"></div>
+        <div id="m5error" class="hidden mt-3 ds-note mt5-error"></div>
         <div class="mt-6 flex justify-end gap-2">
-          <button data-x class="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
-          <button id="m5save" class="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors flex items-center gap-2">
+          <button type="button" data-x class="ds-btn ds-btn-secondary">Cancel</button>
+          <button type="button" id="m5save" class="ds-btn ds-btn-primary">
             <i class="fa-solid fa-link text-xs"></i> Link account
           </button>
         </div>
@@ -301,27 +301,27 @@
           save(all);
 
           // Show token
-          o.querySelector('.w-full.max-w-\\[520px\\]').innerHTML = `
+          o.querySelector('.mt5-modal-box').innerHTML = `
             <div class="p-6 space-y-4">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="ds-dialog-icon" style="margin:0;background:var(--ds-pos-tint);color:var(--ds-pos)"><i class="fa-solid fa-circle-check"></i></div>
                 <div>
-                  <h3 class="text-lg font-bold text-slate-900">MT5 linked successfully</h3>
+                  <h3 class="ds-dialog-title">MT5 linked successfully</h3>
                   <p class="text-xs text-slate-500">${esc(acc.name)} · ${esc(mode())} · ${esc(server)}</p>
                 </div>
               </div>
-              <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <div class="text-xs font-bold text-slate-600">Bridge token — paste this into the EA's InpBridgeToken field:</div>
+              <div class="ds-note space-y-2">
+                <div class="ds-label">Bridge token — paste this into the EA's InpBridgeToken field:</div>
                 <div class="flex gap-2">
                   <input id="m5tokenInput" readonly value="${esc(j.token)}"
-                    class="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-mono text-slate-700 bg-white select-all">
-                  <button id="m5copyBtn" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5">
+                    class="ds-input ds-num ob-token min-w-0 flex-1 select-all">
+                  <button id="m5copyBtn" type="button" class="ds-btn ds-btn-secondary">
                     <i class="fa-solid fa-copy text-[10px]"></i> Copy
                   </button>
                 </div>
                 <p class="text-[10px] text-slate-500">Keep this token private. It grants the EA permission to sync data to this account.</p>
               </div>
-              <div class="p-4 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-800 space-y-1">
+              <div class="ds-note space-y-1">
                 <div class="font-bold">Next steps:</div>
                 <div>1. Open MetaTrader 5 → Tools → Options → Expert Advisors → Allow WebRequest</div>
                 <div>2. Add: <span class="font-mono">https://ob-backtest-journal.onrender.com</span></div>
@@ -329,7 +329,7 @@
                 <div>4. Trades will appear in your journal automatically.</div>
               </div>
               <div class="flex justify-end">
-                <button id="m5done" class="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">Done</button>
+                <button type="button" id="m5done" class="ds-btn ds-btn-primary">Done</button>
               </div>
             </div>`;
           document.getElementById('m5copyBtn').onclick = async () => {
@@ -382,10 +382,10 @@
       modal.innerHTML = `<div class="mt5-hm-box">
         <div class="mt5-hm-head">
           <div>
-            <div id="mt5HmTitle" class="text-sm font-bold text-slate-900"></div>
-            <div id="mt5HmSub" class="text-xs text-slate-400 mt-0.5"></div>
+            <div id="mt5HmTitle" class="ds-h2" style="font-size:16px"></div>
+            <div id="mt5HmSub" class="ds-sub" style="margin-top:2px"></div>
           </div>
-          <button id="mt5HmClose" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+          <button type="button" id="mt5HmClose" class="ds-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="mt5-hm-body" id="mt5HmBody"><div class="p-8 text-center text-slate-400 text-sm">Loading…</div></div>
       </div>`;
@@ -416,7 +416,7 @@
         <tbody>
           ${trades.slice(0, 500).map(t => {
             const pnl = Number(t.profit || 0);
-            const pnlClass = pnl >= 0 ? 'color:#16a34a' : 'color:#dc2626';
+            const pnlClass = pnl >= 0 ? 'color:var(--ds-pos)' : 'color:var(--ds-neg)';
             const dir = String(t.direction || t.type || '').toLowerCase();
             const dirClass = dir === 'buy' ? 'color:#16a34a;font-weight:800' : 'color:#dc2626;font-weight:800';
             return `<tr>
@@ -500,7 +500,7 @@
     panel.innerHTML = `
       <div class="mt5-sp-header">
         <div class="mt5-sp-title">
-          <i class="fa-solid fa-plug text-blue-600"></i>
+          <i class="fa-solid fa-plug" style="color:var(--ds-accent)"></i>
           MT5 Integration — ${currentModeLabel}
           ${mode() === 'Backtest'
             ? '<span style="font-size:9px;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;padding:2px 8px;border-radius:6px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">BACKTEST MODE</span>'
@@ -526,8 +526,8 @@
             ? `<div style="padding:16px 18px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:10px">
                  <i class="fa-solid fa-circle-exclamation" style="color:#cbd5e1"></i>
                  No ${currentModeLabel} accounts found.
-                 <button onclick="typeof window.openAddAccountModal === 'function' && window.openAddAccountModal()"
-                   style="margin-left:auto;padding:5px 12px;border-radius:8px;border:1px solid #2563eb;background:#eff6ff;color:#2563eb;font-size:11px;font-weight:700;cursor:pointer">
+                 <button type="button" onclick="typeof window.openAddAccountModal === 'function' && window.openAddAccountModal()"
+                   class="ds-btn ds-btn-secondary ds-btn-sm" style="margin-left:auto">
                    + Add account first
                  </button>
                </div>`
@@ -610,9 +610,9 @@
       <div class="mt5-pos-header">
         <div>
           <div style="font-size:13px;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px">
-            <i class="fa-solid fa-chart-simple text-blue-600"></i>
+            <i class="fa-solid fa-chart-simple" style="color:var(--ds-accent)"></i>
             Open Positions — ${esc(acc.mt5?.server || 'MT5')}
-            <span style="font-size:9px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;padding:2px 7px;border-radius:6px;font-weight:800">${positions.length} OPEN</span>
+            <span class="ds-period" style="background:var(--ds-surface-2);padding:2px 8px;border-radius:999px">${positions.length} open</span>
           </div>
           <div style="font-size:10px;color:#64748b;margin-top:2px">
             Balance: <strong>${fmtMoney(state?.balance, currency)}</strong> ·
@@ -741,29 +741,29 @@
     overlay(`
       <div class="p-6 space-y-4">
         <div class="flex justify-between items-start">
-          <h3 class="text-lg font-bold text-slate-900">MT5 Integration Guide</h3>
-          <button data-x class="h-8 w-8 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 hover:text-slate-700">×</button>
+          <h3 class="ds-dialog-title">MT5 integration guide</h3>
+          <button data-x class="ds-close" aria-label="Close">×</button>
         </div>
         <div class="space-y-3 text-sm text-slate-600">
-          <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="ds-note">
             <div class="font-bold text-slate-800 mb-1">Step 1 — Link your account</div>
             Click "Link MT5" on the account you want to connect. Enter your MT5 login and broker server name.
           </div>
-          <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="ds-note">
             <div class="font-bold text-slate-800 mb-1">Step 2 — Install the EA</div>
             Copy the bridge token. Open MetaTrader 5, compile OB_Journal_Bridge.mq5, attach it to any chart, and paste the token into InpBridgeToken.
           </div>
-          <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="ds-note">
             <div class="font-bold text-slate-800 mb-1">Step 3 — Allow WebRequest</div>
-            In MT5: Tools → Options → Expert Advisors → Allow WebRequest → add <span class="font-mono text-blue-600">https://ob-backtest-journal.onrender.com</span>
+            In MT5: Tools → Options → Expert Advisors → Allow WebRequest → add <span class="font-mono ob-token">https://ob-backtest-journal.onrender.com</span>
           </div>
-          <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="ds-note">
             <div class="font-bold text-slate-800 mb-1">Step 4 — Trades appear automatically</div>
             Open positions sync every 5 seconds. Closed trades appear in your journal with P/L and auto-calculated R-multiple (if SL was set).
           </div>
         </div>
         <div class="flex justify-end">
-          <button data-x class="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">Got it</button>
+          <button type="button" data-x class="ds-btn ds-btn-primary">Got it</button>
         </div>
       </div>
     `, o => o.querySelectorAll('[data-x]').forEach(b => b.onclick = () => o.remove()));
