@@ -469,3 +469,55 @@ body.ob-kb-open #tradeDrawer { top: var(--vvt, 0px) !important; bottom: auto !im
       radial-gradient(farthest-side at 100% 50%, rgba(255,255,255,.14), transparent) right / 10px 100% no-repeat scroll;
   }
 }
+
+/* ── 6. Account center, Settings page, MT5 widgets ────────────────────────── */
+@media (max-width: 1023px), (pointer: coarse) {
+  /* Account center (account-center.js / .css) */
+  #pageAccounts .ac-nav-item,
+  #pageAccounts .ac-btn,
+  #pageAccounts .ac-input,
+  #pageAccounts .ac-select,
+  #pageAccounts .ac-seg button,
+  .ac-dialog .ac-btn, .ac-dialog .ac-input, .ac-dialog .ac-select, .ac-dialog .ac-seg button { min-height: var(--tap) !important; }
+  #pageAccounts .ac-link, .ac-dialog .ac-link { min-height: var(--tap); display: inline-flex; align-items: center; }
+  #pageAccounts .ac-field > .ac-seg { min-height: var(--tap); }
+  /* "Open console" links in Performance by mode */
+  #accountsGrid button { min-height: var(--tap); padding: 0 8px; margin-right: -8px; }
+  /* Settings page */
+  #pageSettings input:not([type=file]), #pageSettings button, #pageSettings label.cursor-pointer { min-height: var(--tap) !important; }
+  /* MT5 status panel on Trading (mt5-integration-ui.js) */
+  #mt5-status-panel .mt5-btn { height: var(--tap) !important; min-height: var(--tap); padding: 0 14px !important; font-size: 13px !important; }
+  #mt5-status-panel .mt5-history-btn { min-height: var(--tap); padding: 0 6px; font-size: 12px; }
+  #mt5IntegrationModal button, #mt5-history-modal button, #mt5IntegrationModal input, #mt5IntegrationModal select { min-height: var(--tap); }
+  #mt5OpenPositions button { min-height: var(--tap); }
+}
+@media (max-width: 767px) {
+  /* Account center: forms already single column (account-center.css ≤600px);
+     the section tabs scroll sideways. Keep the active tab in view. */
+  #pageAccounts .ac-nav-list { scroll-snap-type: x proximity; }
+  #pageAccounts .ac-nav-item { scroll-snap-align: center; }
+  #pageAccounts .ac-head { gap: 10px; flex-wrap: wrap; }
+  /* Account card actions wrap into tidy rows */
+  #pageAccounts .ac-acc .ac-btn-sm { flex: 1 1 auto; justify-content: center; }
+
+  /* Settings page */
+  #pageSettings > .glass-card { padding: 16px !important; }
+  #pageSettings h2 { font-size: 17px !important; line-height: 1.3; }
+  #pageSettings .p-4.rounded-xl:has(#mt5BridgeStatus) { flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+  #pageSettings .p-4.rounded-xl:has(#mt5BridgeStatus) > div:first-child { flex: 1 1 100%; align-items: flex-start; }
+  #pageSettings .p-4.rounded-xl:has(#mt5BridgeStatus) > div:first-child > div:first-child { margin-top: 4px; flex-shrink: 0; }
+  #pageSettings .flex-wrap:has(button[onclick^="exportDataJSON"]) { display: grid; grid-template-columns: minmax(0, 1fr); }
+  #pageSettings .flex-wrap:has(button[onclick^="exportDataJSON"]) > * { margin-left: 0 !important; justify-content: center; display: flex; align-items: center; }
+
+  /* MT5 status panel: title on its own row, actions below at full width */
+  #mt5-status-panel .mt5-sp-header { flex-wrap: wrap; gap: 10px; padding: 12px 14px !important; }
+  #mt5-status-panel .mt5-sp-title { flex: 1 1 100%; flex-wrap: wrap; font-size: 14px !important; }
+  #mt5-status-panel .mt5-sp-actions { flex: 1 1 100%; }
+  #mt5-status-panel .mt5-sp-actions > * { flex: 1 1 0; justify-content: center; }
+  #mt5-status-panel .mt5-account-row .mt5-btn { margin-left: auto; }
+  #mt5-status-panel .mt5-acc-meta { font-size: 11px !important; }
+  #mt5-status-panel .mt5-acc-sync { font-size: 10px !important; }
+}
+/* MT5 dialogs: never taller than the visible screen (inline 90vh/80vh) */
+#mt5IntegrationModal > div { max-height: calc(100vh - 24px) !important; max-height: calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom)) !important; overscroll-behavior: contain; }
+#mt5-history-modal .mt5-hm-box { max-height: calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom)) !important; }
