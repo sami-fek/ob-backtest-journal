@@ -2,8 +2,8 @@
  * mobile.js — small behaviours for phones and tablets (Mobile round).
  * Layout lives in mobile.css; this file only does what CSS cannot.
  *
- * 1. Pill nav: keep the active tab scrolled into view inside the
- *    horizontally scrolling nav (without scrolling the page).
+ * 1. Pill nav (and the Account center section tabs): keep the active tab
+ *    scrolled into view inside the sideways-scrolling row (not the page).
  * 2. Trading Activity heatmaps: when a page opens, start them on the newest
  *    weeks (they may have been drawn while the page was hidden).
  * 3. On-screen keyboard: track the visual viewport (--vvh / --vvt and
@@ -31,13 +31,28 @@
     const left = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
     nav.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' });
   }
+  // Account center section tabs (#acNavList) scroll sideways on phones too.
+  function centerActiveAcTab() {
+    const list = document.getElementById('acNavList');
+    if (!list || list.scrollWidth <= list.clientWidth + 1) return;
+    const active = list.querySelector('[aria-selected="true"]');
+    if (!active) return;
+    list.scrollTo({ left: Math.max(0, active.offsetLeft - (list.clientWidth - active.offsetWidth) / 2), behavior: 'auto' });
+  }
+  function watchAcTabs() {
+    const list = document.getElementById('acNavList');
+    if (!list) return;
+    let t = 0;
+    new MutationObserver(() => { clearTimeout(t); t = setTimeout(centerActiveAcTab, 30); })
+      .observe(list, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-selected'] });
+  }
   function watchNav() {
     const nav = document.querySelector('header nav.ob-pill-nav');
     if (!nav) return;
     let t = 0;
     new MutationObserver(() => {
       clearTimeout(t);
-      t = setTimeout(() => { centerActivePill(true); scrollHeatmapsToNewest(); }, 30);
+      t = setTimeout(() => { centerActivePill(true); scrollHeatmapsToNewest(); centerActiveAcTab(); }, 30);
     }).observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
     centerActivePill(false);
     window.addEventListener('resize', () => centerActivePill(false), { passive: true });
@@ -133,6 +148,7 @@
     trackKeyboard();
     wireCollapsibles();
     watchCoach();
+    watchAcTabs();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

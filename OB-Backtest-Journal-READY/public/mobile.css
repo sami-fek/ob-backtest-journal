@@ -583,3 +583,25 @@ body.ob-kb-open #ob-ai-chat { top: var(--vvt, 0px) !important; bottom: auto !imp
 @media (max-width: 400px) {
   html body > header:has(> div > div:last-child:not(.ob-has-account)) h1 + span { display: none; }
 }
+
+/* ── Final pass: account wallet card (account-widget-fix.js) ─────────────── */
+@media (max-width: 1023px), (pointer: coarse) {
+  /* Visual size stays compact on the card; an invisible ring makes the target 44px. */
+  html body #wallet-account-carousel .wallet-edit { width: 32px; height: 32px; position: relative; }
+  html body #wallet-account-carousel .wallet-arrow { width: 34px; height: 34px; }
+  html body #wallet-account-carousel .wallet-edit::before,
+  html body #wallet-account-carousel .wallet-arrow::before { content: ''; position: absolute; inset: -6px; border-radius: 999px; }
+  html body #wallet-account-carousel .wallet-add { min-height: var(--tap); padding: 0 10px; font-size: 12px; }
+}
+
+/* ── Final pass: Account center profile card, Home stats ─────────────────── */
+@media (max-width: 600px) {
+  #pageAccounts .ac-profile-top { flex-wrap: wrap; }
+  #pageAccounts .ac-profile-who { flex: 1 1 0; min-width: 0; }
+  #pageAccounts .ac-profile-name { overflow-wrap: anywhere; }
+  #pageAccounts .ac-profile-user { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #pageAccounts #acEditProfile { flex: 1 1 100%; justify-content: center; order: 3; }
+}
+@media (max-width: 420px) {
+  #pageHome #homeWinRate, #pageHome #homeSystemEdge, #pageHome #homeDiscipline { white-space: nowrap; font-size: 20px !important; }
+}
