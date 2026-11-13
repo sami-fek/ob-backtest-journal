@@ -321,3 +321,152 @@ html[data-theme] #pageJournal .jp-table tbody { border-color: var(--ds-line) !im
 html[data-theme] #pageJournal .jp-table tbody > tr { border-color: var(--ds-line) !important; }
 html[data-theme] #pageJournal .jp-table tbody > tr:hover { background: var(--ds-surface-2) !important; }
 html[data-theme] #pageJournal .jp-table td[data-col="strategy"] { color: var(--ds-text) !important; }
+
+/* ── 5. Buttons everywhere: no saturated blue buttons ──────────────────── */
+html[data-theme] :is(button, label, a).bg-blue-600 {
+  background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; border-color: var(--ds-btn-bg) !important; box-shadow: none !important;
+}
+html[data-theme] :is(button, label, a).bg-blue-600:hover { background: var(--ds-btn-hover) !important; }
+html[data-theme] button.bg-emerald-600 { background: var(--ds-log-bg) !important; color: var(--ds-log-text) !important; border-color: var(--ds-log-bg) !important; box-shadow: none !important; }
+html[data-theme] button.bg-emerald-600:hover { background: var(--ds-log-hover) !important; }
+
+/* ── 6. Overlays ───────────────────────────────────────────────────────── */
+/* Shared surface for dialogs / sheets / panels */
+html[data-theme] :is(#ob-strategy-editor, #ob-strategy-delete) > div,
+html[data-theme] #ob-daily-limit-block > div,
+html[data-theme] .ob-dm-box,
+html[data-theme] .mt5-modal,
+html[data-theme] #mt5-history-modal .mt5-hm-box,
+html[data-theme] #mt5IntegrationModal > div {
+  background: var(--ds-surface-solid) !important; border: 1px solid var(--ds-line) !important; border-radius: var(--ds-radius-card) !important;
+  box-shadow: 0 30px 80px -24px rgba(0, 0, 0, .35) !important; color: var(--ds-text);
+}
+html[data-theme] :is(#ob-strategy-editor, #ob-strategy-delete) > div h3,
+html[data-theme] #ob-daily-limit-block h3 { font-weight: 600 !important; letter-spacing: -0.01em; }
+html[data-theme] :is(#ob-strategy-editor, #ob-strategy-delete) .border-slate-100 { border-color: var(--ds-line) !important; }
+html[data-theme] :is(#ob-strategy-editor, #ob-strategy-delete, #ob-daily-limit-block, #mt5IntegrationModal) input,
+html[data-theme] :is(#ob-strategy-editor, #ob-strategy-delete, #ob-daily-limit-block, #mt5IntegrationModal) select {
+  background: var(--ds-surface-solid) !important; border-color: var(--ds-line-strong) !important; color: var(--ds-text) !important; border-radius: var(--ds-radius-ctl) !important;
+}
+html[data-theme] .mt5-modal .text-blue-600 { color: var(--ds-muted) !important; font-family: var(--ds-mono); }
+
+/* Trade drawer + calendar "+" panel (same panel) */
+html[data-theme] #tradeDrawer .drawer-panel { background: var(--ds-surface-solid) !important; border-left: 1px solid var(--ds-line) !important; }
+html[data-theme] #tradeDrawer .drawer-panel .border-slate-100,
+html[data-theme] #tradeDrawer .drawer-panel .border-slate-200 { border-color: var(--ds-line) !important; }
+html[data-theme] #tradeDrawer .drawer-panel .bg-white { background: var(--ds-surface-solid) !important; }
+html[data-theme] #tradeDrawer .drawer-panel .uppercase.tracking-widest { font-family: var(--ds-mono) !important; font-weight: 600 !important; letter-spacing: .1em !important; color: var(--ds-muted) !important; }
+html[data-theme] #tradeDrawer #drawerPair { font-weight: 600 !important; letter-spacing: -0.01em; }
+/* checklist rows: quiet tint, no coloured outlines */
+html[data-theme] #tradeDrawer .chk-item { background: var(--ds-surface-2) !important; border-color: transparent !important; border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] #tradeDrawer .chk-item.chk-passed { background: var(--ds-pos-tint) !important; }
+html[data-theme] #tradeDrawer .chk-item.chk-failed { background: var(--ds-neg-tint) !important; }
+html[data-theme] #tradeDrawer .chk-item .chk-text,
+html[data-theme] #tradeDrawer .chk-item.chk-passed .chk-text,
+html[data-theme] #tradeDrawer .chk-item.chk-failed .chk-text { color: var(--ds-text) !important; font-size: 12.5px !important; }
+html[data-theme] #tradeDrawer .chk-btn { border-radius: 8px !important; box-shadow: none !important; background: var(--ds-surface-solid) !important; border-color: var(--ds-line-strong) !important; color: var(--ds-muted) !important; }
+html[data-theme] #tradeDrawer .chk-btn-pass.active { background: var(--ds-pos) !important; border-color: var(--ds-pos) !important; color: #fff !important; }
+html[data-theme] #tradeDrawer .chk-btn-fail.active { background: var(--ds-neg) !important; border-color: var(--ds-neg) !important; color: #fff !important; }
+/* AI analysis: a secondary action, not a blue gradient button */
+html[data-theme] #tradeDrawer #drawerAiBtn {
+  background: transparent !important; color: var(--ds-text) !important; border: 1px solid var(--ds-line-strong) !important; box-shadow: none !important;
+  border-radius: var(--ds-radius-ctl) !important; font-family: var(--ds-mono); font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; font-weight: 600 !important;
+}
+html[data-theme] #tradeDrawer #drawerAiBtn:hover { background: var(--ds-btn2-hover) !important; }
+html[data-theme] #tradeDrawer #drawerAiBtn i { color: var(--ds-accent); }
+html[data-theme] #tradeDrawer #drawerAiRerunBtn { background: transparent !important; color: var(--ds-accent) !important; border: 1px solid var(--ds-line-strong) !important; }
+html[data-theme] #tradeDrawer #drawerSaveGateMsg { background: var(--ds-surface-2) !important; border-color: var(--ds-line) !important; color: var(--ds-text-2) !important; border-radius: var(--ds-radius-ctl) !important; }
+/* Save = log-trade green; Delete = quiet secondary */
+html[data-theme] #tradeDrawer #drawerSaveBtn {
+  background: var(--ds-log-bg) !important; border-color: var(--ds-log-bg) !important; color: var(--ds-log-text) !important; border-radius: var(--ds-radius-ctl) !important;
+  font-family: var(--ds-mono); font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; font-weight: 600 !important; min-height: 38px; padding-left: 16px !important; padding-right: 16px !important;
+}
+html[data-theme] #tradeDrawer #drawerSaveBtn:hover { background: var(--ds-log-hover) !important; }
+html[data-theme] #tradeDrawer #drawerDeleteBtn {
+  background: transparent !important; border-color: var(--ds-line-strong) !important; color: var(--ds-muted) !important; border-radius: var(--ds-radius-ctl) !important;
+  font-family: var(--ds-mono); font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; min-height: 38px;
+}
+html[data-theme] #tradeDrawer #drawerDeleteBtn:hover { color: var(--ds-neg) !important; border-color: var(--ds-neg) !important; }
+html[data-theme] #tradeDrawer .ob-note-editor, html[data-theme] #tradeDrawer #drawerTagField { border-radius: var(--ds-radius-ctl) !important; }
+
+/* Account menu: neutral highlight (blue = accent only) */
+html[data-theme] #ob-account-menu { border-radius: var(--ds-radius-card) !important; border-color: var(--ds-line) !important; background: var(--ds-surface-solid) !important; box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .3) !important; }
+html[data-theme] #ob-account-menu .ob-acc-item:hover, html[data-theme] #ob-account-menu .ob-acc-item:focus-visible { background: var(--ds-surface-2) !important; color: var(--ds-text) !important; }
+html[data-theme] #ob-account-menu .ob-acc-label { font-family: var(--ds-mono); font-weight: 600 !important; letter-spacing: .1em !important; }
+html[data-theme] #ob-account-menu .ob-acc-logout:hover { background: var(--ds-neg-tint) !important; color: var(--ds-neg) !important; }
+
+/* Dropdowns / bottom sheets */
+html[data-theme] .ob-dd-panel, html[data-theme] .ob-dd-sheet { background: var(--ds-surface-solid) !important; border-color: var(--ds-line) !important; border-radius: var(--ds-radius-card) !important; box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .3) !important; }
+html[data-theme] .ob-dd-sheet { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+html[data-theme] .ob-dd-opt.ob-dd-active { background: var(--ds-surface-2) !important; color: var(--ds-text) !important; }
+html[data-theme] .ob-dd-opt.ob-dd-active .ob-dd-check { color: var(--ds-accent) !important; }
+html[data-theme] .ob-dd-label { font-family: var(--ds-mono); letter-spacing: .1em !important; }
+
+/* AI Coach: header button at every width (mobile.js docks it) + chat panel */
+html[data-theme] body #ob-ai-fab.ob-fab-docked { background: transparent !important; color: var(--ds-text) !important; border: 1px solid var(--ds-line-strong) !important; }
+html[data-theme] body #ob-ai-fab.ob-fab-docked i { color: var(--ds-accent); }
+@media (min-width: 1024px) {
+  html body > header .ob-has-account > #ob-ai-fab.ob-fab-docked.ob-fab-docked, html body > header #ob-ai-fab.ob-fab-docked.ob-fab-docked {
+    width: auto !important; height: 38px !important; min-height: 38px !important; padding: 0 14px !important; border-radius: var(--ds-radius-ctl) !important;
+    display: inline-flex !important; align-items: center; gap: 8px; font: 600 11px/1 var(--ds-mono) !important; letter-spacing: .08em; text-transform: uppercase;
+  }
+  html body > header #ob-ai-fab.ob-fab-docked.ob-fab-docked i { font-size: 13px !important; }
+}
+html[data-theme] #ob-ai-chat .chat-panel { background: var(--ds-surface-solid) !important; border-left: 1px solid var(--ds-line) !important; }
+html[data-theme] #ob-ai-chat .chat-input, html[data-theme] #ob-ai-chat .context { background: var(--ds-surface-solid) !important; border-color: var(--ds-line) !important; }
+html[data-theme] #ob-ai-chat .msg.ai { background: var(--ds-surface-2) !important; color: var(--ds-text) !important; border-radius: 14px !important; }
+html[data-theme] #ob-ai-chat .msg.user { background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; }
+html[data-theme] #ob-ai-chat .send { background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] #ob-ai-chat .tool { background: transparent !important; color: var(--ds-text) !important; border-color: var(--ds-line-strong) !important; border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] #ob-ai-chat textarea { background: var(--ds-surface-solid) !important; color: var(--ds-text) !important; border-color: var(--ds-line-strong) !important; border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] #ob-ai-chat .chat-panel > :first-child [class*="text-blue"] { color: var(--ds-muted) !important; font-family: var(--ds-mono); letter-spacing: .1em; }
+
+/* Sign-in modal (signed-out homepage) */
+html[data-theme] #ob-auth-card { background: var(--ds-surface-solid) !important; border: 1px solid var(--ds-line) !important; border-radius: var(--ds-radius-card) !important; box-shadow: 0 30px 80px -24px rgba(0, 0, 0, .35) !important; }
+html[data-theme] #ob-auth-card .ob-auth-logo-mark { background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; border-radius: 12px !important; box-shadow: none !important; }
+html[data-theme] #ob-auth-card .ob-auth-title { color: var(--ds-text) !important; font-weight: 600 !important; letter-spacing: -0.01em; }
+html[data-theme] #ob-auth-card .ob-auth-sub, html[data-theme] #ob-auth-card .ob-footer-note { color: var(--ds-muted) !important; }
+html[data-theme] #ob-auth-card .ob-field { background: var(--ds-surface-solid) !important; border-color: var(--ds-line-strong) !important; color: var(--ds-text) !important; border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] #ob-auth-card .ob-field:focus { border-color: var(--ds-accent) !important; box-shadow: 0 0 0 3px var(--ds-accent-tint) !important; }
+html[data-theme] #ob-auth-card .ob-field-label { color: var(--ds-text-2) !important; }
+html[data-theme] #ob-auth-card .ob-btn-pw { background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; border-radius: var(--ds-radius-ctl) !important; box-shadow: none !important; font-family: var(--ds-mono); font-size: 12px !important; letter-spacing: .08em; text-transform: uppercase; }
+html[data-theme] #ob-auth-card .ob-btn-secondary { background: transparent !important; color: var(--ds-text) !important; border-color: var(--ds-line-strong) !important; border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] #ob-auth-card .ob-toggle-link { color: var(--ds-accent) !important; background: transparent !important; }
+html[data-theme] #ob-auth-card #ob-auth-close { background: transparent !important; border: 1px solid var(--ds-line) !important; color: var(--ds-muted) !important; }
+
+/* ── 7. Account center ─────────────────────────────────────────────────── */
+html[data-theme] #pageAccounts .ac-nav, html[data-theme] #pageAccounts .ac-card {
+  background: var(--ds-surface) !important; border: 1px solid var(--ds-line) !important; border-radius: var(--ds-radius-card) !important; box-shadow: var(--ds-shadow) !important;
+}
+html[data-theme] #pageAccounts .ac-nav-title { font-family: var(--ds-mono); font-weight: 600 !important; letter-spacing: .1em !important; color: var(--ds-muted) !important; }
+html[data-theme] #pageAccounts .ac-nav-item[aria-selected="true"] { background: var(--ds-surface-2) !important; border-color: transparent !important; }
+html[data-theme] #pageAccounts .ac-nav-item[aria-selected="true"] .ac-nav-name { color: var(--ds-text) !important; }
+html[data-theme] #pageAccounts .ac-nav-item[aria-selected="true"]::before { background: var(--ds-accent) !important; }
+html[data-theme] #pageAccounts .ac-title { font-weight: 500 !important; font-size: clamp(22px, 2vw, 28px) !important; letter-spacing: -0.02em !important; }
+html[data-theme] #pageAccounts .ac-card-title { font-weight: 600 !important; }
+html[data-theme] #pageAccounts .ac-btn { border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] #pageAccounts .ac-btn-primary { background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; border-color: var(--ds-btn-bg) !important; font-family: var(--ds-mono); font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; }
+html[data-theme] #pageAccounts :is(.ac-input, .ac-select, .ac-textarea) { background: var(--ds-surface-solid) !important; border-color: var(--ds-line-strong) !important; border-radius: var(--ds-radius-ctl) !important; }
+/* the sticky title row must not cover fields while scrolling on phones */
+@media (max-width: 1023px) { html body #pageAccounts .ac-head { position: static !important; } }
+
+/* ── 8. Settings ───────────────────────────────────────────────────────── */
+html[data-theme] #pageSettings > .glass-card { max-width: 960px !important; margin-left: 0 !important; margin-right: auto !important; padding: var(--ds-s6) !important; }
+html[data-theme] #pageSettings > .glass-card > div:first-child h2 { margin-bottom: 6px; font-size: clamp(22px, 2vw, 28px) !important; font-weight: 500 !important; letter-spacing: -0.02em; }
+html[data-theme] #pageSettings > .glass-card > div:first-child h2 > i { display: none; }
+html[data-theme] #pageSettings h3.text-blue-600 { color: var(--ds-text-2) !important; font-family: var(--ds-mono); font-weight: 600 !important; letter-spacing: .1em !important; font-size: 10.5px !important; }
+html[data-theme] #pageSettings .border-slate-100 { border-color: var(--ds-line) !important; }
+html[data-theme] #pageSettings input { background: var(--ds-surface-solid) !important; border-color: var(--ds-line-strong) !important; border-radius: var(--ds-radius-ctl) !important; color: var(--ds-text) !important; min-height: 38px; }
+html[data-theme] #pageSettings .rounded-xl.bg-slate-50 { background: var(--ds-surface-2) !important; border-color: var(--ds-line) !important; }
+html[data-theme] #pageSettings :is(button, label).rounded-xl {
+  border-radius: var(--ds-radius-ctl) !important; font-family: var(--ds-mono); font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; font-weight: 600 !important; box-shadow: none !important;
+}
+html[data-theme] #pageSettings :is(button, label).bg-slate-100, html[data-theme] #pageSettings label.bg-emerald-50 {
+  background: transparent !important; color: var(--ds-text) !important; border: 1px solid var(--ds-line-strong) !important;
+}
+html[data-theme] #pageSettings button.bg-rose-50 { background: transparent !important; color: var(--ds-neg) !important; border: 1px solid var(--ds-neg) !important; }
+@media (pointer: coarse), (max-width: 1023px) {
+  html[data-theme] #pageSettings input { min-height: var(--ds-tap); font-size: 16px !important; }
+  html[data-theme] #pageSettings :is(button, label).rounded-xl { min-height: var(--ds-tap); }
+}
+@media (max-width: 640px) { html[data-theme] #pageSettings > .glass-card { padding: var(--ds-s4) !important; } }

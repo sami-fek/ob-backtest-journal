@@ -119,7 +119,8 @@
   }
 
   // ── 5. AI Coach button ────────────────────────────────────────────────────
-  const DOCK_MQ = window.matchMedia('(max-width: 1023px)');
+  // BUILD-PLAN-2 Part 2: the AI Coach button sits in the header at every width (it no longer floats over content).
+  const DOCK_MQ = window.matchMedia('all');
   function dockCoach() {
     const fab = document.getElementById('ob-ai-fab');
     if (!fab) return;
