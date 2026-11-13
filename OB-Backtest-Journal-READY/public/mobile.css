@@ -170,7 +170,9 @@ body.ob-auth-page {
   #dbRoot .db-link { min-height: var(--tap); padding: 0 6px; }
   #dbRoot .db-pager .db-icon { width: var(--tap); height: var(--tap); }
   /* Calendar month buttons on the Trading page (same component) */
-  .ob-jh-nav { width: var(--tap) !important; height: var(--tap) !important; }
+  .ob-jh-nav { width: var(--tap) !important; height: var(--tap) !important; flex-shrink: 0; }
+  /* Row actions (eye / trash / Inspect) in the trades tables */
+  table.ob-card-table td[data-col="action"] button { min-width: var(--tap); min-height: var(--tap); }
 }
 /* Tablets: 5 stat cards as 2 + 3 (no empty slot) */
 @media (min-width: 641px) and (max-width: 1200px) {
@@ -234,3 +236,80 @@ body.ob-auth-page {
   .ob-jh-grid .ob-jh-count, .ob-jh-grid .ob-jh-week-count, .ob-jh-grid .ob-jh-week-label { font-size: 8.5px !important; }
   .ob-jh-grid .ob-jh-day { font-size: 10.5px !important; }
 }
+
+/* ── 3. Trading page ───────────────────────────────────────────────────────── */
+@media (max-width: 1023px), (pointer: coarse) {
+  /* Mode switch, form toggles, submit, dropdown buttons, filters */
+  #pageTrading [id^="modeBtn-"],
+  #pageTrading #dirBtnLong, #pageTrading #dirBtnShort,
+  #pageTrading #resBtnWin, #pageTrading #resBtnLoss, #pageTrading #resBtnBE,
+  #pageTrading #tradeForm button[type=submit],
+  #pageTrading #tradeForm input,
+  #pageTrading .ob-dd-btn,
+  #pageTrading select,
+  #pageTrading button[onclick^="copyTableCSV"],
+  #pageTrading button[onclick^="switchTab"] { min-height: var(--tap) !important; }
+  #pageTrading .ob-dd-btn { height: var(--tap) !important; font-size: 15px !important; }
+  #pageTrading [data-ob-jh-today] { min-height: var(--tap); padding-left: 14px !important; padding-right: 14px !important; }
+  /* Hard-stop / daily-limit banner close button */
+  #ob-discipline-banner .ob-banner-close { min-width: var(--tap); min-height: var(--tap); margin: -10px -10px -10px 0; }
+  /* Hard-stop confirmation dialog */
+  #ob-discipline-modal .ob-dm-back, #ob-discipline-modal .ob-dm-override,
+  [id$="discipline-modal"] .ob-dm-back, [id$="discipline-modal"] .ob-dm-override { min-height: var(--tap); }
+}
+@media (max-width: 767px) {
+  /* LOG A TRADE: one field per row */
+  #pageTrading #tradeForm { grid-template-columns: minmax(0, 1fr) !important; gap: 12px !important; font-size: 14px; }
+  #pageTrading #tradeForm > * { grid-column: auto !important; }
+  #pageTrading #tradeForm label { font-size: 13px; }
+  #pageTrading #tradeForm .flex.gap-1 { gap: 8px; }
+  #pageTrading #tradeForm .flex.gap-1 > button { font-size: 13px; }
+  /* Card header: title and helper text stack instead of squeezing */
+  #pageTrading #tradeForm { margin-top: 0; }
+  #pageTrading .glass-card > .flex.items-center.justify-between.mb-4 { flex-wrap: wrap; gap: 4px 12px; }
+
+  /* Calendar card header: title on its own row, month controls below */
+  #ob-trading-pnl-account-row .border-b:has(#heatmapMonthLabel) { flex-wrap: wrap; gap: 8px; }
+  #ob-trading-pnl-account-row .border-b:has(#heatmapMonthLabel) > div:first-child { flex: 1 1 100%; }
+  #ob-trading-pnl-account-row .border-b:has(#heatmapMonthLabel) > div:last-child { flex: 1 1 100%; justify-content: space-between; }
+  #ob-trading-pnl-account-row .border-b:has(#heatmapMonthLabel) > div:last-child > span { flex: 1 1 auto; font-size: 12px !important; }
+  #ob-trading-pnl-account-row .glass-card { padding: 14px !important; }
+
+  /* Execution Log filters: two per row, full width */
+  #pageTrading .glass-card:has(#tradingTableBody) > .flex > .flex-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #pageTrading .glass-card:has(#tradingTableBody) > .flex > .flex-wrap > * { width: 100%; min-width: 0; }
+  #pageTrading .glass-card:has(#tradingTableBody) > .flex > .flex-wrap > button { grid-column: 1 / -1; justify-content: center; }
+}
+
+/* Trades lists (Execution Log on Trading, journal table on Journal): cards on
+   phones. Cells carry data-col (index.html); a tap on the card opens the trade. */
+@media (max-width: 767px) {
+  table.ob-card-table, table.ob-card-table tbody { display: block; width: 100%; }
+  table.ob-card-table thead { display: none; }
+  table.ob-card-table tbody { border: 0 !important; }
+  table.ob-card-table tbody > tr { display: grid; gap: 4px 10px; align-items: center; padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--border, #e7e7e9) !important; border-radius: 14px; background: var(--panel, #fff); }
+  table.ob-card-table tbody > tr > td { display: block; padding: 0 !important; border: 0 !important; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  table.ob-card-table tbody > tr > td[colspan] { grid-column: 1 / -1; white-space: normal; text-align: center; padding: 12px 0 !important; }
+  table.ob-card-table td[data-col="pair"] { grid-area: pair; font-size: 15px; }
+  table.ob-card-table td[data-col="dir"] { grid-area: dir; }
+  table.ob-card-table td[data-col="r"] { grid-area: r; text-align: right; font-size: 15px; }
+  table.ob-card-table td[data-col="date"] { grid-area: date; font-size: 12px; }
+  table.ob-card-table td[data-col="tf"] { grid-area: tf; font-size: 12px; }
+  table.ob-card-table td[data-col="regime"] { grid-area: regime; font-size: 12px; }
+  table.ob-card-table td[data-col="result"] { grid-area: res; text-align: right; }
+  table.ob-card-table td[data-col="session"] { grid-area: ses; font-size: 12px; }
+  table.ob-card-table td[data-col="strategy"] { grid-area: strat; font-size: 12px; }
+  table.ob-card-table td[data-col="rule"] { grid-area: rule; }
+  table.ob-card-table td[data-col="action"] { grid-area: act; text-align: right; display: flex; justify-content: flex-end; gap: 4px; }
+  table.ob-card-table td[data-col="action"] button { min-width: var(--tap); min-height: var(--tap); display: inline-grid; place-items: center; }
+  /* Trading: pair · dir · R / date · tf · regime · result / actions */
+  table.ob-card-table-trading tbody > tr {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "pair dir  .      r"
+      "date tf   regime res"
+      "rule rule act    act";
+  }
+}
+
+/* LOG A TRADE dropdowns open as bottom sheets on phones (ui-dropdowns.js). */

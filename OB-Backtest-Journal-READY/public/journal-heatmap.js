@@ -246,6 +246,9 @@
     const out = activityHtml(all);
     card.querySelector('[data-act-body]').innerHTML = out.body;
     card.querySelector('[data-act-summary]').innerHTML = out.summary;
+    // Narrow screens: start on the newest weeks (as the Dashboard copy does).
+    const sc = card.querySelector('.ob-act-scroll');
+    if (sc) requestAnimationFrame(() => { sc.scrollLeft = sc.scrollWidth; });
   }
 
   /** Activity squares + summary markup for the last ACTIVITY_WEEKS weeks. extra: optional summary items. */

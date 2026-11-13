@@ -13,6 +13,9 @@
  *   window.obDropdown.enhance(select, { actions: [{ label, onSelect, danger }] })
  *   window.obDropdown.refresh(selectOrId)
  *   window.obDropdown.setActions(selectOrId, actions)
+ *
+ * Phones (≤767px): the list opens as a bottom sheet (title, ✕, 48px rows,
+ * backdrop, page scroll locked) instead of a panel under the button.
  */
 (() => {
   'use strict';
@@ -20,6 +23,8 @@
   const STYLE_ID = 'ob-dropdown-style';
   const instances = new Map(); // select -> instance
   let openInstance = null;
+  const SHEET_MQ = '(max-width: 767px)';
+  const sheetMode = () => window.matchMedia(SHEET_MQ).matches;
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -64,6 +69,29 @@
       .ob-dd-action { color: #475569; }
       .ob-dd-action.ob-dd-active { background: #eff6ff; color: #1d4ed8; } /* light: blue hover; dark: gray (theme.css) */
       .ob-dd-action.ob-dd-danger.ob-dd-active { background: #fef2f2; color: #dc2626; }
+      /* Bottom sheet (phones) */
+      .ob-dd-backdrop { position: fixed; inset: 0; z-index: 299; background: rgba(15,23,42,.45); animation: ob-dd-fade .15s ease-out; }
+      @keyframes ob-dd-fade { from { opacity: 0; } to { opacity: 1; } }
+      .ob-dd-panel.ob-dd-sheet {
+        left: 0 !important; right: 0 !important; top: auto !important; bottom: 0 !important;
+        width: 100%; min-width: 0 !important; max-height: 70vh !important; max-height: 70dvh !important;
+        border-radius: 20px 20px 0 0; padding: 0 10px calc(10px + env(safe-area-inset-bottom, 0px));
+        font-size: 16px; animation: ob-dd-sheet-in .18s ease-out; overscroll-behavior: contain;
+      }
+      @keyframes ob-dd-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+      .ob-dd-sheet .ob-dd-sheet-head {
+        position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 14px 4px 8px 8px; background: inherit; font-weight: 800; font-size: 15px;
+      }
+      .ob-dd-sheet .ob-dd-sheet-head::before {
+        content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 4px; margin-left: -18px;
+        border-radius: 999px; background: currentColor; opacity: .18;
+      }
+      .ob-dd-sheet .ob-dd-sheet-close {
+        width: 44px; height: 44px; border: 0; border-radius: 999px; background: transparent; color: inherit;
+        font-size: 20px; line-height: 1; cursor: pointer;
+      }
+      .ob-dd-sheet .ob-dd-opt { min-height: 48px; padding: 12px 12px; white-space: normal; }
     `;
     document.head.appendChild(s);
   }
@@ -155,6 +183,13 @@
     const current = nativeValue.get.call(inst.select);
     const panel = inst.panel;
     panel.innerHTML = '';
+    if (inst.sheet) {
+      const head = document.createElement('div');
+      head.className = 'ob-dd-sheet-head';
+      head.innerHTML = '<span></span><button type="button" class="ob-dd-sheet-close" aria-label="Close">\u2715</button>';
+      head.firstChild.textContent = sheetTitle(inst);
+      panel.appendChild(head);
+    }
     let idx = 0;
     opts.forEach(o => {
       const row = document.createElement('div');
@@ -195,6 +230,7 @@
 
   // Place under the button; flip upward when there is not enough room below.
   function position(inst) {
+    if (inst.sheet) return; // CSS pins the sheet to the bottom
     const r = inst.btn.getBoundingClientRect();
     const p = inst.panel;
     p.style.minWidth = Math.max(160, r.width) + 'px';
@@ -212,10 +248,26 @@
     p.style.left = Math.max(8, left) + 'px';
   }
 
+  function sheetTitle(inst) {
+    const byId = inst.btn.getAttribute('aria-labelledby');
+    const el = byId && document.getElementById(byId);
+    return ((el && el.textContent) || inst.btn.getAttribute('aria-label') || 'Choose').trim();
+  }
+
   function open(inst) {
     if (openInstance && openInstance !== inst) close(openInstance, false);
+    inst.sheet = sheetMode();
     const panel = document.createElement('div');
-    panel.className = 'ob-dd-panel';
+    panel.className = 'ob-dd-panel' + (inst.sheet ? ' ob-dd-sheet' : '');
+    if (inst.sheet) {
+      inst.backdrop = document.createElement('div');
+      inst.backdrop.className = 'ob-dd-backdrop';
+      inst.backdrop.addEventListener('click', () => close(inst, true));
+      document.body.appendChild(inst.backdrop);
+      inst.prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      panel.setAttribute('aria-modal', 'true');
+    }
     panel.setAttribute('role', 'listbox');
     panel.id = 'ob-dd-panel-' + (inst.select.id || 'x');
     inst.btn.setAttribute('aria-controls', panel.id);
@@ -234,6 +286,7 @@
     });
     panel.addEventListener('mousedown', e => e.preventDefault()); // keep focus on the button
     panel.addEventListener('click', e => {
+      if (e.target.closest('.ob-dd-sheet-close')) { close(inst, true); return; }
       const row = e.target.closest('[data-idx]');
       if (row) choose(inst, Number(row.dataset.idx));
     });
@@ -243,6 +296,11 @@
     if (!inst || !inst.panel) return;
     inst.panel.remove();
     inst.panel = null;
+    if (inst.backdrop) {
+      inst.backdrop.remove();
+      inst.backdrop = null;
+      document.body.style.overflow = inst.prevOverflow || '';
+    }
     inst.btn.setAttribute('aria-expanded', 'false');
     inst.btn.removeAttribute('aria-controls');
     if (openInstance === inst) openInstance = null;
@@ -284,7 +342,8 @@
     const inst = openInstance;
     if (inst && !inst.panel.contains(e.target) && !inst.btn.contains(e.target)) close(inst, false);
   }, true);
-  window.addEventListener('resize', () => openInstance && close(openInstance, false));
+  // Phones fire resize when the address bar shows/hides; a sheet stays open.
+  window.addEventListener('resize', () => openInstance && !openInstance.sheet && close(openInstance, false));
   window.addEventListener('scroll', e => {
     const inst = openInstance;
     if (inst && !(e.target instanceof Node && inst.panel.contains(e.target))) position(inst);

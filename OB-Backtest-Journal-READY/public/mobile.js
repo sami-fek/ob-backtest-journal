@@ -4,6 +4,8 @@
  *
  * 1. Pill nav: keep the active tab scrolled into view inside the
  *    horizontally scrolling nav (without scrolling the page).
+ * 2. Trading Activity heatmaps: when a page opens, start them on the newest
+ *    weeks (they may have been drawn while the page was hidden).
  */
 (() => {
   'use strict';
@@ -27,10 +29,17 @@
     let t = 0;
     new MutationObserver(() => {
       clearTimeout(t);
-      t = setTimeout(() => centerActivePill(true), 30);
+      t = setTimeout(() => { centerActivePill(true); scrollHeatmapsToNewest(); }, 30);
     }).observe(nav, { subtree: true, attributes: true, attributeFilter: ['class'] });
     centerActivePill(false);
     window.addEventListener('resize', () => centerActivePill(false), { passive: true });
+  }
+
+  // ── 2. Activity heatmaps ──────────────────────────────────────────────────
+  function scrollHeatmapsToNewest() {
+    document.querySelectorAll('.ob-act-scroll').forEach(sc => {
+      if (sc.offsetParent && sc.scrollWidth > sc.clientWidth) sc.scrollLeft = sc.scrollWidth;
+    });
   }
 
   function init() {

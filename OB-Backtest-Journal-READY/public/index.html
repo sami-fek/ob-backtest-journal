@@ -449,7 +449,7 @@
           </div>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs">
+          <table class="w-full text-left border-collapse text-xs ob-card-table ob-card-table-trading">
             <thead>
               <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                 <th class="py-3 px-3">Date</th><th class="py-3 px-3">Pair</th><th class="py-3 px-3">Timeframe</th><th class="py-3 px-3">Regime</th><th class="py-3 px-3">Dir</th><th class="py-3 px-3">Result</th><th class="py-3 px-3 text-right">R-Mult</th><th class="py-3 px-3 text-center">Rule Status</th><th class="py-3 px-3 text-center">Action</th>
@@ -1676,14 +1676,14 @@
           ? ((t.pnl >= 0 ? '+' : '') + '$' + Math.abs(t.pnl).toFixed(2))
           : ((t.rMultiple >= 0 ? '+' : '') + t.rMultiple.toFixed(1) + ' R');
         tr.innerHTML = `
-          <td class="py-3 px-3 text-slate-500">${t.date}</td>
-          <td class="py-3 px-3 font-bold text-slate-900">${t.pair}</td>
-          <td class="py-3 px-3 text-slate-600">${t.timeframe}</td>
-          <td class="py-3 px-3 text-slate-600">${t.regime}</td>
-          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.direction === 'LONG' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${t.direction}</span></td>
-          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.result === 'Win' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : (t.result === 'Loss' ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-slate-100 text-slate-600')}">${t.result}</span></td>
-          <td class="py-3 px-3 text-right font-bold ${valueIsPositive ? 'text-emerald-600' : 'text-rose-600'}">${pnlCell}</td>
-          <td class="py-3 px-3 text-center">${(() => {
+          <td data-col="date" class="py-3 px-3 text-slate-500">${t.date}</td>
+          <td data-col="pair" class="py-3 px-3 font-bold text-slate-900">${t.pair}</td>
+          <td data-col="tf" class="py-3 px-3 text-slate-600">${t.timeframe}</td>
+          <td data-col="regime" class="py-3 px-3 text-slate-600">${t.regime}</td>
+          <td data-col="dir" class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.direction === 'LONG' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${t.direction}</span></td>
+          <td data-col="result" class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.result === 'Win' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : (t.result === 'Loss' ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-slate-100 text-slate-600')}">${t.result}</span></td>
+          <td data-col="r" class="py-3 px-3 text-right font-bold ${valueIsPositive ? 'text-emerald-600' : 'text-rose-600'}">${pnlCell}</td>
+          <td data-col="rule" class="py-3 px-3 text-center">${(() => {
             const chk = t.checklist || [];
             const hasFail = chk.some(s => s === 'fail');
             const hasAny = chk.some(s => s !== 'notset');
@@ -1691,9 +1691,9 @@
             if (hasAny) return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-bold"><i class="fa-solid fa-circle-check text-[9px]"></i> Clean</span>';
             return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-400 text-[10px] font-bold"><i class="fa-regular fa-clock text-[9px]"></i> Pending</span>';
           })()}</td>
-          <td class="py-3 px-3 text-center">
-            <button onclick="openDrawer('${t.id}')" class="p-1 text-slate-400 hover:text-blue-600"><i class="fa-solid fa-eye"></i></button>
-            <button onclick="deleteTrade('${t.id}')" class="p-1 text-slate-400 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button>
+          <td data-col="action" class="py-3 px-3 text-center">
+            <button onclick="openDrawer('${t.id}')" class="p-1 text-slate-400 hover:text-blue-600" aria-label="Open trade"><i class="fa-solid fa-eye"></i></button>
+            <button onclick="deleteTrade('${t.id}')" class="p-1 text-slate-400 hover:text-rose-600" aria-label="Delete trade"><i class="fa-solid fa-trash"></i></button>
           </td>`;
         tbody.appendChild(tr);
       });
@@ -1731,16 +1731,16 @@
           ? ((t.pnl >= 0 ? '+' : '') + '$' + Math.abs(t.pnl).toFixed(2))
           : ((t.rMultiple >= 0 ? '+' : '') + t.rMultiple.toFixed(1) + ' R');
         tr.innerHTML = `
-          <td class="py-3.5 px-4 text-slate-500">${t.date}</td>
-          <td class="py-3.5 px-4 font-bold text-slate-900">${t.pair}</td>
-          <td class="py-3.5 px-4 text-slate-600">${t.timeframe}</td>
-          <td class="py-3.5 px-4 text-slate-600">${t.regime}</td>
-          <td class="py-3.5 px-4 text-slate-600">${t.session || '—'}</td>
-          <td class="py-3.5 px-4 text-blue-600 font-semibold">${t.strategy}</td>
-          <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.direction === 'LONG' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${t.direction}</span></td>
-          <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.result === 'Win' ? 'bg-emerald-100 text-emerald-800' : (t.result === 'Loss' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600')}">${t.result}</span></td>
-          <td class="py-3.5 px-4 text-right font-bold ${valueIsPositive ? 'text-emerald-600' : 'text-rose-600'}">${pnlCell}</td>
-          <td class="py-3.5 px-4 text-center">${(() => {
+          <td data-col="date" class="py-3.5 px-4 text-slate-500">${t.date}</td>
+          <td data-col="pair" class="py-3.5 px-4 font-bold text-slate-900">${t.pair}</td>
+          <td data-col="tf" class="py-3.5 px-4 text-slate-600">${t.timeframe}</td>
+          <td data-col="regime" class="py-3.5 px-4 text-slate-600">${t.regime}</td>
+          <td data-col="session" class="py-3.5 px-4 text-slate-600">${t.session || '—'}</td>
+          <td data-col="strategy" class="py-3.5 px-4 text-blue-600 font-semibold">${t.strategy}</td>
+          <td data-col="dir" class="py-3.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.direction === 'LONG' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">${t.direction}</span></td>
+          <td data-col="result" class="py-3.5 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.result === 'Win' ? 'bg-emerald-100 text-emerald-800' : (t.result === 'Loss' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600')}">${t.result}</span></td>
+          <td data-col="r" class="py-3.5 px-4 text-right font-bold ${valueIsPositive ? 'text-emerald-600' : 'text-rose-600'}">${pnlCell}</td>
+          <td data-col="rule" class="py-3.5 px-4 text-center">${(() => {
             const steps = stepsForTrade(t);
             const chk = t.checklist || [];
             const total = steps.length;
@@ -1751,7 +1751,7 @@
             const label = allNotSet ? 'Not reviewed' : `${passed}/${total} Pass`;
             return `<span class="px-2 py-0.5 ${color} rounded text-[10px] font-bold">${label}</span>`;
           })()}</td>
-          <td class="py-3.5 px-4 text-center"><button onclick="openDrawer('${t.id}')" class="px-2 py-1 bg-slate-100 hover:bg-blue-600 hover:text-white rounded transition-colors text-[10px] font-bold">Inspect</button></td>`;
+          <td data-col="action" class="py-3.5 px-4 text-center"><button onclick="openDrawer('${t.id}')" class="px-2 py-1 bg-slate-100 hover:bg-blue-600 hover:text-white rounded transition-colors text-[10px] font-bold">Inspect</button></td>`;
         tbody.appendChild(tr);
       });
     }
