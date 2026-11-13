@@ -464,6 +464,11 @@ html[data-theme] #pageAccounts :is(.ac-input, .ac-select, .ac-textarea) { backgr
 /* the sticky title row must not cover fields while scrolling on phones */
 @media (max-width: 1023px) { html body #pageAccounts .ac-head { position: static !important; } }
 
+/* Analytics: period + filter scope on every card (analytics-page.js stampScope) */
+#pageAnalytics .ap-scope { display: block; margin-top: 2px; white-space: normal; overflow-wrap: anywhere; }
+#pageAnalytics :is(.ap-card-head, .db-card-head, .pc-head, .ob-collapse-head) > .ap-scope { display: inline-block; margin: 0 0 0 auto; text-align: right; }
+#pageAnalytics .glass-card > .ap-scope:first-child { margin: 0 0 6px; }
+
 /* ── 8. Settings ───────────────────────────────────────────────────────── */
 html[data-theme] #pageSettings > .glass-card { max-width: 960px !important; margin-left: 0 !important; margin-right: auto !important; padding: var(--ds-s6) !important; }
 html[data-theme] #pageSettings > .glass-card > div:first-child h2 { margin-bottom: 6px; font-size: clamp(22px, 2vw, 28px) !important; font-weight: 500 !important; letter-spacing: -0.02em; }

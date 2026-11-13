@@ -153,7 +153,59 @@
     renderSample(page, list);
     renderDiscipline(page, list);
     renderRisk(page, list);
+    stampScope();
   }
+
+  // ── Period + filter scope on every card (fix round) ─────────────────────
+  // The text follows the filter bar: the date range ("all time" when none),
+  // then every filter that is not "All" (pair, session, day, timeframe, regime).
+  function scopeText() {
+    const val = id => (document.getElementById(id) || {}).value || '';
+    const fd = iso => (window.obTime ? window.obTime.date(iso) : iso);
+    const from = val('af-from'), to = val('af-to');
+    const parts = [from && to ? `${fd(from)} – ${fd(to)}` : from ? `since ${fd(from)}` : to ? `until ${fd(to)}` : 'all time'];
+    ['af-pair', 'af-session', 'af-day', 'af-tf', 'af-regime'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value && el.value !== 'ALL') parts.push((el.options[el.selectedIndex] || {}).text || el.value);
+    });
+    return parts.join(' · ');
+  }
+  const CARD_SEL = '.glass-card, .ds-card, .db-card, .pc-card';
+  const SKIP_SEL = '#ob-analytics-filter-bar, #ob-analytics-subtabs, .journal-analytics-mode-menu, .journal-analytics-account-menu, #apSample';
+  const HEAD_SEL = ':scope > .ap-card-head, :scope > .db-card-head, :scope > .pc-head, :scope > .pc-h, :scope > div > h3, :scope > h3, :scope > h4, :scope > .pc-title, :scope > p:first-child, :scope > .ob-collapse-head';
+  function stampScope() {
+    const page = document.getElementById('pageAnalytics');
+    if (!page || page.classList.contains('hidden')) return;
+    const text = scopeText();
+    page.querySelectorAll(CARD_SEL).forEach(card => {
+      if (card.matches(SKIP_SEL) || card.closest(SKIP_SEL)) return;
+      const outer = card.parentElement && card.parentElement.closest(CARD_SEL);
+      if (outer && page.contains(outer) && !outer.matches(SKIP_SEL)) return; // one chip per outermost card
+      let chip = card.querySelector('[data-ap-scope]');
+      if (!chip) {
+        chip = document.createElement('span');
+        chip.className = 'ds-period ap-scope';
+        chip.dataset.apScope = '1';
+        const head = card.querySelector(HEAD_SEL);
+        if (head && head.matches('.ap-card-head, .db-card-head, .pc-head, .ob-collapse-head')) head.appendChild(chip);
+        else if (head) head.insertAdjacentElement('afterend', chip);
+        else card.prepend(chip);
+      }
+      if (chip.textContent !== text) chip.textContent = text;
+    });
+  }
+  // Cards that other scripts re-render (Behavior, drivers, strategy table) get their chip back.
+  let stampTimer = 0;
+  const stampSoon = () => { clearTimeout(stampTimer); stampTimer = setTimeout(stampScope, 60); };
+  function watch() {
+    const page = document.getElementById('pageAnalytics');
+    if (!page || page.__apScopeWatch) return;
+    page.__apScopeWatch = true;
+    new MutationObserver(stampSoon).observe(page, { childList: true, subtree: true });
+    page.addEventListener('change', e => { if (e.target && /^af-/.test(e.target.id || '')) stampSoon(); });
+  }
+  watch();
+  setTimeout(watch, 1500);
 
   window.addEventListener('ob-analytics-refresh', () => setTimeout(render, 0));
   // Trades can arrive from the server after the first Analytics refresh: refresh

@@ -1945,20 +1945,26 @@
       }
     }
 
+    // Trades the Analytics page shows: active mode + account + the filter bar (analytics-advanced.js).
+    function analyticsTrades() {
+      try { if (typeof window.obAnalyticsFilteredTrades === 'function') return window.obAnalyticsFilteredTrades() || []; } catch (_) {}
+      return trades.filter(t => t.mode === activeMode);
+    }
     function renderAnalyticsKPIs() {
+      const list = analyticsTrades();
       let winsR = 0, lossesR = 0, winsCount = 0, lossesCount = 0;
-      trades.forEach(t => {
+      list.forEach(t => {
         if (t.rMultiple > 0) { winsR += t.rMultiple; winsCount++; }
         else if (t.rMultiple < 0) { lossesR += Math.abs(t.rMultiple); lossesCount++; }
       });
       const pf = lossesR > 0 ? winsR / lossesR : (winsR > 0 ? 99 : 0);
-      const totalCount = trades.length;
+      const totalCount = list.length;
       const winRate = totalCount > 0 ? winsCount / totalCount : 0;
       const avgWin = winsCount > 0 ? winsR / winsCount : 0;
       const avgLoss = lossesCount > 0 ? lossesR / lossesCount : 1;
       const expectancy = (winRate * avgWin) - ((1 - winRate) * avgLoss);
       const wlRatio = avgLoss > 0 ? avgWin / avgLoss : 0;
-      const maxDD = computeMaxDD(trades);
+      const maxDD = computeMaxDD(list);
       document.getElementById('analyticsProfitFactor').textContent = pf.toFixed(2);
       document.getElementById('analyticsExpectancy').textContent = `${expectancy >= 0 ? '+' : ''}${expectancy.toFixed(2)} R`;
       document.getElementById('analyticsMaxDD').textContent = `${maxDD.toFixed(2)} R`;
@@ -2041,18 +2047,19 @@
       // Active strategies plus any strategy that has trades (e.g. archived) — each kept separate.
       const stratMap = {};
       activeStrategies().forEach(s => { stratMap[s.name] = 0; });
-      trades.forEach(t => { if (t.strategy) stratMap[t.strategy] = (stratMap[t.strategy] || 0) + (Number(t.rMultiple) || 0); });
+      const aList = analyticsTrades();
+      aList.forEach(t => { if (t.strategy) stratMap[t.strategy] = (stratMap[t.strategy] || 0) + (Number(t.rMultiple) || 0); });
       const stratPalette = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6', '#ec4899', '#64748b'];
       chartStrategyInstance.data.labels = Object.keys(stratMap);
       chartStrategyInstance.data.datasets[0].backgroundColor = Object.keys(stratMap).map((_, i) => stratPalette[i % stratPalette.length]);
       chartStrategyInstance.data.datasets[0].data = Object.values(stratMap);
       chartStrategyInstance.update();
       const tfMap = { '4H': 0, '1H': 0, '15M': 0, '5M': 0 };
-      trades.forEach(t => { if (tfMap[t.timeframe] !== undefined) tfMap[t.timeframe] += t.rMultiple; });
+      aList.forEach(t => { if (tfMap[t.timeframe] !== undefined) tfMap[t.timeframe] += t.rMultiple; });
       chartTimeframeInstance.data.datasets[0].data = Object.values(tfMap);
       chartTimeframeInstance.update();
       const regMap = { 'Trending': 0, 'Ranging': 0, 'Reversal': 0 };
-      trades.forEach(t => { if (regMap[t.regime] !== undefined) regMap[t.regime]++; });
+      aList.forEach(t => { if (regMap[t.regime] !== undefined) regMap[t.regime]++; });
       chartRegimeInstance.data.datasets[0].data = Object.values(regMap);
       chartRegimeInstance.update();
     }
@@ -2945,13 +2952,14 @@
     function updateAnalyticsInsight() {
       const el = document.getElementById('analyticsInsightText');
       if (!el) return;
-      if (!trades.length) {
+      const list = analyticsTrades();
+      if (!list.length) {
         el.textContent = 'Log trades to generate evidence-based insights by strategy, timeframe, and regime. Small samples are flagged rather than treated as a proven edge.';
         return;
       }
       const by = (key) => {
         const map = {};
-        trades.forEach(t => {
+        list.forEach(t => {
           const k = t[key] || 'Unknown';
           (map[k] ??= { n: 0, r: 0 });
           map[k].n++;
@@ -2962,8 +2970,8 @@
       const bestStrat = by('strategy');
       const bestTf = by('timeframe');
       const bestReg = by('regime');
-      const note = trades.length < 20 ? ' Sample size is small — treat this as a lead, not proof.' : '';
-      el.innerHTML = `Across <span class="font-bold text-white font-mono">${trades.length}</span> trades, the strongest net R is currently <span class="font-bold text-white font-mono">${bestStrat[0]}</span> (${bestStrat[1].r >= 0 ? '+' : ''}${bestStrat[1].r.toFixed(2)} R), with the best timeframe <span class="font-bold text-white font-mono">${bestTf[0]}</span> and regime <span class="font-bold text-white font-mono">${bestReg[0]}</span>.${note}`;
+      const note = list.length < 20 ? ' Sample size is small — treat this as a lead, not proof.' : '';
+      el.innerHTML = `Across <span class="font-bold text-white font-mono">${list.length}</span> trades, the strongest net R is currently <span class="font-bold text-white font-mono">${bestStrat[0]}</span> (${bestStrat[1].r >= 0 ? '+' : ''}${bestStrat[1].r.toFixed(2)} R), with the best timeframe <span class="font-bold text-white font-mono">${bestTf[0]}</span> and regime <span class="font-bold text-white font-mono">${bestReg[0]}</span>.${note}`;
     }
     // (A second analyzeTradeWithAI used to be defined here. It overrode the
     // version above, appended the AI reply into Notes and saved the trade
