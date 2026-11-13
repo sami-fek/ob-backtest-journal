@@ -1,6 +1,6 @@
 (() => {
   const STATE_KEY = 'ob_ui_state_v1';
-  const TABS = new Set(['home', 'trading', 'journal', 'analytics', 'accounts', 'settings']);
+  const TABS = new Set(['dashboard', 'home', 'trading', 'journal', 'analytics', 'accounts', 'settings']);
   const MODES = new Set(['Backtest', 'Demo', 'Real', 'Funded']);
   const ACCOUNT_KEY = mode => `my_journal_active_account_${mode}_v1`;
   let restoring = false;
@@ -34,7 +34,7 @@
 
   function persistUiState(tab = null, mode = null) {
     const nextTab = validTab(tab) ? String(tab).toLowerCase()
-                   : tabFromHash() || currentVisibleTab() || readState().tab || 'home';
+                   : tabFromHash() || currentVisibleTab() || readState().tab || 'dashboard';
     const nextMode = MODES.has(mode) ? mode : modeNow() || readState().mode || 'Real';
     const next = { tab: nextTab, mode: nextMode, accountIds: { ...(readState().accountIds || {}) } };
     if (nextMode !== 'Backtest') {
@@ -74,7 +74,7 @@
 
   function restoreUiStateOnce() {
     const state = readState();
-    const tab = tabFromHash() || (validTab(state.tab) ? state.tab : 'home');
+    const tab = tabFromHash() || (validTab(state.tab) ? state.tab : 'dashboard');
     const mode = MODES.has(state.mode) ? state.mode : (modeNow() || 'Real');
 
     if (mode !== 'Backtest' && state.accountIds && state.accountIds[mode]) {

@@ -8,6 +8,7 @@
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/account-center.css">
+  <link rel="stylesheet" href="/dashboard.css">
   <title>MY Journal // Next-Gen Trading Operating System</title>
 
   <script>document.documentElement.classList.add('ob-booting');</script>
@@ -197,6 +198,7 @@
       </div>
 
       <nav class="ob-pill-nav flex items-center p-1.5 rounded-full text-xs font-medium gap-1" aria-label="Main">
+        <button id="navBtn-dashboard" onclick="switchTab('dashboard')" class="px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-gauge-high text-xs"></i><span>Dashboard</span></button>
         <button id="navBtn-home" onclick="switchTab('home')" class="px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 nav-pill-active"><i class="fa-solid fa-house text-xs"></i><span>Home</span></button>
         <button id="navBtn-trading" onclick="switchTab('trading')" class="px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-chart-line text-xs"></i><span>Trading</span></button>
         <button id="navBtn-journal" onclick="switchTab('journal')" class="px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 hover:text-slate-900"><i class="fa-solid fa-book-bookmark text-xs"></i><span>Journal</span></button>
@@ -214,6 +216,11 @@
   <main class="max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 flex-1">
 
     <!-- PAGE 1: HOME -->
+    <!-- PAGE: DASHBOARD (default after sign-in; rendered by dashboard.js) -->
+    <section id="pageDashboard" class="hidden animate-fade-in">
+      <div id="dbRoot" class="db-root"></div>
+    </section>
+
     <section id="pageHome" class="space-y-10 hidden animate-fade-in">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-4 lg:pt-8">
         <div class="lg:col-span-6 space-y-6">
@@ -912,14 +919,14 @@
     // ---- EARLY TAB RESTORE ----
     (function restoreTabNow() {
       try {
-        const validTabs = ['home','trading','journal','analytics','accounts','settings'];
+        const validTabs = ['dashboard','home','trading','journal','analytics','accounts','settings'];
         const validModes = ['Backtest','Demo','Real','Funded'];
         const hashTab = window.location.hash.replace(/^#/, '').trim().toLowerCase();
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}') || {}; } catch (_) {}
         const tab = validTabs.includes(hashTab) ? hashTab
                   : validTabs.includes(saved.tab) ? saved.tab
-                  : 'home';
+                  : 'dashboard'; // signed-in default; auth-check.js shows Home to signed-out visitors
         const mode = validModes.includes(saved.mode) ? saved.mode
                    : (validModes.includes(activeMode) ? activeMode : 'Real');
 
@@ -1213,7 +1220,7 @@
 
     function switchTab(tab) {
       activeTab = tab;
-      const tabs = ['home','trading','journal','analytics','accounts','settings'];
+      const tabs = ['dashboard','home','trading','journal','analytics','accounts','settings'];
       tabs.forEach(t => {
         const btn = document.getElementById(`navBtn-${t}`);
         const page = document.getElementById(`page${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -2944,5 +2951,7 @@
   <script src="/ai-coach.js"></script>
   <script src="/account-center.js"></script>
   <script src="/psychology-ui.js"></script>
+  <script src="/dashboard-stats.js"></script>
+  <script src="/dashboard.js"></script>
 </body>
 </html>

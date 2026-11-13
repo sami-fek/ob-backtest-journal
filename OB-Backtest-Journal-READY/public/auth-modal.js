@@ -7,6 +7,14 @@
  * - On success redirects to '/' or the value of window.AUTH_REDIRECT
  */
 (() => {
+  // After a successful sign-in the app opens on the Dashboard.
+  window.obLandOnDashboard = function () {
+    try {
+      const st = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}') || {};
+      st.tab = 'dashboard';
+      localStorage.setItem('ob_ui_state_v1', JSON.stringify(st));
+    } catch (_) {}
+  };
   'use strict';
 
   // ── Styles injected once ───────────────────────────────────────────────────
@@ -291,7 +299,7 @@
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
         showSuccess(registering ? 'Account created! Loading your journal…' : 'Signed in! Loading your journal…');
-        setTimeout(() => { window.location.replace(window.AUTH_REDIRECT || '/'); }, 700);
+        setTimeout(() => { window.obLandOnDashboard && window.obLandOnDashboard(); window.location.replace(window.AUTH_REDIRECT || '/'); }, 700);
       } else {
         showError(body.error || (registering ? 'Could not create the account. Please try again.' : 'Incorrect email or password.'));
         document.getElementById('ob-pw-password').value = '';
@@ -317,7 +325,7 @@
       const body = await res.json().catch(() => ({}));
       if (res.ok) {
         showSuccess('Signed in! Loading your journal…');
-        setTimeout(() => { window.location.replace(window.AUTH_REDIRECT || '/'); }, 700);
+        setTimeout(() => { window.obLandOnDashboard && window.obLandOnDashboard(); window.location.replace(window.AUTH_REDIRECT || '/'); }, 700);
       } else {
         setSpinner(false);
         showError(body.error || 'Google Sign-In failed. Please try again.');

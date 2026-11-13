@@ -20,6 +20,8 @@
     try {
       const res = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
       if (res.status === 401 || res.status === 403) {
+        // Signed-out visitors see the marketing Home page behind the sign-in modal.
+        try { if (typeof window.switchTab === 'function') window.switchTab('home'); } catch (_) {}
         // Show auth modal if available, otherwise fall back to auth page
         if (typeof window.showAuthModal === 'function') {
           window.showAuthModal('/');

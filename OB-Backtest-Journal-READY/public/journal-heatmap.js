@@ -57,55 +57,55 @@
         --act-p1: rgba(34,197,94,.2); --act-p2: rgba(34,197,94,.38); --act-p3: rgba(34,197,94,.56); --act-p4: rgba(34,197,94,.76); --act-p5: #22c55e;
         --act-l1: rgba(239,68,68,.2); --act-l2: rgba(239,68,68,.38); --act-l3: rgba(239,68,68,.56); --act-l4: rgba(239,68,68,.76); --act-l5: #ef4444;
       }
-      #${GRID_ID}.ob-jh-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.05fr);gap:6px}
-      #${GRID_ID} .ob-jh-head{padding:4px 3px 6px;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cal-muted)}
-      #${GRID_ID} .ob-jh-cell{position:relative;min-height:70px;padding:7px 8px;border:1px solid var(--cal-cell-border);background:var(--cal-cell-bg);border-radius:12px;display:flex;flex-direction:column;justify-content:space-between;transition:border-color .15s}
-      #${GRID_ID} .ob-jh-blank{min-height:70px;border-radius:12px;border:1px dashed transparent}
-      #${GRID_ID} .ob-jh-day{font:700 10px 'JetBrains Mono',monospace;color:var(--cal-muted)}
-      #${GRID_ID} .ob-jh-pnl{font:800 12px 'JetBrains Mono',monospace;color:var(--cal-text)}
-      #${GRID_ID} .ob-jh-count{font:800 8.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--cal-muted)}
-      #${GRID_ID} .ob-jh-flat .ob-jh-pnl{color:var(--cal-muted);font-weight:700}
-      #${GRID_ID} .ob-jh-win{background:var(--cal-win-bg);border-color:var(--cal-win-border)}
-      #${GRID_ID} .ob-jh-win .ob-jh-pnl{color:var(--cal-win-text)}
-      #${GRID_ID} .ob-jh-loss{background:var(--cal-loss-bg);border-color:var(--cal-loss-border)}
-      #${GRID_ID} .ob-jh-loss .ob-jh-pnl{color:var(--cal-loss-text)}
-      #${GRID_ID} .ob-jh-today{border-color:var(--cal-today);box-shadow:0 0 0 1px var(--cal-today) inset}
-      #${GRID_ID} .ob-jh-today .ob-jh-day{color:var(--cal-today)}
-      #${GRID_ID} .ob-jh-week{min-height:70px;padding:7px 8px;border:1px solid var(--cal-cell-border);background:var(--cal-week-bg);border-radius:12px;display:flex;flex-direction:column;justify-content:space-between}
-      #${GRID_ID} .ob-jh-week.ob-jh-win{background:var(--cal-win-bg);border-color:var(--cal-win-border)}
-      #${GRID_ID} .ob-jh-week.ob-jh-loss{background:var(--cal-loss-bg);border-color:var(--cal-loss-border)}
-      #${GRID_ID} .ob-jh-week-label{font-size:9px;color:var(--cal-muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-      #${GRID_ID} .ob-jh-week-pnl{font:800 12px 'JetBrains Mono',monospace;color:var(--cal-muted)}
-      #${GRID_ID} .ob-jh-week.ob-jh-win .ob-jh-week-pnl{color:var(--cal-win-text)}
-      #${GRID_ID} .ob-jh-week.ob-jh-loss .ob-jh-week-pnl{color:var(--cal-loss-text)}
-      #${GRID_ID} .ob-jh-week-count{font:800 8.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--cal-muted)}
-      #${GRID_ID} .ob-jh-short{display:none}
+      .ob-jh-grid.ob-jh-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.05fr);gap:6px}
+      .ob-jh-grid .ob-jh-head{padding:4px 3px 6px;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cal-muted)}
+      .ob-jh-grid .ob-jh-cell{position:relative;min-height:70px;padding:7px 8px;border:1px solid var(--cal-cell-border);background:var(--cal-cell-bg);border-radius:12px;display:flex;flex-direction:column;justify-content:space-between;transition:border-color .15s}
+      .ob-jh-grid .ob-jh-blank{min-height:70px;border-radius:12px;border:1px dashed transparent}
+      .ob-jh-grid .ob-jh-day{font:700 10px 'JetBrains Mono',monospace;color:var(--cal-muted)}
+      .ob-jh-grid .ob-jh-pnl{font:800 12px 'JetBrains Mono',monospace;color:var(--cal-text)}
+      .ob-jh-grid .ob-jh-count{font:800 8.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--cal-muted)}
+      .ob-jh-grid .ob-jh-flat .ob-jh-pnl{color:var(--cal-muted);font-weight:700}
+      .ob-jh-grid .ob-jh-win{background:var(--cal-win-bg);border-color:var(--cal-win-border)}
+      .ob-jh-grid .ob-jh-win .ob-jh-pnl{color:var(--cal-win-text)}
+      .ob-jh-grid .ob-jh-loss{background:var(--cal-loss-bg);border-color:var(--cal-loss-border)}
+      .ob-jh-grid .ob-jh-loss .ob-jh-pnl{color:var(--cal-loss-text)}
+      .ob-jh-grid .ob-jh-today{border-color:var(--cal-today);box-shadow:0 0 0 1px var(--cal-today) inset}
+      .ob-jh-grid .ob-jh-today .ob-jh-day{color:var(--cal-today)}
+      .ob-jh-grid .ob-jh-week{min-height:70px;padding:7px 8px;border:1px solid var(--cal-cell-border);background:var(--cal-week-bg);border-radius:12px;display:flex;flex-direction:column;justify-content:space-between}
+      .ob-jh-grid .ob-jh-week.ob-jh-win{background:var(--cal-win-bg);border-color:var(--cal-win-border)}
+      .ob-jh-grid .ob-jh-week.ob-jh-loss{background:var(--cal-loss-bg);border-color:var(--cal-loss-border)}
+      .ob-jh-grid .ob-jh-week-label{font-size:9px;color:var(--cal-muted);font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+      .ob-jh-grid .ob-jh-week-pnl{font:800 12px 'JetBrains Mono',monospace;color:var(--cal-muted)}
+      .ob-jh-grid .ob-jh-week.ob-jh-win .ob-jh-week-pnl{color:var(--cal-win-text)}
+      .ob-jh-grid .ob-jh-week.ob-jh-loss .ob-jh-week-pnl{color:var(--cal-loss-text)}
+      .ob-jh-grid .ob-jh-week-count{font:800 8.5px Inter,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--cal-muted)}
+      .ob-jh-grid .ob-jh-short{display:none}
       .ob-jh-nav{width:27px;height:27px;border:1px solid var(--cal-cell-border);border-radius:9999px;background:var(--cal-cell-bg);color:var(--cal-muted);display:grid;place-items:center;cursor:pointer}
       .ob-jh-nav:hover{color:var(--blue,#3b82f6);border-color:var(--blue,#3b82f6)}
       @media(max-width:700px){
-        #${GRID_ID}.ob-jh-grid{grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.15fr);gap:3px}
-        #${GRID_ID} .ob-jh-head{font-size:8px;letter-spacing:0;padding:2px 0 4px}
-        #${GRID_ID} .ob-jh-cell,#${GRID_ID} .ob-jh-week,#${GRID_ID} .ob-jh-blank{min-height:52px;padding:4px 3px;border-radius:9px}
-        #${GRID_ID} .ob-jh-pnl,#${GRID_ID} .ob-jh-week-pnl{font-size:8.5px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden}
-        #${GRID_ID} .ob-jh-count,#${GRID_ID} .ob-jh-week-count,#${GRID_ID} .ob-jh-week-label{font-size:7px;letter-spacing:0;white-space:nowrap}
-        #${GRID_ID} .ob-jh-none .ob-jh-count,#${GRID_ID} .ob-jh-none .ob-jh-pnl{visibility:hidden}
-        #${GRID_ID} .ob-jh-full{display:none} #${GRID_ID} .ob-jh-short{display:inline}
+        .ob-jh-grid.ob-jh-grid{grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.15fr);gap:3px}
+        .ob-jh-grid .ob-jh-head{font-size:8px;letter-spacing:0;padding:2px 0 4px}
+        .ob-jh-grid .ob-jh-cell,.ob-jh-grid .ob-jh-week,.ob-jh-grid .ob-jh-blank{min-height:52px;padding:4px 3px;border-radius:9px}
+        .ob-jh-grid .ob-jh-pnl,.ob-jh-grid .ob-jh-week-pnl{font-size:8.5px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden}
+        .ob-jh-grid .ob-jh-count,.ob-jh-grid .ob-jh-week-count,.ob-jh-grid .ob-jh-week-label{font-size:7px;letter-spacing:0;white-space:nowrap}
+        .ob-jh-grid .ob-jh-none .ob-jh-count,.ob-jh-grid .ob-jh-none .ob-jh-pnl{visibility:hidden}
+        .ob-jh-grid .ob-jh-full{display:none} .ob-jh-grid .ob-jh-short{display:inline}
       }
 
       /* Trading Activity heatmap */
-      #${ACTIVITY_ID} .ob-act-scroll{overflow-x:auto;padding-bottom:4px}
-      #${ACTIVITY_ID} .ob-act-wrap{display:inline-grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:start}
-      #${ACTIVITY_ID} .ob-act-months{display:grid;grid-auto-flow:column;grid-auto-columns:14px;gap:3px;font:700 9.5px Inter,system-ui,sans-serif;color:var(--cal-muted);height:14px;white-space:nowrap}
-      #${ACTIVITY_ID} .ob-act-days{display:grid;grid-template-rows:repeat(7,14px);gap:3px;font:700 9px Inter,system-ui,sans-serif;color:var(--cal-muted);line-height:14px}
-      #${ACTIVITY_ID} .ob-act-grid{display:grid;grid-template-rows:repeat(7,14px);grid-auto-flow:column;grid-auto-columns:14px;gap:3px}
-      #${ACTIVITY_ID} .ob-act-sq{width:14px;height:14px;border-radius:4px;background:var(--act-empty)}
-      #${ACTIVITY_ID} .ob-act-sq.ob-act-out{background:transparent}
-      #${ACTIVITY_ID} .ob-act-sq.ob-act-today{outline:1.5px solid var(--cal-today);outline-offset:1px}
-      ${[1, 2, 3, 4, 5].map(i => `#${ACTIVITY_ID} .ob-act-p${i}{background:var(--act-p${i})} #${ACTIVITY_ID} .ob-act-l${i}{background:var(--act-l${i})}`).join('\n      ')}
-      #${ACTIVITY_ID} .ob-act-legend{display:flex;align-items:center;gap:3px;font:700 10px Inter,system-ui,sans-serif;color:var(--cal-muted)}
-      #${ACTIVITY_ID} .ob-act-legend .ob-act-sq{width:12px;height:12px;border-radius:3px}
-      #${ACTIVITY_ID} .ob-act-summary{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11px;color:var(--cal-muted)}
-      #${ACTIVITY_ID} .ob-act-summary b{font-family:'JetBrains Mono',monospace;color:var(--cal-text)}
+      .ob-act-card .ob-act-scroll{overflow-x:auto;padding-bottom:4px}
+      .ob-act-card .ob-act-wrap{display:inline-grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:start}
+      .ob-act-card .ob-act-months{display:grid;grid-auto-flow:column;grid-auto-columns:14px;gap:3px;font:700 9.5px Inter,system-ui,sans-serif;color:var(--cal-muted);height:14px;white-space:nowrap}
+      .ob-act-card .ob-act-days{display:grid;grid-template-rows:repeat(7,14px);gap:3px;font:700 9px Inter,system-ui,sans-serif;color:var(--cal-muted);line-height:14px}
+      .ob-act-card .ob-act-grid{display:grid;grid-template-rows:repeat(7,14px);grid-auto-flow:column;grid-auto-columns:14px;gap:3px}
+      .ob-act-card .ob-act-sq{width:14px;height:14px;border-radius:4px;background:var(--act-empty)}
+      .ob-act-card .ob-act-sq.ob-act-out{background:transparent}
+      .ob-act-card .ob-act-sq.ob-act-today{outline:1.5px solid var(--cal-today);outline-offset:1px}
+      ${[1, 2, 3, 4, 5].map(i => `.ob-act-card .ob-act-p${i}{background:var(--act-p${i})} .ob-act-card .ob-act-l${i}{background:var(--act-l${i})}`).join('\n      ')}
+      .ob-act-card .ob-act-legend{display:flex;align-items:center;gap:3px;font:700 10px Inter,system-ui,sans-serif;color:var(--cal-muted)}
+      .ob-act-card .ob-act-legend .ob-act-sq{width:12px;height:12px;border-radius:3px}
+      .ob-act-card .ob-act-summary{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11px;color:var(--cal-muted)}
+      .ob-act-card .ob-act-summary b{font-family:'JetBrains Mono',monospace;color:var(--cal-text)}
     `;
     document.head.appendChild(style);
   }
@@ -162,6 +162,34 @@
       }
     }
 
+    grid.classList.add('ob-jh-grid');
+    grid.innerHTML = monthGridHtml(all, y, m);
+    // Day "+" (shown on hover): one combined panel for a new trade on that date.
+    wireAdd(grid);
+
+    const subtitle = card?.querySelector('p');
+    if (subtitle) subtitle.textContent = `${count} trades • Monthly P&L ${money(total)} • account/mode filtered`;
+
+    renderActivity(all);
+  }
+
+  function wireAdd(grid) {
+    if (grid.__obAddWired) return;
+    grid.__obAddWired = true;
+    grid.addEventListener('click', e => {
+      const b = e.target.closest('[data-add-date]');
+      if (!b || typeof window.obAddTradeOnDate !== 'function') return;
+      e.stopPropagation();
+      window.obAddTradeOnDate(b.dataset.addDate);
+    });
+  }
+
+  /** Month grid markup. all: { 'YYYY-MM-DD': { pnl, count } }. */
+  function monthGridHtml(all, y, m) {
+    const days = new Date(y, m + 1, 0).getDate();
+    const first = new Date(y, m, 1).getDay();
+    const stats = {};
+    for (let d = 1; d <= days; d++) { const s = all[isoOf(y, m, d)]; if (s) stats[d] = s; }
     const today = todayIso();
     const cls = pnl => pnl > 0 ? 'ob-jh-win' : pnl < 0 ? 'ob-jh-loss' : 'ob-jh-flat';
     let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => `<div class="ob-jh-head">${day}</div>`).join('') + '<div class="ob-jh-head">Week</div>';
@@ -179,23 +207,7 @@
       }
       html += `<div class="ob-jh-week ${wt ? cls(wp) : ''}"><div class="ob-jh-week-label">Week ${row + 1}</div><div class="ob-jh-week-pnl">${pnlHtml(wp)}</div><div class="ob-jh-week-count">${wt} trade${wt === 1 ? '' : 's'}</div></div>`;
     }
-    grid.classList.add('ob-jh-grid');
-    grid.innerHTML = html;
-    // Day "+" (shown on hover): one combined panel for a new trade on that date.
-    if (!grid.__obAddWired) {
-      grid.__obAddWired = true;
-      grid.addEventListener('click', e => {
-        const b = e.target.closest('[data-add-date]');
-        if (!b || typeof window.obAddTradeOnDate !== 'function') return;
-        e.stopPropagation();
-        window.obAddTradeOnDate(b.dataset.addDate);
-      });
-    }
-
-    const subtitle = card?.querySelector('p');
-    if (subtitle) subtitle.textContent = `${count} trades • Monthly P&L ${money(total)} • account/mode filtered`;
-
-    renderActivity(all);
+    return html;
   }
 
   // ── Trading Activity: last 26 weeks, one rounded square per day,
@@ -208,7 +220,7 @@
     if (!anchor || !anchor.parentNode) return null;
     card = document.createElement('div');
     card.id = ACTIVITY_ID;
-    card.className = 'glass-card p-5 space-y-4';
+    card.className = 'glass-card p-5 space-y-4 ob-act-card';
     card.innerHTML = `
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>
@@ -226,7 +238,13 @@
   function renderActivity(all) {
     const card = ensureActivityCard();
     if (!card) return;
-    const body = card.querySelector('[data-act-body]');
+    const out = activityHtml(all);
+    card.querySelector('[data-act-body]').innerHTML = out.body;
+    card.querySelector('[data-act-summary]').innerHTML = out.summary;
+  }
+
+  /** Activity squares + summary markup for the last ACTIVITY_WEEKS weeks. extra: optional summary items. */
+  function activityHtml(all, extra) {
     const now = new Date();
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const start = new Date(end);
@@ -257,7 +275,7 @@
         squares += `<span class="${cls}" title="${title}"></span>`;
       }
     }
-    body.innerHTML = `<span></span><div class="ob-act-months">${months}</div>
+    const body = `<span></span><div class="ob-act-months">${months}</div>
       <div class="ob-act-days"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
       <div class="ob-act-grid" role="img" aria-label="Daily P&amp;L for the last ${ACTIVITY_WEEKS} weeks">${squares}</div>`;
     const net = inRange.reduce((a, [, s]) => a + s.pnl, 0);
@@ -266,10 +284,12 @@
     const n = inRange.reduce((a, [, s]) => a + s.count, 0);
     const best = inRange.reduce((b, [iso, s]) => (!b || s.pnl > b.pnl ? { iso, pnl: s.pnl } : b), null);
     const worst = inRange.reduce((b, [iso, s]) => (!b || s.pnl < b.pnl ? { iso, pnl: s.pnl } : b), null);
-    card.querySelector('[data-act-summary]').innerHTML = n
-      ? `<span>Net P&amp;L <b>${money(net)}</b></span><span>Gross profit <b>${money(gross)}</b></span><span>Gross loss <b>${money(loss)}</b></span><span>Trades <b>${n}</b></span><span>Best day <b>${money(best.pnl)}</b></span><span>Worst day <b>${money(worst.pnl)}</b></span>`
+    const summary = n
+      ? (typeof extra === 'function' ? extra({ net, gross, loss, n, best, worst, money }) : `<span>Net P&amp;L <b>${money(net)}</b></span><span>Gross profit <b>${money(gross)}</b></span><span>Gross loss <b>${money(loss)}</b></span><span>Trades <b>${n}</b></span><span>Best day <b>${money(best.pnl)}</b></span><span>Worst day <b>${money(worst.pnl)}</b></span>`)
       : `<span>No trades in the last ${ACTIVITY_WEEKS} weeks for this account.</span>`;
+    return { body, summary };
   }
+  const LEGEND_HTML = `<span>Loss</span>${[5, 4, 3, 2, 1].map(i => `<span class="ob-act-sq ob-act-l${i}"></span>`).join('')}<span class="ob-act-sq"></span>${[1, 2, 3, 4, 5].map(i => `<span class="ob-act-sq ob-act-p${i}"></span>`).join('')}<span>Profit</span>`;
 
   function removeExtraHeatmaps() {
     document.querySelectorAll('#pageAnalytics .glass-card').forEach(card => {
@@ -307,6 +327,22 @@
   }
 
   window.obRenderCalendar = () => render();
+  // Reused by the Dashboard (dashboard.js): same markup, styles and $ maths.
+  window.obCalendarKit = {
+    injectStyles, monthGridHtml, activityHtml, wireAdd, pnlFor, isoOf, todayIso, money,
+    legendHtml: () => LEGEND_HTML, weeks: ACTIVITY_WEEKS,
+    dailyStatsFor(list) {
+      const stats = {};
+      (list || []).forEach(t => {
+        const iso = String(t.date || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+        if (!stats[iso]) stats[iso] = { pnl: 0, count: 0 };
+        stats[iso].pnl += pnlFor(t);
+        stats[iso].count++;
+      });
+      return stats;
+    }
+  };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
 })();

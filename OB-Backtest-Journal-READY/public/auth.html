@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Theme: set before first paint (light / dark / system), see theme.js -->
-  <script>(function(){try{var m=localStorage.getItem("my-journal-theme");if(m!=="light"&&m!=="dark")m="system";var d=m==="dark"||(m==="system"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.setAttribute("data-theme",d?"dark":"light");r.setAttribute("data-theme-mode",m);r.style.colorScheme=d?"dark":"light";}catch(e){document.documentElement.setAttribute("data-theme","light");}})();</script>
+  <script>
+  window.obLandOnDashboard = function () {
+    try { const st = JSON.parse(localStorage.getItem('ob_ui_state_v1') || '{}') || {}; st.tab = 'dashboard'; localStorage.setItem('ob_ui_state_v1', JSON.stringify(st)); } catch (_) {}
+  };(function(){try{var m=localStorage.getItem("my-journal-theme");if(m!=="light"&&m!=="dark")m="system";var d=m==="dark"||(m==="system"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.setAttribute("data-theme",d?"dark":"light");r.setAttribute("data-theme-mode",m);r.style.colorScheme=d?"dark":"light";}catch(e){document.documentElement.setAttribute("data-theme","light");}})();</script>
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="/theme.css">
   <script src="/theme.js"></script>
@@ -369,7 +372,7 @@ async function handleGoogleCredential(response) {
     if (res.ok) {
       showAlert('Success', 'Signed in! Taking you to your journal…');
       // Small delay so the user sees the confirmation
-      setTimeout(() => { window.location.replace(getRedirect()); }, 700);
+      setTimeout(() => { window.obLandOnDashboard && window.obLandOnDashboard(); window.location.replace(getRedirect()); }, 700);
     } else {
       setGoogleLoading(false);
       showAlert('Error', body.error || 'Google Sign-In failed. Please try again.');
@@ -413,7 +416,7 @@ async function handlePasswordLogin(e) {
 
     if (res.ok) {
       showAlert('Success', registering ? 'Account created! Taking you to your journal…' : 'Signed in! Taking you to your journal…');
-      setTimeout(() => { window.location.replace(getRedirect()); }, 700);
+      setTimeout(() => { window.obLandOnDashboard && window.obLandOnDashboard(); window.location.replace(getRedirect()); }, 700);
     } else {
       showAlert('Error', body.error || (registering ? 'Could not create the account. Please try again.' : 'Incorrect email or password.'));
       document.getElementById('pwPassword').value = '';
