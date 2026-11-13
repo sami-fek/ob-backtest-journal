@@ -51,6 +51,7 @@
 
   // Today in the saved timezone (time-prefs.js). Was UTC, which counted trades near
   // midnight on the wrong day for the daily limit and the hard stop.
+  const fmtDate = d => (d && window.obTime ? window.obTime.date(d) : d); // saved date format
   function todayKey() { return window.obTime ? window.obTime.today() : new Date().toISOString().slice(0, 10); }
 
   // ─── server-backed daily count ────────────────────────────────────────────────
@@ -236,7 +237,7 @@
         <div class="ob-banner-body">
           <div class="ob-banner-title">HARD STOP — ${state.consecutiveLosses >= state.hardStopThreshold
             ? `${state.consecutiveLosses} consecutive losses`
-            : `${state.hardStopThreshold}-loss rule hit${state.hardStopDate ? ` on ${state.hardStopDate}` : ''}`}</div>
+            : `${state.hardStopThreshold}-loss rule hit${state.hardStopDate ? ` on ${fmtDate(state.hardStopDate)}` : ''}`}</div>
           <div class="ob-banner-sub">Trading is paused after hitting your ${state.hardStopThreshold}-loss rule.${postNote}</div>
         </div>
         <button class="ob-banner-close" aria-label="Dismiss" onclick="this.closest('#${BANNER_ID}')?.remove()">×</button>`;

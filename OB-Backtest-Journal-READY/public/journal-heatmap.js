@@ -26,6 +26,7 @@
   // today in the saved timezone (time-prefs.js); device clock as a fallback
   const todayIso = () => { if (window.obTime) return window.obTime.today(); const n = new Date(); return isoOf(n.getFullYear(), n.getMonth(), n.getDate()); };
   const sym = () => (window.obTime ? window.obTime.sym() : '$');
+  const fmtDay = iso => (window.obTime ? window.obTime.date(iso) : iso); // saved date format
   const money = value => !value ? sym() + '0' : `${value > 0 ? '+' : '-'}${sym()}${Math.abs(Math.round(value)).toLocaleString('en-US')}`;
   // Compact form for narrow screens: +$2.4k, -$1k, +$850
   const short = value => {
@@ -275,11 +276,11 @@
         if (day > end) { squares += '<span class="ob-act-sq ob-act-out"></span>'; continue; }
         const s = all[iso];
         let cls = 'ob-act-sq';
-        let title = `${iso}: no trades`;
+        let title = `${fmtDay(iso)}: no trades`;
         if (s) {
           const lv = level(s.pnl);
           if (s.pnl > 0) cls += ` ob-act-p${lv}`; else if (s.pnl < 0) cls += ` ob-act-l${lv}`;
-          title = `${iso}: ${money(s.pnl)} • ${s.count} trade${s.count === 1 ? '' : 's'}`;
+          title = `${fmtDay(iso)}: ${money(s.pnl)} • ${s.count} trade${s.count === 1 ? '' : 's'}`;
         }
         if (iso === today) cls += ' ob-act-today';
         squares += `<span class="${cls}" title="${title}"></span>`;

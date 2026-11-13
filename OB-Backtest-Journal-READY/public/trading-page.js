@@ -96,7 +96,7 @@
         rule = `<span class="tp-chip neg" title="Further submissions today will be rejected by the server."><i class="fa-solid fa-calendar-xmark"></i> Daily limit · ${d.todayCount}/${d.dailyMax} trades</span>`;
       } else if (d.hardStopTriggered) {
         const after = d.tradesAfterStop > 0 ? ` · ${plural(d.tradesAfterStop, 'trade', 'trades')} logged after it` : '';
-        rule = `<span class="tp-chip warn" title="Your ${d.hardStopThreshold}-loss rule was hit earlier${d.hardStopDate ? ' on ' + d.hardStopDate : ''}${after}."><i class="fa-solid fa-flag"></i> ${d.hardStopThreshold}-loss rule hit${d.hardStopDate ? ` on ${esc(d.hardStopDate)}` : ''}${after}</span>`;
+        rule = `<span class="tp-chip warn" title="Your ${d.hardStopThreshold}-loss rule was hit earlier${d.hardStopDate ? ' on ' + (window.obTime ? window.obTime.date(d.hardStopDate) : d.hardStopDate) : ''}${after}."><i class="fa-solid fa-flag"></i> ${d.hardStopThreshold}-loss rule hit${d.hardStopDate ? ` on ${esc(window.obTime ? window.obTime.date(d.hardStopDate) : d.hardStopDate)}` : ''}${after}</span>`;
       } else {
         rule = `<span class="tp-chip pos"><i class="fa-solid fa-shield-halved"></i> Rules OK</span>`;
       }

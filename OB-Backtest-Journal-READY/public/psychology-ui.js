@@ -211,7 +211,7 @@
       data: { labels: trend.map(t => fmt(t.week)), datasets: [{ label: 'Followed %', data: trend.map(t => t.followedPct), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.12)', fill: true, tension: .25, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: '#22c55e' }] },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { title: items => `Week of ${trend[items[0].dataIndex].week}`, label: item => `Followed ${item.parsed.y}% · ${trend[item.dataIndex].trades} trades` } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { title: items => `Week of ${window.obTime ? window.obTime.date(trend[items[0].dataIndex].week) : trend[items[0].dataIndex].week}`, label: item => `Followed ${item.parsed.y}% · ${trend[item.dataIndex].trades} trades` } } },
         scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%', font: { family: 'JetBrains Mono', size: 10 } } }, x: { ticks: { font: { size: 10 } } } }
       }
     });

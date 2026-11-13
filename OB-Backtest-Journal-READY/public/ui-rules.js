@@ -113,7 +113,7 @@
               <span class="block mb-2 text-xs font-bold text-slate-600">Starting balance</span>
               <div class="relative">
                 <input id="newAccountBalance" value="100000" inputmode="decimal" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 pr-14 text-sm font-mono text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100">
-                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">USD</span>
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400" data-ob-sym></span>
               </div>
             </label>
           </div>
@@ -125,6 +125,7 @@
         </div>
       </div>`;
     document.body.appendChild(overlay);
+    overlay.querySelectorAll('[data-ob-sym]').forEach(el => { el.textContent = window.obTime ? window.obTime.sym() : '$'; }); // saved currency symbol
     overlay.addEventListener('click', e => { if (e.target === overlay) closeAccountModal(); });
     document.getElementById('accountModalClose').onclick = closeAccountModal;
     document.getElementById('accountModalCancel').onclick = closeAccountModal;
@@ -164,12 +165,13 @@
           '</div>' +
           '<div class="mt-6 space-y-4">' +
             '<label class="block"><span class="block mb-2 text-xs font-bold text-slate-600">Account name</span><input id="editAccountName" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100" autocomplete="off"></label>' +
-            '<label class="block"><span class="block mb-2 text-xs font-bold text-slate-600">Starting balance</span><div class="relative"><input id="editAccountBalance" inputmode="decimal" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 pr-14 text-sm font-mono text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"><span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">USD</span></div></label>' +
+            '<label class="block"><span class="block mb-2 text-xs font-bold text-slate-600">Starting balance</span><div class="relative"><input id="editAccountBalance" inputmode="decimal" class="w-full rounded-xl border border-slate-200 bg-white/75 px-4 py-3 pr-14 text-sm font-mono text-slate-800 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"><span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400" data-ob-sym></span></div></label>' +
           '</div>' +
           '<div class="mt-7 flex justify-end gap-2"><button id="accountEditCancel" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-white/70 transition-colors">Cancel</button><button id="accountEditSave" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">Save changes</button></div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(overlay);
+    overlay.querySelectorAll('[data-ob-sym]').forEach(el => { el.textContent = window.obTime ? window.obTime.sym() : '$'; }); // saved currency symbol
     document.getElementById('editAccountName').value = account.name || '';
     document.getElementById('editAccountBalance').value = String(account.startingBalance ?? account.balance ?? 100000);
     overlay.addEventListener('click', event => { if (event.target === overlay) closeAccountModal(); });
