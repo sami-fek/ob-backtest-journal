@@ -80,7 +80,7 @@ html[data-theme] .journal-analytics-account-menu button[data-account-id].text-bl
 /* ── 3. Analytics ──────────────────────────────────────────────────────── */
 /* One flex column; CSS order puts the blocks in reading order:
    toolbar → sample warning → Overview → Over time → Where → Discipline → Strategies */
-#pageAnalytics.ap-v2 { display: flex !important; flex-direction: column; gap: var(--ds-gap); }
+#pageAnalytics.ap-v2:not(.hidden) { display: flex !important; flex-direction: column; gap: var(--ds-gap); }
 #pageAnalytics.ap-v2 > * { margin: 0 !important; min-width: 0; }
 #pageAnalytics.ap-v2 > #ob-analytics-extra-section { display: contents !important; }
 #pageAnalytics.ap-v2 > #ob-analytics-subtabs { order: 0; }
@@ -227,7 +227,7 @@ html[data-theme] #ob-analytics-drivers .db-card { background: var(--ds-surface) 
 }
 
 /* ── 4. Journal ("Review") ─────────────────────────────────────────────── */
-#pageJournal.jp-v2 { display: flex !important; flex-direction: column; gap: var(--ds-gap); }
+#pageJournal.jp-v2:not(.hidden) { display: flex !important; flex-direction: column; gap: var(--ds-gap); }
 #pageJournal.jp-v2 > * { margin: 0 !important; min-width: 0; }
 #pageJournal.jp-v2 > .journal-analytics-mode-menu { order: 1; }
 #pageJournal.jp-v2 > .journal-analytics-account-menu { order: 2; }
