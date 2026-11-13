@@ -1,0 +1,22 @@
+/* auth-page.css — /auth.html on the design system (BUILD-PLAN-2 Part 2 Step 3).
+   The page background comes from design.css (gradient + grid, body::before). */
+html, body.ob-auth-page { background: transparent !important; }
+html { background-color: var(--ds-bg-bottom) !important; }
+body.ob-auth-page { color: var(--ds-text) !important; font-family: var(--ds-sans) !important; }
+html[data-theme] body.ob-auth-page .card {
+  background: var(--ds-surface-solid) !important; border: 1px solid var(--ds-line) !important;
+  border-radius: var(--ds-radius-card) !important; box-shadow: 0 30px 80px -30px rgba(16, 23, 41, .35) !important;
+}
+html[data-theme] body.ob-auth-page .logo-mark { background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; border-radius: 12px !important; box-shadow: none !important; }
+html[data-theme] body.ob-auth-page .logo-title { color: var(--ds-text) !important; font-weight: 600 !important; letter-spacing: -0.01em; }
+html[data-theme] body.ob-auth-page :is(.logo-sub, .footer-note) { color: var(--ds-muted) !important; }
+html[data-theme] body.ob-auth-page .field { background: var(--ds-surface-solid) !important; border-color: var(--ds-line-strong) !important; color: var(--ds-text) !important; border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] body.ob-auth-page .field:focus { border-color: var(--ds-accent) !important; box-shadow: 0 0 0 3px var(--ds-accent-tint) !important; }
+html[data-theme] body.ob-auth-page .field-label { color: var(--ds-text-2) !important; }
+html[data-theme] body.ob-auth-page .btn-pw {
+  background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; border-radius: var(--ds-radius-ctl) !important; box-shadow: none !important;
+  font-family: var(--ds-mono) !important; font-size: 12px !important; letter-spacing: .08em; text-transform: uppercase; font-weight: 600 !important;
+}
+html[data-theme] body.ob-auth-page .btn-secondary { background: transparent !important; color: var(--ds-text) !important; border-color: var(--ds-line-strong) !important; border-radius: var(--ds-radius-ctl) !important; }
+html[data-theme] body.ob-auth-page .toggle-link { color: var(--ds-accent) !important; background: transparent !important; }
+html[data-theme] body.ob-auth-page .divider { color: var(--ds-muted) !important; }
