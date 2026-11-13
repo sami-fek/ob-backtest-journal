@@ -42,13 +42,20 @@ Status legend:
 | MT5 | History modal, open-positions table, R-assign panel | OK (layer) | OK (layer) | Need a linked MT5 account to show; recolor layer + Tailwind remap |
 | AI | AI Coach floating button + chat panel | OK | OK | |
 | Journal | Mode / account selector, filters | OK | OK | |
-| Journal | Cumulative equity chart | OK | OK | Chart.js ticks, grid and tooltip themed |
+| Journal | Cumulative equity chart | OK | OK | Chart.js ticks, grid and tooltip themed. Part 3: Net R / $ Equity toggle, both themes, 1440 + 390 |
 | Journal | Discipline & Rules Status panel | OK | OK | |
 | Journal | Detailed trade journal table | OK | OK | |
-| Accounts | Accounts page (mode cards) | OK | OK | Reached via the account menu |
+| Accounts | Accounts page (mode cards) | OK | OK | Part 3: now the "Performance by mode" card inside Account center → Accounts |
 | Settings | Settings page (capital, risk, limits, MT5 bridge, backup) | OK | OK | Reached via the account menu |
 | Auth | Sign-in modal | OK | OK | Google button: outline (light) / filled_black (dark) |
 | Auth | /auth.html | OK | OK | Dark: no light gradient |
 | Analytics | All analytics views (KPIs, charts, filter bar, strategy compare, breakdowns, AI insights) | as before | Pending Part 4 | Not part of Part 1 |
 | Dashboard | (new page) | | Pending Part 4 | |
-| Account center | (new) | | Pending Part 3 | |
+| Account center | Shell: sub-nav card, title, Save Changes | OK | OK | 1440 + 390 (sub-nav becomes a horizontal tab row) |
+| Account center | Profile (avatar, details, contact, about) | OK | OK | 1440 + 390 |
+| Account center | Accounts (list, badges, actions, unassigned trades) | OK | OK | 1440 + 390 |
+| Account center | Add / edit / rename / delete account dialogs | OK | OK (layer) | Uses the same variables as the section cards |
+| Account center | Account Settings (balance, targets, cash movements, preferences) | OK | OK | 1440 + 390 |
+| Account center | Security (incl. Google-only "set a password") | OK | OK | 1440 + 390 |
+| Account center | Data (export, import summary) | OK | OK | 1440 + 390 |
+| Account center | Danger Zone | OK | OK | 1440 + 390 |
