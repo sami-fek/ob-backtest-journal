@@ -677,49 +677,77 @@
     </section>
 
     <!-- PAGE 5: SETTINGS -->
-    <section id="pageSettings" class="space-y-6 hidden animate-fade-in">
-      <div class="glass-card p-6 space-y-6 max-w-4xl mx-auto">
-        <div class="border-b border-slate-100 pb-3">
-          <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-sliders text-blue-600"></i>Operating System Configuration & Parameters</h2>
-          <p class="text-xs text-slate-500">Configure account parameters, risk rules, and data backups</p>
+    <section id="pageSettings" class="hidden animate-fade-in st-v2">
+      <!-- Settings (fix round): sections with titles outside the cards, 12-column grid.
+           Phone order = DOM order: rules first, then account, data, MT5. -->
+      <div class="st-head">
+        <div class="ds-label">Settings</div>
+        <h1 class="ds-h1">Rules, account and data</h1>
+        <p class="ds-sub">Your trading rules, the numbers used to size positions, and your backups.</p>
+      </div>
+
+      <div class="ds-section" id="stRules">
+        <div class="ds-section-head"><h2 class="ds-label">Trading rules</h2><span class="ds-period">apply every day · all accounts</span></div>
+        <div class="ds-grid">
+          <label class="ds-card st-field ds-span-6 ds-t-3" for="settingMaxDailyTrades">
+            <span class="ds-label">Max trades per day</span>
+            <input type="number" id="settingMaxDailyTrades" value="3" min="1" inputmode="numeric" onchange="updateSettings()" class="ds-input ds-num">
+            <span class="ds-sub">The server rejects any trade beyond this number on the same day.</span>
+          </label>
+          <label class="ds-card st-field ds-span-6 ds-t-3" for="settingHardStopLosses">
+            <span class="ds-label">Hard stop after consecutive losses</span>
+            <input type="number" id="settingHardStopLosses" value="2" min="1" inputmode="numeric" onchange="updateSettings()" class="ds-input ds-num">
+            <span class="ds-sub">After this many losses in a row, a new trade is logged only as a rule violation.</span>
+          </label>
         </div>
-        <div class="space-y-4">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-blue-600">1. Account Environment Settings</h3>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div><label class="block text-slate-600 mb-1 font-medium">Starting Account Capital (<span data-ob-sym>$</span>)</label><input type="number" id="settingInitialCapital" value="100000" onchange="updateSettings()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none"></div>
-            <div><label class="block text-slate-600 mb-1 font-medium">Risk Per Trade (%)</label><input type="number" step="0.1" id="settingRiskPercent" value="1.0" onchange="updateSettings()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none"></div>
-            <div><label class="block text-slate-600 mb-1 font-medium">Default R:R Ratio</label><input type="number" step="0.1" id="settingDefaultRR" value="2.0" onchange="updateSettings()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none"></div>
+      </div>
+
+      <div class="ds-section" id="stAccount">
+        <div class="ds-section-head"><h2 class="ds-label">Account defaults</h2><span class="ds-period">used for position size and R</span></div>
+        <div class="ds-grid">
+          <label class="ds-card st-field ds-span-4 ds-t-2" for="settingInitialCapital">
+            <span class="ds-label">Starting account capital (<span data-ob-sym>$</span>)</span>
+            <input type="number" id="settingInitialCapital" value="100000" inputmode="decimal" onchange="updateSettings()" class="ds-input ds-num">
+          </label>
+          <label class="ds-card st-field ds-span-4 ds-t-2" for="settingRiskPercent">
+            <span class="ds-label">Risk per trade (%)</span>
+            <input type="number" step="0.1" id="settingRiskPercent" value="1.0" inputmode="decimal" onchange="updateSettings()" class="ds-input ds-num">
+          </label>
+          <label class="ds-card st-field ds-span-4 ds-t-2" for="settingDefaultRR">
+            <span class="ds-label">Default R:R</span>
+            <input type="number" step="0.1" id="settingDefaultRR" value="2.0" inputmode="decimal" onchange="updateSettings()" class="ds-input ds-num">
+          </label>
+        </div>
+      </div>
+
+      <div class="ds-grid st-row">
+        <div class="ds-section ds-span-7 ds-l-12" id="stData">
+          <div class="ds-section-head"><h2 class="ds-label">Backup and data</h2><span class="ds-period">all trades · all accounts</span></div>
+          <div class="ds-card st-data">
+            <div class="st-actions">
+              <button type="button" onclick="exportDataJSON()" class="ds-btn ds-btn-primary"><i class="fa-solid fa-download"></i> Export backup (JSON)</button>
+              <button type="button" onclick="exportTableCSV()" class="ds-btn ds-btn-secondary"><i class="fa-solid fa-file-csv"></i> Export trades (CSV)</button>
+              <label class="ds-btn ds-btn-secondary cursor-pointer">
+                <i class="fa-solid fa-upload"></i> Import backup (JSON)
+                <input type="file" id="importBackupInput" accept=".json,application/json" class="hidden" onchange="importDataJSON(event)">
+              </label>
+            </div>
+            <div class="st-danger-row">
+              <span class="ds-sub">Removes every trade in every mode. Export a backup first.</span>
+              <button type="button" onclick="resetToDemoData()" class="ds-btn ds-btn-secondary st-danger"><i class="fa-solid fa-trash"></i> Clear all trades</button>
+            </div>
+            <div id="importStatusMsg" class="hidden mt-2 text-xs font-semibold rounded-xl px-4 py-2.5"></div>
           </div>
         </div>
-        <div class="space-y-4 pt-4 border-t border-slate-100">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-blue-600">2. Risk Management Thresholds</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div><label class="block text-slate-600 mb-1 font-medium">Max Daily Executions Limit</label><input type="number" id="settingMaxDailyTrades" value="3" onchange="updateSettings()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none"></div>
-            <div><label class="block text-slate-600 mb-1 font-medium">Consecutive-loss hard stop</label><input type="number" id="settingHardStopLosses" value="2" onchange="updateSettings()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-mono text-slate-900 focus:outline-none"></div>
-          </div>
-        </div>
-        <div class="space-y-3 pt-4 border-t border-slate-100 text-xs">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-blue-600">3. MT5 / Webhook Execution Bridge</h3>
-          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-            <div class="flex items-center gap-3">
+        <div class="ds-section ds-span-5 ds-l-12" id="stMt5">
+          <div class="ds-section-head"><h2 class="ds-label">MT5 bridge</h2><span class="ds-period">active account</span></div>
+          <div class="ds-card st-mt5">
+            <div class="st-mt5-main">
               <div class="w-3 h-3 rounded-full bg-slate-400"></div>
-              <div><span class="font-bold text-slate-800 block">MT5 / webhook bridge</span><span class="text-slate-500">Read-only trade tracking is planned. No passwords stored. Not connected yet.</span></div>
+              <div><span class="st-mt5-title">MT5 / webhook bridge</span><span class="text-slate-500">Read-only trade tracking. Connect an MT5 account via the Trading page.</span></div>
             </div>
             <span class="px-2.5 py-1 bg-slate-200 text-slate-600 font-bold rounded-lg text-[10px]" id="mt5BridgeStatus">NOT CONNECTED</span>
           </div>
-        </div>
-        <div class="space-y-3 pt-4 border-t border-slate-100 text-xs">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-blue-600">4. Backup & Storage Management</h3>
-          <div class="flex flex-wrap items-center gap-3">
-            <button onclick="exportDataJSON()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-md shadow-blue-500/20"><i class="fa-solid fa-download mr-1.5"></i> Export Backup (JSON)</button>
-            <button onclick="exportTableCSV()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all"><i class="fa-solid fa-file-csv mr-1.5"></i> Export Trades (CSV)</button>
-            <label class="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5">
-              <i class="fa-solid fa-upload"></i> Import Backup (JSON)
-              <input type="file" id="importBackupInput" accept=".json,application/json" class="hidden" onchange="importDataJSON(event)">
-            </label>
-            <button onclick="resetToDemoData()" class="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold rounded-xl transition-all ml-auto"><i class="fa-solid fa-trash mr-1.5"></i> Clear All Trades</button>
-          </div>
-          <div id="importStatusMsg" class="hidden mt-2 text-xs font-semibold rounded-xl px-4 py-2.5"></div>
         </div>
       </div>
     </section>
