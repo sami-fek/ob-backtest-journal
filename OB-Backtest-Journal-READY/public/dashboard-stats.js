@@ -105,5 +105,58 @@
     return out;
   }
 
-  root.obDashStats = { RANGES, rangeBounds, inBounds, applyFilter, summary, daily };
+  const byDate = list => (Array.isArray(list) ? list : []).map((t, i) => ({ t, i }))
+    .sort((a, b) => String(a.t.date || '').slice(0, 10).localeCompare(String(b.t.date || '').slice(0, 10)) || a.i - b.i)
+    .map(x => x.t);
+
+  /**
+   * Current win/loss streak (newest trades last by date; same-day trades keep
+   * their logged order). A breakeven trade ends a streak.
+   * → { kind: 'Win' | 'Loss' | null, count, recent: ['Win'|'Loss'|'BE', …] (oldest → newest, max `keep`),
+   *     longestWin, longestLoss }
+   */
+  function streak(list, keep = 12) {
+    const sorted = byDate(list);
+    const res = sorted.map(t => (t.result === 'Win' || t.result === 'Loss') ? t.result : 'BE');
+    let kind = null, count = 0;
+    const last = res[res.length - 1];
+    if (last === 'Win' || last === 'Loss') {
+      kind = last;
+      for (let i = res.length - 1; i >= 0 && res[i] === last; i--) count++;
+    }
+    let longestWin = 0, longestLoss = 0, run = 0, prev = null;
+    res.forEach(r => {
+      run = r === prev ? run + 1 : 1; prev = r;
+      if (r === 'Win') longestWin = Math.max(longestWin, run);
+      if (r === 'Loss') longestLoss = Math.max(longestLoss, run);
+    });
+    return { kind, count, recent: res.slice(-keep), longestWin, longestLoss };
+  }
+
+  /** Current drawdown of the cumulative trade P&L: peak (≥ 0) minus now, in $ (≥ 0). */
+  function currentDrawdown(list, pnlFor) {
+    let eq = 0, peak = 0;
+    byDate(list).forEach(t => { eq += num(pnlFor(t)); peak = Math.max(peak, eq); });
+    return Math.max(0, peak - eq);
+  }
+
+  /** Monday → Sunday of the week containing todayIso. */
+  function weekBounds(todayIso) {
+    const [y, m, d] = String(todayIso).split('-').map(Number);
+    const t = new Date(y, m - 1, d);
+    const mon = new Date(y, m - 1, d - ((t.getDay() + 6) % 7));
+    const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+    return [iso(mon), iso(sun)];
+  }
+  function monthBounds(todayIso) { return [todayIso.slice(0, 8) + '01', todayIso.slice(0, 8) + '31']; }
+
+  /** Progress towards a positive target: { pct 0–100, value, target, reached } or null when no target. */
+  function progress(value, target) {
+    const tg = Number(target);
+    if (!(tg > 0)) return null;
+    const v = num(value);
+    return { value: v, target: tg, pct: Math.max(0, Math.min(100, (v / tg) * 100)), reached: v >= tg };
+  }
+
+  root.obDashStats = { RANGES, rangeBounds, inBounds, applyFilter, summary, daily, streak, currentDrawdown, weekBounds, monthBounds, progress };
 })(typeof window !== 'undefined' ? window : globalThis);

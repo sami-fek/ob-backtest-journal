@@ -65,3 +65,34 @@ test('ranges, filters, daily map', () => {
   const d = D.daily(trades, pnl);
   assert.deepEqual(JSON.parse(JSON.stringify(d['2026-11-02'])), { pnl: 2000, count: 1 });
 });
+
+test('streak: current run, BE ends it, longest runs, same-day order kept', () => {
+  const s = D.streak(trades);
+  assert.equal(s.kind, 'Win');
+  assert.equal(s.count, 1);
+  assert.deepEqual([...s.recent], ['Win', 'Loss', 'Loss', 'BE', 'Win']);
+  assert.equal(s.longestLoss, 2);
+  assert.equal(s.longestWin, 1);
+  const l = D.streak([{ date: '2026-11-01', result: 'Win' }, { date: '2026-11-02', result: 'Loss' }, { date: '2026-11-02', result: 'Loss' }]);
+  assert.equal(l.kind, 'Loss'); assert.equal(l.count, 2);
+  const be = D.streak([{ date: '2026-11-01', result: 'Win' }, { date: '2026-11-02', result: 'BE' }]);
+  assert.equal(be.kind, null); assert.equal(be.count, 0);
+  assert.equal(D.streak([]).kind, null);
+  assert.equal(D.streak([], 3).recent.length, 0);
+});
+
+test('current drawdown, week/month bounds, target progress', () => {
+  assert.equal(D.currentDrawdown(trades, pnl), 0);                 // ends at a new high
+  assert.equal(D.currentDrawdown(trades.slice(0, 3), pnl), 2000);  // +2000 → 0
+  assert.equal(D.currentDrawdown([{ date: '2026-11-01', rMultiple: -1 }], pnl), 1000); // below start
+  assert.deepEqual([...D.weekBounds('2026-11-13')], ['2026-11-09', '2026-11-15']); // Friday
+  assert.deepEqual([...D.weekBounds('2026-11-09')], ['2026-11-09', '2026-11-15']); // Monday
+  assert.deepEqual([...D.weekBounds('2026-11-15')], ['2026-11-09', '2026-11-15']); // Sunday
+  assert.deepEqual([...D.monthBounds('2026-11-13')], ['2026-11-01', '2026-11-31']);
+  assert.equal(D.progress(500, 0), null);
+  assert.equal(D.progress(500, null), null);
+  assert.deepEqual(JSON.parse(JSON.stringify(D.progress(500, 2000))), { value: 500, target: 2000, pct: 25, reached: false });
+  assert.equal(D.progress(-300, 2000).pct, 0);
+  assert.equal(D.progress(2500, 2000).pct, 100);
+  assert.equal(D.progress(2500, 2000).reached, true);
+});

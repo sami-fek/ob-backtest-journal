@@ -440,7 +440,10 @@
     renderBanner(state);
     updateDisciplinePanel(state);
     updateHomeDiscipline(state);
+    // Read-only broadcast for the Dashboard and the Trading "Can I trade?" panel.
+    try { window.dispatchEvent(new CustomEvent('ob-discipline-state', { detail: { ...state, mode: getMode() } })); } catch (_) {}
   }
+  window.obDisciplineRefresh = () => { invalidateDailyCount(); return refreshAsync(); };
 
   // ─── patch render functions ───────────────────────────────────────────────────
 
