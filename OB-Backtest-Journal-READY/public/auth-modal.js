@@ -409,8 +409,10 @@
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
-  window.showAuthModal = function(redirectTo) {
+  // opts.mode: 'register' opens on "Create an account" (homepage "Get started"), 'signin' on Sign in.
+  window.showAuthModal = function(redirectTo, opts) {
     if (redirectTo) window.AUTH_REDIRECT = redirectTo;
+    if (opts && opts.mode) { setPwMode(opts.mode === 'register' ? 'register' : 'signin'); if (opts.mode === 'register') setPwOpen(true); }
     clearAlerts();
     overlay.classList.add('open');
     document.body.style.overflow = 'hidden';

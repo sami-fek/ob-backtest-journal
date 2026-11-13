@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <!-- Theme: set before first paint (light / dark / system), see theme.js -->
+  <script>window.__obInitialHash=location.hash;</script>
   <script>(function(){try{var m=localStorage.getItem("my-journal-theme");if(m!=="light"&&m!=="dark")m="system";var d=m==="dark"||(m==="system"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.setAttribute("data-theme",d?"dark":"light");r.setAttribute("data-theme-mode",m);r.style.colorScheme=d?"dark":"light";}catch(e){document.documentElement.setAttribute("data-theme","light");}})();</script>
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="/theme.css">
@@ -185,12 +186,13 @@
   <link rel="stylesheet" href="/design.css">
   <link rel="stylesheet" href="/trading-page.css">
   <link rel="stylesheet" href="/pages.css">
+  <link rel="stylesheet" href="/home.css">
 </head>
 <body class="min-h-screen flex flex-col bg-[#f4f7fb] text-slate-800">
 
   <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 lg:px-8 py-3">
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
-      <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('home')">
+      <div class="hm-logo flex items-center gap-3 cursor-pointer" role="link" tabindex="0" aria-label="MY Journal home">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 font-extrabold text-lg tracking-wider">MY</div>
         <div>
           <div class="flex items-center gap-2">
@@ -210,9 +212,7 @@
       </nav>
 
       <div class="flex items-center gap-3">
-        <button onclick="handleGetStarted()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 transition-all shadow-md shadow-blue-500/20 active:scale-95">
-          <span>Get started</span><i class="fa-solid fa-arrow-right text-[10px]"></i>
-        </button>
+        <button type="button" id="obSignInBtn" class="ds-btn ds-btn-primary">Sign in</button>
       </div>
     </div>
   </header>
@@ -225,84 +225,136 @@
       <div id="dbRoot" class="db-root"></div>
     </section>
 
-    <section id="pageHome" class="space-y-10 hidden animate-fade-in">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-4 lg:pt-8">
-        <div class="lg:col-span-6 space-y-6">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
-            <span class="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span><span>The Ultimate Trader OS for 2026</span>
+    <section id="pageHome" class="hm hidden animate-fade-in" aria-label="MY Journal">
+      <!-- Homepage (BUILD-PLAN-2 Part 3). Signed-out visitors only; signed-in users go to the Dashboard.
+           Screenshots: /home/*.webp, taken from a demo account with demo data (light + dark). -->
+
+      <!-- Hero -->
+      <div class="hm-hero ds-grid">
+        <div class="hm-hero-copy ds-span-6 ds-l-12">
+          <span class="hm-badge"><span class="ds-dot" aria-hidden="true"></span>Trading journal · built around your rules</span>
+          <h1 class="hm-h1">The trading journal that keeps you to your
+            <span class="hm-cycle" aria-hidden="true"><span class="hm-cycle-word" data-words="rules|risk limits|plan|process">rules</span></span><span class="sr-only">rules, risk limits, plan and process</span>.</h1>
+          <p class="hm-pitch">Log every trade with its checklist, a note and a screenshot. MY Journal stops you at your loss limits and shows which habits cost you R.</p>
+          <div class="hm-cta">
+            <button type="button" class="ds-btn ds-btn-primary hm-btn-lg" data-hm-signup>Get started <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+            <a href="#hmWhy" class="ds-btn ds-btn-secondary hm-btn-lg" data-hm-scroll="hmWhy">See how it works</a>
           </div>
-          <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight font-sans">
-            The only Trading platform <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800">you'll ever need.</span>
-          </h1>
-          <p class="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-            Eliminate guesswork, optimize execution, and quantify your statistical edge across Backtest, Demo, Real, and Funded accounts with precision analytics and discipline tracking.
-          </p>
-          <div class="flex flex-wrap items-center gap-3 pt-2">
-            <button onclick="handleGetStarted()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm flex items-center gap-2 transition-all shadow-lg shadow-blue-500/25 active:scale-95"><span>GET STARTED</span><i class="fa-solid fa-play text-xs"></i></button>
-            <button onclick="switchTab('journal')" class="px-6 py-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold border border-slate-200 rounded-xl text-sm transition-all shadow-sm"><i class="fa-solid fa-magnifying-glass text-slate-400 mr-1.5"></i> Explore Journal</button>
-          </div>
-          <div class="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200/80">
-            <div><div id="homeWinRate" class="text-2xl font-bold font-mono text-slate-900">0.0%</div><div class="text-xs text-slate-500">Average Win Rate</div></div>
-            <div><div id="homeSystemEdge" class="text-2xl font-bold font-mono text-blue-600">+0.00 R</div><div class="text-xs text-slate-500">System Edge</div></div>
-            <div><div id="homeDiscipline" class="text-2xl font-bold font-mono text-emerald-600">—</div><div class="text-xs text-slate-500">Discipline Score</div></div>
-          </div>
+          <p class="hm-note">Backtest, demo, live and funded accounts, each kept separate.</p>
         </div>
-        <div class="lg:col-span-6 relative">
-          <div class="glass-card p-6 border border-slate-200/80 relative z-10 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded-full bg-rose-400 inline-block"></span>
-                <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
-                <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span>
-                <span class="text-xs font-mono text-slate-400 ml-2">MY-Journal-LiveConsole.os</span>
-              </div>
-              <span class="text-xs font-bold font-mono text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">LIVE FEED</span>
-            </div>
-            <div class="grid grid-cols-3 gap-3">
-              <div class="p-3 bg-slate-50 rounded-xl border border-slate-100"><span class="text-[10px] uppercase font-bold text-slate-400 block">Total Net R</span><span id="homeNetR" class="text-lg font-bold font-mono text-blue-600">+0.00 R</span></div>
-              <div class="p-3 bg-slate-50 rounded-xl border border-slate-100"><span class="text-[10px] uppercase font-bold text-slate-400 block">Profit Factor</span><span id="homeProfitFactor" class="text-lg font-bold font-mono text-emerald-600">0.00</span></div>
-              <div class="p-3 bg-slate-50 rounded-xl border border-slate-100"><span class="text-[10px] uppercase font-bold text-slate-400 block">Clean Trades</span><span id="homeCleanPct" class="text-lg font-bold font-mono text-slate-800">—</span></div>
-            </div>
-            <div class="h-44 w-full bg-slate-50 rounded-xl border border-slate-100 p-3 flex items-end gap-2 relative overflow-hidden">
-              <div class="absolute top-3 left-3 text-xs font-semibold text-slate-500">Cumulative R Growth Curve</div>
-              <svg class="w-full h-32 text-blue-500" viewBox="0 0 400 100" fill="none" stroke="currentColor" stroke-width="3">
-                <path d="M0,80 Q40,75 80,60 T160,50 T240,30 T320,35 T400,10" fill="none" stroke="url(#blueGradient)" stroke-linecap="round"/>
-                <defs><linearGradient id="blueGradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
-              </svg>
-            </div>
-          </div>
-          <div class="absolute -inset-2 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-3xl blur-2xl opacity-20 -z-10"></div>
+        <div class="hm-hero-shot ds-span-6 ds-l-12">
+          <figure class="hm-browser" aria-label="The MY Journal Dashboard (demo data)">
+            <div class="hm-bar" aria-hidden="true"><i></i><i></i><i></i><span>my-journal · dashboard</span></div>
+            <img class="hm-shot hm-shot-light" src="/home/dashboard-light.webp" width="1440" height="900" alt="MY Journal Dashboard with demo data: equity, discipline status, targets and performance" fetchpriority="high">
+            <img class="hm-shot hm-shot-dark" src="/home/dashboard-dark.webp" width="1440" height="900" alt="" loading="lazy" aria-hidden="true">
+            <figcaption class="hm-demo-tag">Demo data</figcaption>
+          </figure>
         </div>
       </div>
 
-      <div class="pt-6 space-y-4">
-        <div class="text-center max-w-2xl mx-auto space-y-1">
-          <h2 class="text-xl font-bold text-slate-900">Engineered for Systematic Edge</h2>
-          <p class="text-xs text-slate-500">Built ground-up with institutional order block and market structure tools.</p>
+      <!-- Why: pinned scroll on desktop, three cards on phones -->
+      <div id="hmWhy" class="hm-section hm-why">
+        <div class="hm-head">
+          <span class="ds-label">Why it works</span>
+          <h2 class="hm-h2">Rules only help if something enforces them</h2>
+          <p class="hm-sub">Three things happen every time you trade.</p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div class="glass-card p-5 space-y-3 hover:border-blue-300 transition-all cursor-pointer group" onclick="switchTab('trading')">
-            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-bolt"></i></div>
-            <h3 class="font-bold text-slate-900 text-sm">Instant Trade Logging</h3>
-            <p class="text-xs text-slate-500 leading-relaxed">Log trades in under 10 seconds with automatic R-Multiple, Lot sizing, and P&L auto-calculations.</p>
-          </div>
-          <div class="glass-card p-5 space-y-3 hover:border-blue-300 transition-all cursor-pointer group" onclick="switchTab('journal')">
-            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-shield-halved"></i></div>
-            <h3 class="font-bold text-slate-900 text-sm">Discipline Tracking</h3>
-            <p class="text-xs text-slate-500 leading-relaxed">Monitor clean execution versus rule violations in real-time to preserve capital and build consistency.</p>
-          </div>
-          <div class="glass-card p-5 space-y-3 hover:border-blue-300 transition-all cursor-pointer group" onclick="switchTab('trading')">
-            <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-layer-group"></i></div>
-            <h3 class="font-bold text-slate-900 text-sm">Multi-Environment</h3>
-            <p class="text-xs text-slate-500 leading-relaxed">Isolate performance across Backtest, Demo, Real Live trading, and Prop Funded challenges seamlessly.</p>
-          </div>
-          <div class="glass-card p-5 space-y-3 hover:border-blue-300 transition-all cursor-pointer group" onclick="switchTab('analytics')">
-            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform"><i class="fa-solid fa-calendar-days"></i></div>
-            <h3 class="font-bold text-slate-900 text-sm">Calendar Heatmaps</h3>
-            <p class="text-xs text-slate-500 leading-relaxed">Visualize daily win/loss distribution and weekly P&L aggregation directly on interactive calendar grids.</p>
+        <div class="hm-why-track">
+          <div class="hm-why-pin">
+            <ol class="hm-steps">
+              <li class="hm-step is-active" data-step="0">
+                <span class="hm-step-num">01</span>
+                <div><h3>Log it honestly</h3><p>A trade only saves with at least half of your checklist ticked, a written note and a screenshot. No half-filled entries.</p></div>
+                <figure class="hm-step-visual hm-stack"><img class="hm-shot-light" src="/home/why-log-light.webp" alt="Trade sheet with the strategy checklist and the save requirements (demo data)" loading="lazy" width="440" height="900"><img class="hm-shot-dark" src="/home/why-log-dark.webp" alt="" aria-hidden="true" loading="lazy" width="440" height="900"></figure>
+              </li>
+              <li class="hm-step" data-step="1">
+                <span class="hm-step-num">02</span>
+                <div><h3>Rules that stop you</h3><p>Set a consecutive-loss hard stop and a daily trade limit. When you hit one, new trades are blocked and the app tells you which rule did it.</p></div>
+                <figure class="hm-step-visual"><img class="hm-shot-light" src="/home/why-rules-light.webp" alt="The Can I trade? panel after the hard stop (demo data)" loading="lazy"><img class="hm-shot-dark" src="/home/why-rules-dark.webp" alt="" aria-hidden="true" loading="lazy"></figure>
+              </li>
+              <li class="hm-step" data-step="2">
+                <span class="hm-step-num">03</span>
+                <div><h3>See the pattern</h3><p>Tag trades and note how they felt. The Behavior view ranks the mistakes that cost you the most R and shows how often FOMO shows up.</p></div>
+                <figure class="hm-step-visual"><img class="hm-shot-light" src="/home/why-pattern-light.webp" alt="Mistake leaderboard from trade tags (demo data)" loading="lazy"><img class="hm-shot-dark" src="/home/why-pattern-dark.webp" alt="" aria-hidden="true" loading="lazy"></figure>
+              </li>
+            </ol>
+            <div class="hm-progress" aria-hidden="true"><i></i></div>
+            <div class="hm-why-stage" aria-hidden="true"></div>
           </div>
         </div>
       </div>
+
+      <!-- Flow map -->
+      <div class="hm-section hm-flow">
+        <div class="hm-head">
+          <span class="ds-label">The flow</span>
+          <h2 class="hm-h2">From one trade to the full picture</h2>
+          <p class="hm-sub">Five parts of the app, in the order you meet them.</p>
+        </div>
+        <ol class="hm-nodes">
+          <li class="hm-node" style="--hm-mark: var(--ds-pos)">
+            <figure class="hm-browser"><div class="hm-bar" aria-hidden="true"><i></i><i></i><i></i><span>my-journal · trading</span></div>
+              <img class="hm-shot-light" src="/home/log-light.webp" width="1440" height="900" loading="lazy" alt="Trade sheet with the checklist (demo data)"><img class="hm-shot-dark" src="/home/log-dark.webp" width="1440" height="900" loading="lazy" alt="" aria-hidden="true"></figure>
+            <div class="hm-node-copy"><span class="ds-label">Node 01 · Log a trade</span><h3>Log it in the trade sheet</h3><p>Pick pair, direction and result, then work through your strategy's checklist, add a note and a screenshot.</p></div>
+          </li>
+          <li class="hm-node" style="--hm-mark: var(--ds-accent)">
+            <figure class="hm-browser"><div class="hm-bar" aria-hidden="true"><i></i><i></i><i></i><span>my-journal · dashboard</span></div>
+              <img class="hm-shot-light" src="/home/calendar-light.webp" width="1440" height="900" loading="lazy" alt="Dashboard calendar and recent trades (demo data)"><img class="hm-shot-dark" src="/home/calendar-dark.webp" width="1440" height="900" loading="lazy" alt="" aria-hidden="true"></figure>
+            <div class="hm-node-copy"><span class="ds-label">Node 02 · Dashboard &amp; calendar</span><h3>See where you stand</h3><p>Today's P&amp;L, equity, targets and a calendar of green and red days, in one view.</p></div>
+          </li>
+          <li class="hm-node" style="--hm-mark: var(--ds-warn)">
+            <figure class="hm-browser"><div class="hm-bar" aria-hidden="true"><i></i><i></i><i></i><span>my-journal · trading</span></div>
+              <img class="hm-shot-light" src="/home/discipline-light.webp" width="1440" height="900" loading="lazy" alt="Trading page after the hard stop (demo data)"><img class="hm-shot-dark" src="/home/discipline-dark.webp" width="1440" height="900" loading="lazy" alt="" aria-hidden="true"></figure>
+            <div class="hm-node-copy"><span class="ds-label">Node 03 · Discipline engine</span><h3>Know when to stop</h3><p>The "Can I trade?" panel counts trades left today and losses left before your hard stop, and blocks new trades when a rule is hit.</p></div>
+          </li>
+          <li class="hm-node" style="--hm-mark: var(--ds-neg)">
+            <figure class="hm-browser"><div class="hm-bar" aria-hidden="true"><i></i><i></i><i></i><span>my-journal · analytics</span></div>
+              <img class="hm-shot-light" src="/home/behavior-light.webp" width="1440" height="900" loading="lazy" alt="Analytics, Behavior tab (demo data)"><img class="hm-shot-dark" src="/home/behavior-dark.webp" width="1440" height="900" loading="lazy" alt="" aria-hidden="true"></figure>
+            <div class="hm-node-copy"><span class="ds-label">Node 04 · Behavior &amp; Analytics</span><h3>Find what costs you</h3><p>Results by strategy, session and day, rules followed vs broken, drawdown, and a mistake leaderboard built from your tags.</p></div>
+          </li>
+          <li class="hm-node" style="--hm-mark: var(--ds-text-2)">
+            <figure class="hm-browser"><div class="hm-bar" aria-hidden="true"><i></i><i></i><i></i><span>my-journal · ai coach</span></div>
+              <img class="hm-shot-light" src="/home/coach-light.webp" width="1440" height="900" loading="lazy" alt="AI Coach panel (demo data)"><img class="hm-shot-dark" src="/home/coach-dark.webp" width="1440" height="900" loading="lazy" alt="" aria-hidden="true"></figure>
+            <div class="hm-node-copy"><span class="ds-label">Node 05 · AI Coach</span><h3>Ask about your own journal</h3><p>The AI Coach reads your trades, notes and checklists and answers questions about them. Optional MT5 sync is read-only: it brings trades in and never places orders.</p></div>
+          </li>
+        </ol>
+      </div>
+
+      <!-- "Sound familiar?" wall: common trader self-talk, not reviews -->
+      <div class="hm-section hm-wall-wrap">
+        <div class="hm-head">
+          <span class="ds-label">Sound familiar?</span>
+          <h2 class="hm-h2">The moments the app is built for</h2>
+          <p class="hm-sub">Things traders tell themselves, and the part of MY Journal that catches each one. These are not reviews.</p>
+        </div>
+        <!-- Real reviews can replace these cards later: same .hm-card markup, put the quote in <q> and the name in .hm-card-tag. -->
+        <div class="hm-wall" data-hm-wall>
+          <div class="hm-row">
+            <div class="hm-card"><q>I knew the rule. I broke it anyway.</q><span class="hm-card-tag">Caught by: Save rules</span></div>
+            <div class="hm-card"><q>One more trade to win it back.</q><span class="hm-card-tag">Caught by: Hard stop</span></div>
+            <div class="hm-card"><q>It's only my fourth trade today.</q><span class="hm-card-tag">Caught by: Daily limit</span></div>
+            <div class="hm-card"><q>I'll write the note later.</q><span class="hm-card-tag">Caught by: Save rules</span></div>
+            <div class="hm-card"><q>That FOMO entry was a one-off.</q><span class="hm-card-tag">Caught by: Mistake leaderboard</span></div>
+          </div>
+          <div class="hm-row hm-row-rev">
+            <div class="hm-card"><q>Two losses is nothing. I'm due a winner.</q><span class="hm-card-tag">Caught by: Hard stop</span></div>
+            <div class="hm-card"><q>I don't need a screenshot for this one.</q><span class="hm-card-tag">Caught by: Save rules</span></div>
+            <div class="hm-card"><q>Revenge trading isn't really my problem.</q><span class="hm-card-tag">Caught by: Mistake leaderboard</span></div>
+            <div class="hm-card"><q>Just a quick scalp before lunch.</q><span class="hm-card-tag">Caught by: Daily limit</span></div>
+            <div class="hm-card"><q>I'll move my stop, just this once.</q><span class="hm-card-tag">Caught by: Mistake leaderboard</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Closing call to action -->
+      <div class="hm-section hm-close">
+        <span class="ds-label">Start with your next trade</span>
+        <h2 class="hm-h2 hm-close-h">Trade your plan, not your mood.</h2>
+        <button type="button" class="ds-btn ds-btn-primary hm-btn-lg" data-hm-signup>Get started <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+      </div>
+
+      <!-- Old Home numbers: still written by renderAll / discipline-engine.js; kept hidden (no visible stats on the homepage). -->
+      <div hidden aria-hidden="true"><span id="homeWinRate"></span><span id="homeSystemEdge"></span><span id="homeDiscipline"></span><span id="homeNetR"></span><span id="homeProfitFactor"></span><span id="homeCleanPct"></span></div>
     </section>
 
     <!-- PAGE 2: TRADING -->
@@ -820,10 +872,10 @@
     </div>
   </div>
 
-  <footer class="border-t border-slate-200/80 py-4 px-4 text-center text-xs text-slate-500 bg-white/50 backdrop-blur-md">
-    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-      <div>MY Journal Trading OS &copy; 2026. Built for Institutional Precision.</div>
-      <div class="flex items-center gap-3"><span class="text-slate-400 font-mono"><i class="fa-solid fa-database text-blue-600 mr-1"></i> Server storage (Supabase / SQLite)</span></div>
+  <footer class="hm-footer border-t border-slate-200/80 py-4 px-4 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto hm-foot">
+      <div class="hm-foot-brand"><span class="hm-foot-mark" aria-hidden="true">MY</span><span><b>MY Journal</b> <span class="hm-foot-line">· a trading journal built around your rules · © 2026</span></span></div>
+      <p class="hm-foot-legal">MY Journal is a journaling and analytics tool. It is not a broker, it does not execute trades, and nothing in it is financial advice.</p>
     </div>
   </footer>
 
@@ -2993,6 +3045,7 @@
   <script src="/analytics-insights.js"></script>
   <script src="/analytics-page.js"></script>
   <script src="/journal-page.js"></script>
+  <script src="/site-shell.js"></script>
   <script src="/trading-page.js"></script>
 </body>
 </html>

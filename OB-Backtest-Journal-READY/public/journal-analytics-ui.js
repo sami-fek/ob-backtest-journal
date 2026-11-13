@@ -4,7 +4,9 @@
   const ACCOUNT_MENU = 'journal-analytics-account-menu';
   const ACCOUNT_KEY = 'my_journal_accounts_v1';
 
-  const modeLabel = mode => mode === 'Backtest' ? 'BACKTEST' : `${mode.toUpperCase()} ACCOUNT`;
+  // The Real mode is shown as "Live" (same as the Dashboard and Trading toolbars).
+  const modeName = mode => (mode === 'Real' ? 'Live' : mode);
+  const modeLabel = mode => mode === 'Backtest' ? 'BACKTEST' : `${modeName(mode).toUpperCase()} ACCOUNT`;
 
   function currentMode() {
     try { return typeof activeMode !== 'undefined' ? activeMode : 'Demo'; } catch (_) { return 'Demo'; }
@@ -50,7 +52,7 @@
     wrap.className = `${MODE_MENU} glass-card p-3 flex flex-col sm:flex-row items-center justify-between gap-3`;
     wrap.innerHTML = `
       <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold w-full sm:w-auto">
-        ${MODES.map(mode => `<button type="button" data-mode="${mode}" class="px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center text-slate-500 hover:text-slate-800" onclick="window.__journalAnalyticsSetMode('${mode}')">${mode}</button>`).join('')}
+        ${MODES.map(mode => `<button type="button" data-mode="${mode}" class="px-4 py-2 rounded-lg transition-all flex-1 sm:flex-none text-center text-slate-500 hover:text-slate-800" onclick="window.__journalAnalyticsSetMode('${mode}')">${modeName(mode)}</button>`).join('')}
       </div>
       <div class="flex items-center gap-2 text-xs">
         <span class="text-slate-400">Viewing:</span>

@@ -16,11 +16,24 @@
   // Do nothing on the auth page itself
   if (currentPathMatches(AUTH_SKIP_PATHS)) return;
 
+  // 'in' | 'out' for site-shell.js (window.obAuthState + 'ob-auth-state' event)
+  function setAuthState(s) {
+    window.obAuthState = s;
+    try { window.dispatchEvent(new CustomEvent('ob-auth-state', { detail: s })); } catch (_) {}
+  }
+
   async function checkAuth() {
     try {
       const res = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
       if (res.status === 401 || res.status === 403) {
-        // Signed-out visitors see the marketing Home page behind the sign-in modal.
+        // Signed-out visitors read the homepage. site-shell.js (BUILD-PLAN-2 Part 3)
+        // owns the signed-out shell: it opens the sign-in modal only when an app
+        // page was asked for, never by itself on the homepage.
+        if (document.readyState === 'loading') await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
+        if (document.getElementById('pageHome')?.classList.contains('hm')) {
+          setAuthState('out');
+          return null;
+        }
         try { if (typeof window.switchTab === 'function') window.switchTab('home'); } catch (_) {}
         // Show auth modal if available, otherwise fall back to auth page
         if (typeof window.showAuthModal === 'function') {
@@ -54,7 +67,8 @@
     try {
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
     } catch (_) {}
-    window.location.replace('/auth.html');
+    // Back to the homepage (signed-out shell, BUILD-PLAN-2 Part 3).
+    window.location.replace('/');
   }
 
   // ── Account menu ───────────────────────────────────────────────────────────
@@ -286,6 +300,7 @@
   checkAuth().then(user => {
     if (user?.email) {
       injectAccountMenu(user.email);
+      setAuthState('in');
     }
   });
 
