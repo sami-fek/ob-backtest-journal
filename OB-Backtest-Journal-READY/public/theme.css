@@ -375,3 +375,7 @@ html[data-theme="dark"] #pageAnalytics .glass-card.bg-gradient-to-r {
   border-color: #2e2e2e !important;
 }
 html[data-theme="dark"] #pageAnalytics .glass-card.bg-gradient-to-r .text-blue-100 { color: #d4d4f7 !important; }
+
+/* Part 4 QA: Settings MT5 status badge no longer clipped on phones */
+#mt5BridgeStatus { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 640px) { #mt5BridgeStatus { align-self: flex-start; } }

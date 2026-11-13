@@ -232,7 +232,9 @@
       banner.innerHTML = `
         <div class="ob-banner-icon"><i class="fa-solid fa-hand"></i></div>
         <div class="ob-banner-body">
-          <div class="ob-banner-title">HARD STOP — ${state.consecutiveLosses} consecutive loss${state.consecutiveLosses > 1 ? 'es' : ''}</div>
+          <div class="ob-banner-title">HARD STOP — ${state.consecutiveLosses >= state.hardStopThreshold
+            ? `${state.consecutiveLosses} consecutive losses`
+            : `${state.hardStopThreshold}-loss rule hit${state.hardStopDate ? ` on ${state.hardStopDate}` : ''}`}</div>
           <div class="ob-banner-sub">Trading is paused after hitting your ${state.hardStopThreshold}-loss rule.${postNote}</div>
         </div>
         <button class="ob-banner-close" aria-label="Dismiss" onclick="this.closest('#${BANNER_ID}')?.remove()">×</button>`;

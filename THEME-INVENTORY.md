@@ -2,6 +2,8 @@
 
 How items were checked: headless Chrome screenshots of the local app (SQLite, test data), dark theme at 1440px, plus 390px for the main pages and the account menu. Light was checked on the pages and widgets that changed. "Recolor layer" means the colours come from the patch script and are remapped automatically by `theme.js`.
 
+**Final QA (Part 4, 2026-11-13):** every page below plus the drawer, the calendar "+" panel, a dropdown, the account menu, the sign-in modal and /auth.html were screenshotted again in **light and dark at 1440px and 390px** (36 screenshots) and looked at. Statuses below are the final ones.
+
 Status legend:
 - **OK**: looked at in that theme, readable, no white boxes.
 - **OK (layer)**: covered by the theme layer but not individually screenshotted.
@@ -49,8 +51,22 @@ Status legend:
 | Settings | Settings page (capital, risk, limits, MT5 bridge, backup) | OK | OK | Reached via the account menu |
 | Auth | Sign-in modal | OK | OK | Google button: outline (light) / filled_black (dark) |
 | Auth | /auth.html | OK | OK | Dark: no light gradient |
-| Analytics | All analytics views (KPIs, charts, filter bar, strategy compare, breakdowns, AI insights) | as before | Pending Part 4 | Not part of Part 1 |
-| Dashboard | (new page) | | Pending Part 4 | |
+| Analytics | Sub-tab bar (Performance / Behavior) | OK | OK | 1440 + 390 |
+| Analytics | Filter bar, mode + account selectors | OK | OK | 1440 + 390 |
+| Analytics | KPI tiles (profit factor, expectancy, max DD, W/L ratio) | OK | OK | 1440 + 390 |
+| Analytics | Charts: strategy, timeframe, regime, R progression, session, day of week | OK | OK | Axes, grid, legend and tooltips via the theme Chart.js plugin |
+| Analytics | System Discipline & Model Edge Insights banner | OK | OK | Dark: purple gradient (#26145f) |
+| Analytics | Strategy Comparison table | OK | OK (layer) | Scrolls sideways at 390 |
+| Analytics | Behavior: Psychology Status (cards, trend chart, tag / feeling tables, mistake leaderboard, empty states) | OK | OK | 1440 + 390 |
+| Analytics | AI Coach panel | OK | OK | 1440 + 390 |
+| Analytics | Full Monthly Performance Heatmap card | hidden | hidden | Hidden by `ui-layout-restore.js` / `journal-heatmap.js` since before this build (the calendar lives on Trading and Dashboard); not changed |
+| Dashboard | Greeting, today strip, mode / account / range / filter toolbar | OK | OK | 1440 + 390 |
+| Dashboard | Stat cards incl. win-rate gauge | OK | OK | 1440 + 390 |
+| Dashboard | Net P&L & Account Equity chart | OK | OK | 1440 + 390 |
+| Dashboard | Performance Breakdown, Profit Drivers | OK | OK | 1440 + 390 |
+| Dashboard | Calendar, Trading Activity + summary | OK | OK | Same markup and styles as the Trading page |
+| Dashboard | Recent Trades table + pager | OK | OK | 1440 + 390 |
+| Dashboard | Empty state (account without trades) | OK | OK | |
 | Account center | Shell: sub-nav card, title, Save Changes | OK | OK | 1440 + 390 (sub-nav becomes a horizontal tab row) |
 | Account center | Profile (avatar, details, contact, about) | OK | OK | 1440 + 390 |
 | Account center | Accounts (list, badges, actions, unassigned trades) | OK | OK | 1440 + 390 |
