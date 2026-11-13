@@ -8,7 +8,7 @@
 html.ob-signed-out body > header nav,
 html.ob-signed-out body > header #ob-ai-fab,
 html.ob-signed-out body > header [data-hm-getstarted] { display: none !important; }
-html:not(.ob-signed-out) body > header #obSignInBtn { display: none !important; }
+html:not(.ob-signed-out) body > header :is(#obSignInBtn, #obGetStartedHdr) { display: none !important; }
 html.ob-signed-out body #ob-ai-fab#ob-ai-fab { display: none !important; }
 /* Signed in: no Home tab, no "Get started" */
 html.ob-signed-in body > header #navBtn-home,
@@ -22,8 +22,52 @@ html[data-theme] body > header .hm-logo > div:first-child {
   background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; box-shadow: none !important; border-radius: 12px !important;
 }
 html[data-theme] body > header h1 .text-blue-600 { color: inherit !important; }
-#obSignInBtn { min-height: 40px; }
-@media (pointer: coarse), (max-width: 1023px) { #obSignInBtn { min-height: var(--ds-tap); } }
+/* Signed-out header buttons: same height, font and radius */
+html body > header .hm-hdr-btn { min-height: 40px; padding: 0 16px; border-radius: var(--ds-radius-ctl); font-size: 11px; }
+html.ob-signed-out body > header > div > div:last-child { gap: 8px !important; }
+@media (pointer: coarse), (max-width: 1023px) { html body > header .hm-hdr-btn { min-height: var(--ds-tap); } }
+
+/* Phones: logo + both buttons on one row at 360 px */
+@media (max-width: 640px) {
+  html.ob-signed-out body > header h1 + span[class] { display: none !important; }        /* "PRO OS" badge */
+  html.ob-signed-out body > header .hm-logo p { display: none !important; }              /* subtitle line */
+  html.ob-signed-out body > header .hm-logo { gap: 8px !important; min-width: 0; }
+  html.ob-signed-out body > header .hm-logo > div:first-child { width: 36px !important; height: 36px !important; font-size: 15px !important; flex: none; }
+  html.ob-signed-out body > header .hm-logo h1 { font-size: 16px !important; white-space: nowrap; }
+  html.ob-signed-out body > header > div { gap: 8px !important; }
+  html body > header .hm-hdr-btn { padding: 0 11px; font-size: 10.5px; letter-spacing: .06em; }
+}
+@media (max-width: 374px) {
+  html.ob-signed-out body > header .hm-logo h1 { font-size: 15px !important; }
+  html body > header .hm-hdr-btn { padding: 0 9px; letter-spacing: .04em; }
+}
+
+/* ── Homepage button pairs: hover / focus swaps filled ⇄ outline ──
+   Filled (Sign in, hero "Get started"): filled → outline. Outline (header "Get started",
+   "See how it works"): outline → filled. Border width is the same in both states (no shift).
+   Hover only on devices that hover (no sticky hover on touch); keyboard focus always. */
+html.ob-signed-out body > header .hm-hdr-btn,
+#pageHome .hm-cta .ds-btn, #pageHome .hm-close .ds-btn {
+  border: 1px solid var(--ds-btn-bg) !important;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+html.ob-signed-out body > header .hm-hdr-btn.ds-btn-primary,
+#pageHome .hm-cta .ds-btn-primary, #pageHome .hm-close .ds-btn-primary { background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; }
+html.ob-signed-out body > header .hm-hdr-btn.ds-btn-secondary,
+#pageHome .hm-cta .ds-btn-secondary { background: transparent !important; color: var(--ds-btn-bg) !important; }
+html.ob-signed-out body > header .hm-hdr-btn.ds-btn-primary:focus-visible,
+#pageHome .hm-cta .ds-btn-primary:focus-visible, #pageHome .hm-close .ds-btn-primary:focus-visible { background: transparent !important; color: var(--ds-btn-bg) !important; }
+html.ob-signed-out body > header .hm-hdr-btn.ds-btn-secondary:focus-visible,
+#pageHome .hm-cta .ds-btn-secondary:focus-visible { background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; }
+@media (hover: hover) {
+  html.ob-signed-out body > header .hm-hdr-btn.ds-btn-primary:hover,
+  #pageHome .hm-cta .ds-btn-primary:hover, #pageHome .hm-close .ds-btn-primary:hover { background: transparent !important; color: var(--ds-btn-bg) !important; }
+  html.ob-signed-out body > header .hm-hdr-btn.ds-btn-secondary:hover,
+  #pageHome .hm-cta .ds-btn-secondary:hover { background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.ob-signed-out body > header .hm-hdr-btn, #pageHome .hm-cta .ds-btn, #pageHome .hm-close .ds-btn { transition: none; }
+}
 
 /* Signed out on phones: one header row, no nav row */
 @media (max-width: 767px) {
@@ -65,7 +109,11 @@ html body > main:has(> #pageHome:not(.hidden)) {
 html[data-theme="dark"] .hm .hm-shot-light, html:not([data-theme="dark"]) .hm .hm-shot-dark { display: none !important; }
 
 /* ── Hero ── */
-.hm-hero { align-items: center; min-height: min(760px, calc(100svh - 70px)); padding-top: clamp(40px, 6vw, 88px); row-gap: var(--ds-s7) !important; }
+/* Starts close below the header: 56 px desktop, 32 px tablets, 24 px phones. Content is
+   top-aligned (no centring in a tall box, which made a ~180 px empty band above the badge). */
+.hm-hero { align-items: start; padding-top: 56px; row-gap: var(--ds-s7) !important; }
+@media (max-width: 1023px) { .hm-hero { padding-top: 32px; } }
+@media (max-width: 640px) { .hm-hero { padding-top: 24px; } }
 .hm-hero-copy { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ds-s5); }
 .hm-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--ds-line-strong); background: var(--ds-surface); font: 600 10.5px/1.2 var(--ds-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ds-text-2); }
 .hm-badge .ds-dot { color: var(--ds-pos); }
