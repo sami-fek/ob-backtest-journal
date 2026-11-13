@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import './public/time-prefs.js'; // globalThis.obTimeCore (timezone-aware calendar days)
 import { localStore, supabaseStore, extractEmbedded, hasEmbedded, collectGarbage, isShotId, parseDataUrl, refFor, MAX_SHOT_BYTES } from './shots-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -847,6 +848,12 @@ const DAILY_TRADE_LIMIT = 3;
 
 function todayUTC() { return new Date().toISOString().slice(0, 10); }
 
+// Today in the user's saved timezone (Account center › Preferences); UTC when none is saved.
+async function todayFor(uid) {
+  const tz = parseJsonSafe(await getStoredValue(uid, SETTINGS_KEY))?.timezone;
+  return globalThis.obTimeCore.validTz(tz) ? globalThis.obTimeCore.todayIso(tz) : todayUTC();
+}
+
 function parseJsonSafe(value) {
   try { return value ? JSON.parse(value) : null; } catch { return null; }
 }
@@ -871,7 +878,7 @@ app.get('/api/trades/daily-count', async (req, res) => {
     if (!user) return unauthorized(res);
 
     const mode  = String(req.query.mode || 'Real');
-    const date  = String(req.query.date || todayUTC());
+    const date  = String(req.query.date || await todayFor(user.id));
     const limit = await getDailyLimit(user.id);
 
     if (mode === 'Backtest') {
@@ -907,7 +914,7 @@ app.post('/api/trades', async (req, res) => {
 
     if (mode !== 'Backtest') {
       const limit      = await getDailyLimit(user.id);
-      const date       = String(trade.date || todayUTC()).slice(0, 10);
+      const date       = String(trade.date || await todayFor(user.id)).slice(0, 10);
       const tradeList  = await getTradeList(user.id);
       const todayCount = tradeList.filter(t =>
         String(t.mode || '') === mode &&

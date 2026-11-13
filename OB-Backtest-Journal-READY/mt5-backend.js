@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import './public/time-prefs.js'; // globalThis.obTimeCore: trade dates in the user's timezone
 
 const ACCOUNT_STORAGE_KEY = 'my_journal_accounts_v1';
 const TRADES_STORAGE_KEY = 'ob-trades';
@@ -201,10 +202,14 @@ function mergeHistory(existingValue, incoming) {
 
 // ---- journal conversion ----
 
-function dateOnly(iso) {
+// Calendar day of an MT5 time in the user's saved timezone (UTC when none is saved),
+// so trades closed near midnight land on the right day.
+export function dateOnly(iso, tz) {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
+  const core = globalThis.obTimeCore;
+  if (tz && core && core.validTz(tz)) return core.isoInTz(d, tz);
   return d.toISOString().slice(0, 10);
 }
 
@@ -222,11 +227,11 @@ function directionFromMT5(direction) {
   return 'LONG';
 }
 
-function buildJournalTradeFromClosed(closed, info, account) {
+function buildJournalTradeFromClosed(closed, info, account, tz) {
   const strategy = 'Model OB';
   const steps = CHECKLISTS[strategy] || CHECKLISTS['Model OB'];
   const profit = Number(closed.profit || 0) + Number(closed.swap || 0) + Number(closed.commission || 0);
-  const closeDate = dateOnly(closed.closeTime) || dateOnly(closed.openTime) || dateOnly(new Date().toISOString());
+  const closeDate = dateOnly(closed.closeTime, tz) || dateOnly(closed.openTime, tz) || dateOnly(new Date().toISOString(), tz);
 
   // Auto-calculate R-multiple when price levels are available
   let rMultiple = 0;
@@ -273,7 +278,7 @@ function buildJournalTradeFromClosed(closed, info, account) {
   };
 }
 
-function mergeJournalTrades(existingValue, incomingClosed, info, account) {
+function mergeJournalTrades(existingValue, incomingClosed, info, account, tz) {
   const existing = parseJson(existingValue);
   const journal = Array.isArray(existing) ? existing : [];
   const seenTickets = new Set();
@@ -286,7 +291,7 @@ function mergeJournalTrades(existingValue, incomingClosed, info, account) {
     if (!normalized) continue;
     if (seenTickets.has(normalized.ticket)) continue;
     seenTickets.add(normalized.ticket);
-    additions.push(buildJournalTradeFromClosed(normalized, info, account));
+    additions.push(buildJournalTradeFromClosed(normalized, info, account, tz));
   }
   if (!additions.length) return { journal, added: 0 };
   // Newest first
@@ -370,7 +375,9 @@ export function registerMt5Routes(app, storage) {
         try {
           const accountRecord = getAccountRecord(await getStoredValue(info.sessionId, ACCOUNT_STORAGE_KEY), info.accountId, info.mode);
           const existingJournal = await getStoredValue(info.sessionId, TRADES_STORAGE_KEY);
-          const { journal, added } = mergeJournalTrades(existingJournal, rawClosed, info, accountRecord);
+          let tz = '';
+          try { tz = parseJson(await getStoredValue(info.sessionId, 'ob-os-settings'))?.timezone || ''; } catch (_) {}
+          const { journal, added } = mergeJournalTrades(existingJournal, rawClosed, info, accountRecord, tz);
           if (added > 0) {
             await setStoredValue(info.sessionId, TRADES_STORAGE_KEY, JSON.stringify(journal));
             addedToJournal = added;

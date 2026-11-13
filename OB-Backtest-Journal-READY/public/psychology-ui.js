@@ -21,7 +21,7 @@
 
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const r2 = n => `${n > 0 ? '+' : ''}${Number(n).toFixed(2)} R`;
-  const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const todayIso = () => { if (window.obTime) return window.obTime.today(); const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
   function injectStyles() {
     if (document.getElementById('ob-psych-style')) return;

@@ -23,6 +23,7 @@
   const round2 = n => Math.round(n * 100) / 100;
   const isIso = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
   function todayIso() {
+    if (typeof window !== 'undefined' && window.obTime) return window.obTime.today();
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }

@@ -23,14 +23,16 @@
   };
   const pnlFor = trade => Number(trade.rMultiple || 0) * baseFor(trade) * (getRisk() / 100);
   const isoOf = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const todayIso = () => { const n = new Date(); return isoOf(n.getFullYear(), n.getMonth(), n.getDate()); };
-  const money = value => !value ? '$0' : `${value > 0 ? '+' : '-'}$${Math.abs(Math.round(value)).toLocaleString('en-US')}`;
+  // today in the saved timezone (time-prefs.js); device clock as a fallback
+  const todayIso = () => { if (window.obTime) return window.obTime.today(); const n = new Date(); return isoOf(n.getFullYear(), n.getMonth(), n.getDate()); };
+  const sym = () => (window.obTime ? window.obTime.sym() : '$');
+  const money = value => !value ? sym() + '0' : `${value > 0 ? '+' : '-'}${sym()}${Math.abs(Math.round(value)).toLocaleString('en-US')}`;
   // Compact form for narrow screens: +$2.4k, -$1k, +$850
   const short = value => {
-    if (!value) return '$0';
+    if (!value) return sym() + '0';
     const a = Math.abs(value);
     const t = a >= 1000 ? (a / 1000).toFixed(a >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(Math.round(a));
-    return (value > 0 ? '+$' : '-$') + t;
+    return (value > 0 ? '+' : '-') + sym() + t;
   };
   const pnlHtml = value => `<span class="ob-jh-full">${money(value)}</span><span class="ob-jh-short">${short(value)}</span>`;
 
@@ -208,7 +210,7 @@
         wp += s.pnl; wt += s.count;
         const iso = isoOf(y, m, d);
         const todayCls = iso === today ? ' ob-jh-today' : '';
-        html += `<div class="ob-jh-cell ${s.count ? cls(s.pnl) : 'ob-jh-flat ob-jh-none'}${todayCls}" data-date="${iso}"><button type="button" class="ob-jh-add" data-add-date="${iso}" title="Add Trade" aria-label="Add trade on ${iso}">+</button><div class="ob-jh-day">${d}</div><div class="ob-jh-pnl">${s.count ? pnlHtml(s.pnl) : '$0'}</div><div class="ob-jh-count"><span class="ob-jh-full">${s.count ? `${s.count} trade${s.count === 1 ? '' : 's'}` : 'No trades'}</span><span class="ob-jh-short">${s.count ? `${s.count}T` : ''}</span></div></div>`;
+        html += `<div class="ob-jh-cell ${s.count ? cls(s.pnl) : 'ob-jh-flat ob-jh-none'}${todayCls}" data-date="${iso}"><button type="button" class="ob-jh-add" data-add-date="${iso}" title="Add Trade" aria-label="Add trade on ${iso}">+</button><div class="ob-jh-day">${d}</div><div class="ob-jh-pnl">${s.count ? pnlHtml(s.pnl) : sym() + '0'}</div><div class="ob-jh-count"><span class="ob-jh-full">${s.count ? `${s.count} trade${s.count === 1 ? '' : 's'}` : 'No trades'}</span><span class="ob-jh-short">${s.count ? `${s.count}T` : ''}</span></div></div>`;
       }
       html += `<div class="ob-jh-week ${wt ? cls(wp) : ''}"><div class="ob-jh-week-label"><span class="ob-jh-full">Week ${row + 1}</span><span class="ob-jh-short">W${row + 1}</span></div><div class="ob-jh-week-pnl">${pnlHtml(wp)}</div><div class="ob-jh-week-count"><span class="ob-jh-full">${wt} trade${wt === 1 ? '' : 's'}</span><span class="ob-jh-short">${wt}T</span></div></div>`;
     }

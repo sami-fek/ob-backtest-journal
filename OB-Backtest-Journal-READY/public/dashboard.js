@@ -37,7 +37,7 @@
   const cls = v => (v > 0 ? 'ds-pos' : v < 0 ? 'ds-neg' : '');
   const fmtR = v => `${v > 0 ? '+' : ''}${(Number(v) || 0).toFixed(2)}R`;
   const fmtDate = d => (window.obPrefs ? window.obPrefs.formatDate(d) : d);
-  const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const todayIso = () => { if (window.obTime) return window.obTime.today(); const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
   const touch = () => window.matchMedia('(hover: none)').matches;
 
@@ -237,7 +237,7 @@
     root.innerHTML = `
       <div class="db2-top">
         <div class="db2-hello">
-          <div class="ds-label">${esc(new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }))}</div>
+          <div class="ds-label">${esc(new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', ...(window.obTime && window.obTime.tz() ? { timeZone: window.obTime.tz() } : {}) }))}</div>
           <h1 class="ds-h1">${greet}${profileName ? `, <b>${esc(profileName)}</b>` : ''}</h1>
         </div>
         <dl class="db2-today" aria-label="Today">

@@ -233,10 +233,10 @@
     const balance = accountBalance(acc);
     const base = Number(acc?.startingBalance ?? acc?.balance ?? 100000);
     const ret = base ? ((balance - base) / base) * 100 : 0;
-    display.textContent = `$${balance.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+    display.textContent = window.obTime ? window.obTime.money(balance, { signed: false }) : `$${balance.toLocaleString('en-US', {minimumFractionDigits:2})}`;
     document.getElementById('accountReturnBadge').textContent = `${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%`;
     const baseSpan = panel.querySelector('.text-blue-200.font-medium.uppercase')?.parentElement?.querySelector('.flex span');
-    if (baseSpan) baseSpan.textContent = `Base Capital: $${base.toLocaleString('en-US', {minimumFractionDigits:2})}`;
+    if (baseSpan) baseSpan.textContent = `Base Capital: ${window.obTime ? window.obTime.money(base, { signed: false }) : '$' + base.toLocaleString('en-US', {minimumFractionDigits:2})}`;
 
   }
 

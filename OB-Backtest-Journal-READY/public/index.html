@@ -880,6 +880,8 @@
 
   <!-- JAVASCRIPT APPLICATION LOGIC -->
   <!-- Trade save rule (50% checklist + note + screenshot); also unit-tested -->
+  <!-- Saved timezone, currency symbol and date format (BUILD-PLAN-2 Part 4) -->
+  <script src="/time-prefs.js"></script>
   <script src="/note-utils.js"></script>
   <!-- Screenshots stored as files; trades keep references (BUILD-PLAN-2 Part 4) -->
   <script src="/shots.js"></script>
@@ -1280,7 +1282,8 @@
     window.obNormalizeTrade = t => normalizeTrade(t);
 
     function initDateInputs() {
-      const today = new Date().toISOString().split('T')[0];
+      // "Today" in the saved timezone (was UTC, which is the wrong day near midnight)
+      const today = window.obTime.today();
       document.getElementById('formDate').value = today;
     }
 
@@ -1621,7 +1624,7 @@
     function showDailyLimitBlock(body) {
       const count = body.count ?? '?';
       const limit = body.limit ?? 3;
-      const date  = body.date  ?? new Date().toISOString().slice(0, 10);
+      const date  = body.date  ?? window.obTime.today();
 
       const existing = document.getElementById('ob-daily-limit-block');
       if (existing) existing.remove();
@@ -1702,7 +1705,7 @@
       const netRElem = document.getElementById('kpiNetR');
       netRElem.textContent = `${totalR >= 0 ? '+' : ''}${totalR.toFixed(2)} R`;
       netRElem.className = `text-2xl font-extrabold font-mono ${totalR >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
-      document.getElementById('kpiNetDollar').textContent = `${netDollar >= 0 ? '+' : ''}$${Math.abs(netDollar).toLocaleString('en-US', {minimumFractionDigits: 2})} Net P&L`;
+      document.getElementById('kpiNetDollar').textContent = `${window.obTime.money(netDollar)} Net P&L`;
 
       let cleanCount = 0, violationCount = 0, pendingCount = 0;
       filtered.forEach(t => {
@@ -1721,7 +1724,7 @@
       if (badge) badge.textContent = reviewedCount ? `${Math.round((cleanCount / reviewedCount) * 100)}% Pass` : '—';
 
       const balance = initialCapital + netDollar;
-      document.getElementById('accountBalanceDisplay').textContent = `$${balance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      document.getElementById('accountBalanceDisplay').textContent = window.obTime.money(balance, { signed: false });
       const retPct = ((netDollar) / initialCapital) * 100;
       document.getElementById('accountReturnBadge').textContent = `${retPct >= 0 ? '+' : ''}${retPct.toFixed(2)}%`;
 
@@ -1738,7 +1741,7 @@
         const pnlIsSet = typeof t.pnl === 'number' && t.pnl !== 0;
         const valueIsPositive = pnlIsSet ? t.pnl >= 0 : t.rMultiple >= 0;
         const pnlCell = pnlIsSet
-          ? ((t.pnl >= 0 ? '+' : '') + '$' + Math.abs(t.pnl).toFixed(2))
+          ? window.obTime.money(t.pnl)
           : ((t.rMultiple >= 0 ? '+' : '') + t.rMultiple.toFixed(1) + ' R');
         tr.innerHTML = `
           <td data-col="date" class="py-3 px-3 text-slate-500">${t.date}</td>
@@ -1793,10 +1796,10 @@
         const pnlIsSet = typeof t.pnl === 'number' && t.pnl !== 0;
         const valueIsPositive = pnlIsSet ? t.pnl >= 0 : t.rMultiple >= 0;
         const pnlCell = pnlIsSet
-          ? ((t.pnl >= 0 ? '+' : '') + '$' + Math.abs(t.pnl).toFixed(2))
+          ? window.obTime.money(t.pnl)
           : ((t.rMultiple >= 0 ? '+' : '') + t.rMultiple.toFixed(1) + ' R');
         tr.innerHTML = `
-          <td data-col="date" class="py-3.5 px-4 text-slate-500">${t.date}</td>
+          <td data-col="date" class="py-3.5 px-4 text-slate-500">${window.obTime.date(t.date)}</td>
           <td data-col="pair" class="py-3.5 px-4 font-bold text-slate-900">${t.pair}</td>
           <td data-col="tf" class="py-3.5 px-4 text-slate-600">${t.timeframe}</td>
           <td data-col="regime" class="py-3.5 px-4 text-slate-600">${t.regime}</td>
@@ -1863,7 +1866,7 @@
         }
       });
       const monthNetEl = document.getElementById('analyticsMonthNet');
-      if (monthNetEl) monthNetEl.textContent = `Month Net: ${monthNet >= 0 ? '+' : '-'}$${Math.abs(monthNet).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      if (monthNetEl) monthNetEl.textContent = `Month Net: ${window.obTime.money(monthNet)}`;
       renderCalendarGrid('calendarHeatmapGrid', daysMap, false, year, month);
       renderCalendarGrid('fullCalendarHeatmapGrid', daysMap, true, year, month);
     }
@@ -1904,7 +1907,7 @@
             cell.className = `p-2 rounded-xl border flex flex-col justify-between ${isFull ? 'h-16' : 'h-12'} ${bgClass}`;
             cell.innerHTML = `
               <div class="text-[10px] text-slate-400 text-left font-sans">${dayCounter}</div>
-              <div class="text-[11px] font-mono">${pnl !== 0 ? (pnl > 0 ? '+' : '') + '$' + Math.abs(Math.round(pnl)) : '-'}</div>
+              <div class="text-[11px] font-mono">${pnl !== 0 ? window.obTime.money(pnl, { decimals: 0 }) : '-'}</div>
             `;
             container.appendChild(cell);
             dayCounter++;
@@ -1914,7 +1917,7 @@
         weekCell.className = `p-2 rounded-xl border flex flex-col justify-between bg-blue-50/50 border-blue-100 text-blue-700 ${isFull ? 'h-16' : 'h-12'}`;
         weekCell.innerHTML = `
           <div class="text-[9px] uppercase font-bold text-blue-400 text-left font-sans">W${row+1}</div>
-          <div class="text-[11px] font-bold font-mono">${weekTotal !== 0 ? (weekTotal > 0 ? '+' : '') + '$' + Math.abs(Math.round(weekTotal)) : '$0'}</div>
+          <div class="text-[11px] font-bold font-mono">${window.obTime.money(weekTotal, { decimals: 0 })}</div>
         `;
         container.appendChild(weekCell);
       }
@@ -2207,7 +2210,7 @@
       const safeDir = (t.direction || '').toString();
       const dirLabel = safeDir.length >= 1 ? (safeDir.charAt(0).toUpperCase() + safeDir.slice(1).toLowerCase()) : '—';
       const resultLabel = t.result || (safeR > 0 ? 'Win' : (safeR < 0 ? 'Loss' : 'Breakeven'));
-      document.getElementById('drawerSubtitle').textContent = `${t.date || ''} — ${dirLabel} — ${resultLabel || '—'} — ${safeR >= 0 ? '+' : ''}${(Number(safeR) || 0).toFixed(2)}R${t.session ? ' — ' + t.session : ''}`;
+      document.getElementById('drawerSubtitle').textContent = `${window.obTime.date(t.date || '')} — ${dirLabel} — ${resultLabel || '—'} — ${safeR >= 0 ? '+' : ''}${(Number(safeR) || 0).toFixed(2)}R${t.session ? ' — ' + t.session : ''}`;
       const logSection = document.getElementById('drawerLogFields');
       if (logSection) logSection.classList.toggle('hidden', !t.calendarEntry);
       if (t.calendarEntry) { renderCalendarLogFields(); updateDrawerHeader(); }
@@ -2778,7 +2781,7 @@
         `Mode: ${t.mode || ''}${t.session ? ' · Session: ' + t.session : ''}`,
         `Pair: ${t.pair || ''} · TF: ${t.timeframe || ''} · Regime: ${t.regime || ''}`,
         `Strategy: ${t.strategy || ''} · Direction: ${t.direction || ''}`,
-        `Result: ${t.result || ''} · R: ${(t.rMultiple != null ? Number(t.rMultiple).toFixed(2) : 'N/A')}${typeof t.pnl === 'number' ? ' · P/L: $' + t.pnl.toFixed(2) : ''}`,
+        `Result: ${t.result || ''} · R: ${(t.rMultiple != null ? Number(t.rMultiple).toFixed(2) : 'N/A')}${typeof t.pnl === 'number' ? ' · P/L: ' + window.obTime.money(t.pnl) : ''}`,
         ``,
         `ENTRY CHECKLIST (${t.strategy || ''})`,
         checklistSummary,

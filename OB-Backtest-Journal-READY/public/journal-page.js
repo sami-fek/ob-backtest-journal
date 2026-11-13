@@ -61,7 +61,7 @@
       </div>
       ${list.length ? `<ul class="jp-q-list">${shown.map(({ t, miss }) => `
         <li><button type="button" class="jp-q-item" data-open="${esc(t.id)}" aria-label="Review ${esc(t.pair)} trade on ${esc(t.date)}">
-          <span class="jp-q-main"><b>${esc(t.pair || '—')}</b><span class="ds-period">${esc(t.date || '')} · ${esc(t.strategy || '')}</span></span>
+          <span class="jp-q-main"><b>${esc(t.pair || '—')}</b><span class="ds-period">${esc(window.obTime ? window.obTime.date(t.date || '') : (t.date || ''))} · ${esc(t.strategy || '')}</span></span>
           <span class="jp-q-miss">${miss.map(m => `<span class="ds-pill warn">${m}</span>`).join('')}</span>
           <span class="jp-q-r ds-num ${(Number(t.rMultiple) || 0) > 0 ? 'ds-pos' : (Number(t.rMultiple) || 0) < 0 ? 'ds-neg' : ''}">${r(t)}</span>
           <span class="jp-q-go ds-link">Review <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span>

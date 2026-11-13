@@ -24,7 +24,7 @@
   }
   const cls = v => (v > 0 ? 'ds-pos' : v < 0 ? 'ds-neg' : '');
   const fmtR = v => `${v > 0 ? '+' : ''}${(Number(v) || 0).toFixed(2)}R`;
-  const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const todayIso = () => { if (window.obTime) return window.obTime.today(); const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const pnlFor = t => (window.obCalendarKit ? window.obCalendarKit.pnlFor(t) : (Number(t.rMultiple) || 0) * 1000);
 

@@ -221,7 +221,7 @@
         <span class="rp-result ${rClass}" id="rp-result-display">${rDisplay}</span>
       </div>
       <div class="rp-info">
-        Raw P&L from MT5: <strong>${pnlVal > 0 ? '+' : ''}$${pnlVal}</strong> &nbsp;·&nbsp;
+        Raw P&L from MT5: <strong>${window.obTime ? window.obTime.money(pnlVal) : (pnlVal > 0 ? '+' : '') + '$' + pnlVal}</strong> &nbsp;·&nbsp;
         Direction: <strong>${direction}</strong><br>
         R = (Exit − Entry) ÷ (Entry − SL) for longs, inverted for shorts.<br>
         If SL is blank, R is estimated from P&L ÷ (Risk% × Capital).
@@ -298,7 +298,7 @@
     // Update the drawer subtitle to reflect new R
     const subtitle = document.getElementById('drawerSubtitle');
     if (subtitle) {
-      subtitle.textContent = `${trade.date} — ${(trade.direction || 'LONG').charAt(0).toUpperCase() + (trade.direction || 'LONG').slice(1).toLowerCase()} — ${trade.result} — ${rMultiple >= 0 ? '+' : ''}${rMultiple.toFixed(2)}R${trade.session ? ' — ' + trade.session : ''}`;
+      subtitle.textContent = `${window.obTime ? window.obTime.date(trade.date) : trade.date} — ${(trade.direction || 'LONG').charAt(0).toUpperCase() + (trade.direction || 'LONG').slice(1).toLowerCase()} — ${trade.result} — ${rMultiple >= 0 ? '+' : ''}${rMultiple.toFixed(2)}R${trade.session ? ' — ' + trade.session : ''}`;
     }
 
     // Re-evaluate the save gate

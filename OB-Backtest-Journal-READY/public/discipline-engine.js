@@ -49,7 +49,9 @@
     });
   }
 
-  function todayKey() { return new Date().toISOString().slice(0, 10); }
+  // Today in the saved timezone (time-prefs.js). Was UTC, which counted trades near
+  // midnight on the wrong day for the daily limit and the hard stop.
+  function todayKey() { return window.obTime ? window.obTime.today() : new Date().toISOString().slice(0, 10); }
 
   // ─── server-backed daily count ────────────────────────────────────────────────
 
