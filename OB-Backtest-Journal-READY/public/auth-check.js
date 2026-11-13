@@ -130,8 +130,8 @@
     document.head.appendChild(style);
   }
 
-  // Part 3 replaces this with the Account center. Until then:
-  // Profile → Settings page, Accounts → Accounts page, Settings → Settings page.
+  // account-center.js defines the real openAccountCenter(section). This is only
+  // a fallback in case that script failed to load.
   if (typeof window.openAccountCenter !== 'function') {
     window.openAccountCenter = function (section) {
       const tab = section === 'accounts' ? 'accounts' : 'settings';

@@ -58,10 +58,19 @@
     const mode=getMode();
     const fallback={Demo:[{id:'demo-1',name:'Demo 01',startingBalance:100000,balance:100000}],Real:[{id:'real-1',name:'Real 01',startingBalance:100000,balance:100000}],Funded:[{id:'funded-1',name:'Funded 01',startingBalance:100000,balance:100000}]};
     const source=Array.isArray(data[mode])&&data[mode].length?data[mode]:fallback[mode];
-    return(source||[]).filter(a=>!a?.mode||a.mode===mode).map(a=>({...a,mode}));
+    // Archived accounts (Account center) are hidden here unless every account of the mode is archived.
+    const all=(source||[]).filter(a=>!a?.mode||a.mode===mode).map(a=>({...a,mode}));
+    const live=all.filter(a=>a.status!=='archived');
+    return live.length?live:all;
   }
 
   function accountReturn(a){
+    // Shared calculation (account-balance.js): R × starting balance × risk %, plus cash movements up to today.
+    if(window.obBalance){
+      let risk=1;try{risk=Number(riskPercent)||1;}catch(_){risk=Number(window.riskPercent)||1;}
+      const list=Array.isArray(window.trades)?window.trades.filter(t=>t.mode===a.mode&&t.accountId===a.id):[];
+      const b=window.obBalance.balance(a,list,risk);return{balance:b.balance,base:b.base,pct:b.pct};
+    }
     const risk=Number(window.riskPercent)||1;
     const base=Number(a.startingBalance??a.balance??100000)||100000;
     let r=0;if(Array.isArray(window.trades))r=window.trades.filter(t=>t.mode===a.mode&&t.accountId===a.id).reduce((sum,t)=>sum+(Number(t.rMultiple)||0),0);
@@ -136,7 +145,7 @@
     const badge=document.getElementById('accountReturnBadge');if(badge)badge.style.display='none';
     const list=readAccounts();if(!list.length)return;
     const active=currentIndex(list);
-    const sig=`${mode}|${active}|${list.map(a=>`${a.id}:${a.name}:${a.startingBalance}:${a.balance}`).join(';')}`;
+    const sig=`${mode}|${active}|${list.map(a=>`${a.id}:${a.name}:${a.startingBalance}:${a.balance}:${JSON.stringify(a.cashMovements||[])}`).join(';')}`;
     let root=document.getElementById(ROOT_ID);
     if(!root){root=document.createElement('div');root.id=ROOT_ID;panel.insertBefore(root,panel.firstChild);}
     if(sig===lastSignature&&lastMode===mode)return;

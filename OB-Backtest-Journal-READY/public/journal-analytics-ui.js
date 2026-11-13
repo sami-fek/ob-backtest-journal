@@ -14,7 +14,9 @@
     if (mode === 'Backtest') return [];
     try {
       const data = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || '{}');
-      return Array.isArray(data[mode]) ? data[mode] : [];
+      const all = Array.isArray(data[mode]) ? data[mode] : [];
+      const live = all.filter(a => a && a.status !== 'archived'); // archived in the Account center
+      return live.length ? live : all;
     } catch (_) { return []; }
   }
 

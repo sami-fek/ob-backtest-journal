@@ -7,6 +7,7 @@
   <script>(function(){try{var m=localStorage.getItem("my-journal-theme");if(m!=="light"&&m!=="dark")m="system";var d=m==="dark"||(m==="system"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.setAttribute("data-theme",d?"dark":"light");r.setAttribute("data-theme-mode",m);r.style.colorScheme=d?"dark":"light";}catch(e){document.documentElement.setAttribute("data-theme","light");}})();</script>
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/account-center.css">
   <title>MY Journal // Next-Gen Trading Operating System</title>
 
   <script>document.documentElement.classList.add('ob-booting');</script>
@@ -487,7 +488,10 @@
               <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-chart-line text-blue-600"></i>Cumulative Equity Growth (Net R)</h3>
               <p class="text-xs text-slate-400">Real-time performance progression line</p>
             </div>
-            <span class="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">Chart.js</span>
+            <div class="ob-eq-toggle" role="radiogroup" aria-label="Equity curve unit">
+              <button type="button" role="radio" data-eq-view="r" onclick="setEquityView('r')">Net R</button>
+              <button type="button" role="radio" data-eq-view="usd" onclick="setEquityView('usd')" title="Account equity in dollars, including deposits and withdrawals">$ Equity</button>
+            </div>
           </div>
           <div class="h-60 w-full relative"><canvas id="chartEquityConsole"></canvas></div>
         </div>
@@ -577,12 +581,31 @@
       </div>
     </section>
 
-    <!-- PAGE: ACCOUNTS -->
-    <section id="pageAccounts" class="space-y-6 hidden animate-fade-in">
-      <div class="glass-card p-5">
-        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1"><i class="fa-solid fa-wallet text-blue-600"></i>Accounts</h2>
-        <p class="text-xs text-slate-500 mb-4">Performance is split by Backtest / Demo / Real / Funded. Open Trading in that mode to log into the selected environment.</p>
-        <div id="accountsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    <!-- PAGE: ACCOUNT CENTER (route 'accounts'; opened from the avatar menu).
+         Sections are rendered by account-center.js. The old Accounts page
+         content (#accountsGrid, per-mode performance) lives in the Accounts section. -->
+    <section id="pageAccounts" class="hidden animate-fade-in">
+      <div class="ac-shell">
+        <aside class="ac-nav" aria-label="Account center">
+          <div class="ac-nav-title">Account center</div>
+          <div class="ac-nav-list" id="acNavList" role="tablist" aria-orientation="vertical"></div>
+        </aside>
+        <div class="ac-main">
+          <div class="ac-head">
+            <div class="min-w-0">
+              <h2 class="ac-title" id="acTitle">Profile</h2>
+              <p class="ac-sub" id="acSub"></p>
+            </div>
+            <button type="button" id="acSaveBtn" class="ac-btn ac-btn-primary" disabled>Save Changes</button>
+          </div>
+          <div id="acBody" class="ac-body"></div>
+          <!-- Kept from the old Accounts page; moved into the Accounts section at runtime -->
+          <div id="acAccountsGridWrap" class="ac-card hidden">
+            <div class="ac-card-title">Performance by mode</div>
+            <p class="ac-hint">Performance is split by Backtest / Demo / Real / Funded. Open Trading in that mode to log into the selected environment.</p>
+            <div id="accountsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -794,6 +817,8 @@
   <!-- Trade save rule (50% checklist + note + screenshot); also unit-tested -->
   <script src="/note-utils.js"></script>
   <script src="/save-rule.js"></script>
+  <!-- Account maths: balance with cash movements, $ equity curve, import plan, CSV -->
+  <script src="/account-balance.js"></script>
   <script>
     const TRADES_KEY = 'ob-trades';
     const SETTINGS_KEY = 'ob-os-settings';
@@ -811,6 +836,8 @@
     let maxDailyTrades = 3;
     let hardStopLosses = 2;
     let hasServerStorage = false;
+    const SETTINGS_OWN_FIELDS = ['initialCapital', 'riskPercent', 'defaultRR', 'maxDailyTrades', 'hardStopLosses', 'tagLibrary', 'feelings'];
+    let settingsExtra = {};
     // Tag library (name + Positive/Neutral/Negative) and "How it felt" options, stored in settings
     let tagLibrary = window.obNotes.normalizeTagLibrary([]);
     let feelingOptions = window.obNotes.normalizeFeelings([]);
@@ -1051,7 +1078,9 @@
         ...(Array.isArray(t.checklistItems) && t.checklistItems.length ? { checklistItems: t.checklistItems.map(String) } : {}),
         // optional psychology fields (old trades simply do not have them)
         ...(Array.isArray(t.tags) && t.tags.length ? { tags: t.tags.map(x => String(x)).filter(Boolean) } : {}),
-        ...(typeof t.feeling === 'string' && t.feeling ? { feeling: t.feeling } : {})
+        ...(typeof t.feeling === 'string' && t.feeling ? { feeling: t.feeling } : {}),
+        // account deleted with "keep trades unassigned": never auto-assign again
+        ...(t.accountUnassigned === true && !t.accountId ? { accountUnassigned: true } : {})
       };
     }
     function checklistFor(strategy) {
@@ -1116,6 +1145,10 @@
       if (rawSettings) {
         try {
           const s = JSON.parse(rawSettings);
+          // Keep fields this file does not manage (Account center preferences
+          // such as timezone / currency symbol / date format) when saving.
+          settingsExtra = {};
+          Object.keys(s || {}).forEach(k => { if (!SETTINGS_OWN_FIELDS.includes(k)) settingsExtra[k] = s[k]; });
           initialCapital = Number(s.initialCapital) || 100000;
           riskPercent = Number(s.riskPercent) || 1.0;
           defaultRR = Number(s.defaultRR) || 2.0;
@@ -1140,7 +1173,36 @@
     }
 
     async function saveState() { await storageSet(TRADES_KEY, JSON.stringify(trades)); }
-    async function saveSettings() { await storageSet(SETTINGS_KEY, JSON.stringify({ initialCapital, riskPercent, defaultRR, maxDailyTrades, hardStopLosses, tagLibrary, feelings: feelingOptions })); }
+    async function saveSettings() { await storageSet(SETTINGS_KEY, JSON.stringify({ ...settingsExtra, initialCapital, riskPercent, defaultRR, maxDailyTrades, hardStopLosses, tagLibrary, feelings: feelingOptions })); }
+
+    // ── Account center bridge ────────────────────────────────────────────────
+    // Read / update settings from account-center.js without a second copy.
+    window.obGetSettings = function () {
+      return { ...settingsExtra, initialCapital, riskPercent, defaultRR, maxDailyTrades, hardStopLosses };
+    };
+    window.obUpdateSettings = async function (patch) {
+      const p = patch || {};
+      if (p.riskPercent != null && Number(p.riskPercent) > 0) riskPercent = Number(p.riskPercent);
+      if (p.defaultRR != null && Number(p.defaultRR) > 0) defaultRR = Number(p.defaultRR);
+      Object.keys(p).forEach(k => { if (!SETTINGS_OWN_FIELDS.includes(k)) settingsExtra[k] = p[k]; });
+      const riskEl = document.getElementById('settingRiskPercent');
+      const rrEl = document.getElementById('settingDefaultRR');
+      if (riskEl) riskEl.value = riskPercent;
+      if (rrEl) rrEl.value = defaultRR;
+      await saveSettings();
+      renderAll();
+    };
+    // Replace the trade list (import, delete an account's trades, unassign).
+    // fn receives a copy of the full list and returns the new list.
+    window.obReplaceTrades = async function (fn) {
+      const next = fn(trades.slice());
+      if (!Array.isArray(next)) return false;
+      trades = next.filter(t => t && typeof t === 'object'); // callers normalise new trades
+      await saveState();
+      renderAll();
+      return true;
+    };
+    window.obNormalizeTrade = t => normalizeTrade(t);
 
     function initDateInputs() {
       const today = new Date().toISOString().split('T')[0];
@@ -1832,16 +1894,49 @@
       });
     }
 
+    // Equity curve unit: 'r' (cumulative Net R, the original view) or 'usd'
+    // (account equity in dollars incl. deposits / withdrawals on their date).
+    let equityView = (() => { try { return localStorage.getItem('ob-equity-view') === 'usd' ? 'usd' : 'r'; } catch (_) { return 'r'; } })();
+    function syncEquityToggle() {
+      document.querySelectorAll('[data-eq-view]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.eqView === equityView)));
+    }
+    window.setEquityView = function (view) {
+      equityView = view === 'usd' ? 'usd' : 'r';
+      try { localStorage.setItem('ob-equity-view', equityView); } catch (_) {}
+      syncEquityToggle();
+      (window.updateCharts || updateCharts)();
+    };
+    function activeAccountObject() {
+      if (activeMode === 'Backtest') return null;
+      try {
+        const all = JSON.parse(localStorage.getItem('my_journal_accounts_v1') || '{}');
+        const list = Array.isArray(all[activeMode]) ? all[activeMode] : [];
+        const id = activeAccountIdFor(activeMode);
+        return list.find(a => a.id === id) || list[0] || null;
+      } catch (_) { return null; }
+    }
+
     function updateCharts() {
       if (!chartEquityInstance) return;
       const modeTrades = trades.filter(t => t.mode === activeMode);
       const sorted = [...modeTrades].sort((a, b) => new Date(a.date) - new Date(b.date));
-      let cumR = 0;
       const labels = ['Start'];
       const data = [0];
-      sorted.forEach(t => { cumR += t.rMultiple; labels.push(t.date.split('-').slice(1).join('/')); data.push(cumR); });
+      const ds = chartEquityInstance.data.datasets[0];
+      syncEquityToggle();
+      if (equityView === 'usd' && window.obBalance) {
+        const acc = activeAccountObject();
+        const pts = window.obBalance.equitySeries(acc || { startingBalance: initialCapital }, sorted, riskPercent, initialCapital);
+        labels.length = 0; data.length = 0;
+        pts.forEach(p => { labels.push(p.kind === 'start' ? 'Start' : p.date.split('-').slice(1).join('/') + (p.kind === 'deposit' ? ' +$' : p.kind === 'withdraw' ? ' −$' : '')); data.push(p.equity); });
+        ds.label = 'Account equity ($)';
+      } else {
+        let cumR = 0;
+        sorted.forEach(t => { cumR += t.rMultiple; labels.push(t.date.split('-').slice(1).join('/')); data.push(cumR); });
+        ds.label = 'Cumulative Net R';
+      }
       chartEquityInstance.data.labels = labels;
-      chartEquityInstance.data.datasets[0].data = data;
+      ds.data = data;
       chartEquityInstance.update();
       // Active strategies plus any strategy that has trades (e.g. archived) — each kept separate.
       const stratMap = {};
@@ -2845,5 +2940,6 @@
     }
   </script>
   <script src="/ai-coach.js"></script>
+  <script src="/account-center.js"></script>
 </body>
 </html>

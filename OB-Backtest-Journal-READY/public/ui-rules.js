@@ -27,15 +27,21 @@
 
   function saveAccounts() { localStorage.setItem(ACCOUNT_KEY, JSON.stringify(accounts)); }
 
-  function activeList() { return activeMode === 'Backtest' ? [] : (accounts[activeMode] || []); }
+  function activeList() {
+    if (activeMode === 'Backtest') return [];
+    const all = accounts[activeMode] || [];
+    const live = all.filter(a => a.status !== 'archived'); // archived in the Account center
+    return live.length ? live : all;
+  }
   function getActiveAccount() { return activeList().find(a => a.id === activeAccountId) || activeList()[0] || null; }
 
   function accountBalance(account) {
     if (!account || !Array.isArray(trades)) return 0;
     const risk = Number(riskPercent) || 1;
+    const list = trades.filter(t => t.mode === activeMode && t.accountId === account.id);
+    if (window.obBalance) return window.obBalance.balance(account, list, risk).balance; // incl. cash movements
     const base = Number(account.startingBalance ?? account.balance ?? 100000);
-    const r = trades.filter(t => t.mode === activeMode && t.accountId === account.id)
-      .reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
+    const r = list.reduce((sum, t) => sum + (Number(t.rMultiple) || 0), 0);
     return base + r * base * (risk / 100);
   }
 
@@ -50,7 +56,7 @@
     if (!Array.isArray(trades)) return;
     let changed = false;
     trades.forEach(t => {
-      if (t.mode === 'Backtest' || t.accountId) return;
+      if (t.mode === 'Backtest' || t.accountId || t.accountUnassigned) return;
       const first = (accounts[t.mode] || [])[0];
       if (first) { t.accountId = first.id; changed = true; }
     });
@@ -133,6 +139,7 @@
       closeAccountModal();
       showAccountToast('Account added.');
       renderForAccount();
+      window.dispatchEvent(new CustomEvent('wallet-accounts-updated')); // persists to the server too
     };
     setTimeout(() => document.getElementById('newAccountName')?.focus(), 0);
   }
@@ -387,6 +394,23 @@
     document.getElementById('accountSelectorWrap')?.remove();
     document.getElementById('accountSelector')?.closest('#accountSelectorWrap')?.remove();
   }
+
+  // The Account center edits my_journal_accounts_v1 directly; re-read it so this
+  // in-memory copy never writes stale data back.
+  window.addEventListener('wallet-accounts-updated', () => {
+    try {
+      const fresh = JSON.parse(localStorage.getItem(ACCOUNT_KEY) || '{}');
+      if (fresh && typeof fresh === 'object') {
+        Object.keys(accounts).forEach(k => { if (!Array.isArray(fresh[k])) delete accounts[k]; });
+        Object.keys(fresh).forEach(k => { if (Array.isArray(fresh[k])) accounts[k] = fresh[k]; });
+      }
+    } catch (_) {}
+    if (activeMode !== 'Backtest') {
+      const list = activeList();
+      const stored = localStorage.getItem(`my_journal_active_account_${activeMode}_v1`);
+      activeAccountId = list.some(a => a.id === stored) ? stored : (list[0]?.id || null);
+    }
+  });
 
   function init() {
     loadAccounts();
