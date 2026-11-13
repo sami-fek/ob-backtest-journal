@@ -132,9 +132,25 @@
     return list;
   }
 
+  // Screenshots are stored inside the trades record (one storage value, server
+  // limit 12 MB), so big phone photos are shrunk before saving. Small images
+  // (typical chart screenshots) are kept exactly as they are.
+  const SHOT_KEEP_BYTES = 1.2 * 1024 * 1024;
+  const SHOT_MAX_EDGE = 2048;
+  /** Decide whether an image of `bytes` and `w`×`h` pixels is shrunk, and to what size. */
+  function shotResizePlan(bytes, w, h) {
+    const W = Number(w) || 0, H = Number(h) || 0;
+    const longEdge = Math.max(W, H);
+    if (!(W > 0 && H > 0)) return { resize: false };
+    if (Number(bytes) <= SHOT_KEEP_BYTES && longEdge <= SHOT_MAX_EDGE * 1.25) return { resize: false };
+    const scale = Math.min(1, SHOT_MAX_EDGE / longEdge);
+    return { resize: true, width: Math.max(1, Math.round(W * scale)), height: Math.max(1, Math.round(H * scale)) };
+  }
+
   root.obNotes = {
     sanitizeNoteHtml, notePlainText, noteToHtml, safeHref,
     DEFAULT_TAGS, DEFAULT_FEELINGS, SENTIMENTS, cleanTag, normalizeTagLibrary, normalizeFeelings, addTag,
+    shotResizePlan, SHOT_KEEP_BYTES, SHOT_MAX_EDGE,
     MAX_SCREENSHOTS: 3
   };
 })(typeof window !== 'undefined' ? window : globalThis);

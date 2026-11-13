@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <!-- Theme: set before first paint (light / dark / system), see theme.js -->
   <script>(function(){try{var m=localStorage.getItem("my-journal-theme");if(m!=="light"&&m!=="dark")m="system";var d=m==="dark"||(m==="system"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.setAttribute("data-theme",d?"dark":"light");r.setAttribute("data-theme-mode",m);r.style.colorScheme=d?"dark":"light";}catch(e){document.documentElement.setAttribute("data-theme","light");}})();</script>
   <meta name="theme-color" content="#ffffff">
@@ -802,7 +802,7 @@
         </div>
       </div>
       <div class="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-4 space-y-2 flex-shrink-0">
-        <button type="button" id="drawerAiBtn" data-inline-ai="true" onclick="analyzeTradeWithAI()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
+        <button type="button" id="drawerAiBtn" data-inline-ai="true" aria-label="Analyze with AI" onclick="analyzeTradeWithAI()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-[0.98] flex items-center justify-center gap-2">
           <i class="fa-solid fa-wand-magic-sparkles"></i><span id="drawerAiBtnLabel">Analyze with AI</span>
         </button>
         <div id="drawerSaveGateMsg" class="text-[11px] font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5" aria-live="polite"></div>
@@ -2332,15 +2332,42 @@
       if (images.length > room) showShotHint('Maximum ' + max + ' screenshots per trade.');
       if (event.target && 'value' in event.target) event.target.value = '';
       images.slice(0, room).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (!drawerDraft || currentDrawerTradeId !== id) return; // drawer closed
-          drawerDraft.screenshots.push(e.target.result);
+        screenshotDataUrl(file).then(dataUrl => {
+          if (!dataUrl || !drawerDraft || currentDrawerTradeId !== id) return; // drawer closed
+          if (drawerDraft.screenshots.length >= max) return;
+          drawerDraft.screenshots.push(dataUrl);
           renderDrawerScreenshots(drawerViewTrade());
           updateDrawerSaveGate();
-        };
+        });
+      });
+    }
+    // File → data URL. Phone camera photos (several MB) are shrunk to a 2048px
+    // JPEG first so the trades record stays under the storage limit; small
+    // images are read unchanged (obNotes.shotResizePlan decides).
+    function readFileAsDataUrl(file) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => resolve(null);
         reader.readAsDataURL(file);
       });
+    }
+    async function screenshotDataUrl(file) {
+      if (file.size <= window.obNotes.SHOT_KEEP_BYTES) return readFileAsDataUrl(file);
+      try {
+        const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        const plan = window.obNotes.shotResizePlan(file.size, bmp.width, bmp.height);
+        if (!plan.resize) { bmp.close && bmp.close(); return readFileAsDataUrl(file); }
+        const canvas = document.createElement('canvas');
+        canvas.width = plan.width; canvas.height = plan.height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, plan.width, plan.height); // transparent PNG → white, not black
+        ctx.drawImage(bmp, 0, 0, plan.width, plan.height);
+        bmp.close && bmp.close();
+        return canvas.toDataURL('image/jpeg', 0.85);
+      } catch (_) {
+        return readFileAsDataUrl(file); // format the browser cannot decode: keep the original
+      }
     }
     function renderDrawerScreenshots(t) {
       const grid = document.getElementById('drawerScreenshotsGrid');
@@ -2366,7 +2393,8 @@
       if (count) { count.textContent = shots.length + '/' + max; count.classList.toggle('is-full', full); }
       document.getElementById('drawerScreenshotUploadLabel')?.classList.toggle('is-full', full);
       const hint = document.getElementById('drawerShotHint');
-      if (hint) hint.textContent = full ? 'Maximum ' + max + ' screenshots reached.' : 'Drop or paste an image here (max ' + max + ').';
+      if (hint) hint.textContent = full ? 'Maximum ' + max + ' screenshots reached.'
+        : (window.matchMedia('(hover: none)').matches ? 'Tap + to take a photo or choose from your gallery (max ' + max + ').' : 'Drop or paste an image here (max ' + max + ').');
     }
     function showShotHint(text) {
       const hint = document.getElementById('drawerShotHint');

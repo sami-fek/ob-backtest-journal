@@ -50,3 +50,18 @@ test('tags & feelings: defaults, sentiments, custom entries, de-dupe', () => {
   assert.deepEqual(plain(N.addTag(['FOMO'], '<Patient>')), ['FOMO', 'Patient'], 'angle brackets are stripped from tags');
   assert.equal(N.cleanTag('x'.repeat(50)).length, 30);
 });
+
+test('screenshots: big phone photos are shrunk to a 2048px long edge, small images kept', () => {
+  // small chart screenshot: unchanged
+  assert.deepEqual(plain(N.shotResizePlan(400 * 1024, 1920, 1080)), { resize: false });
+  // 12 MP phone photo (4032×3024, 4 MB): shrunk, aspect ratio kept
+  assert.deepEqual(plain(N.shotResizePlan(4 * 1024 * 1024, 4032, 3024)), { resize: true, width: 2048, height: 1536 });
+  // portrait photo
+  assert.deepEqual(plain(N.shotResizePlan(3 * 1024 * 1024, 3024, 4032)), { resize: true, width: 1536, height: 2048 });
+  // heavy file that is already small in pixels: re-encoded at the same size
+  assert.deepEqual(plain(N.shotResizePlan(5 * 1024 * 1024, 1600, 900)), { resize: true, width: 1600, height: 900 });
+  // light file but huge pixel size (e.g. 5K monitor capture)
+  assert.equal(N.shotResizePlan(900 * 1024, 5120, 2880).resize, true);
+  // unknown dimensions: never resized
+  assert.deepEqual(plain(N.shotResizePlan(9e6, 0, 0)), { resize: false });
+});

@@ -313,3 +313,83 @@ body.ob-auth-page {
 }
 
 /* LOG A TRADE dropdowns open as bottom sheets on phones (ui-dropdowns.js). */
+
+/* ── 4. Trade drawer + calendar "+" panel (#tradeDrawer, same element) ────── */
+@media (max-width: 767px) {
+  /* Full-screen sheet that slides up from the bottom */
+  html body #tradeDrawer { align-items: stretch !important; justify-content: stretch !important; }
+  html body #tradeDrawer .drawer-panel {
+    max-width: none !important; width: 100% !important; height: 100% !important;
+    border-left: 0 !important; transform: translateY(100%);
+  }
+  html body #tradeDrawer.drawer-open .drawer-panel { transform: none; }
+  /* Sticky header: safe area, 44px close */
+  html body #tradeDrawer .drawer-panel > .sticky.top-0 {
+    padding: max(14px, calc(var(--safe-top) + 8px)) max(16px, var(--safe-right)) 10px max(16px, var(--safe-left)) !important;
+  }
+  html body #tradeDrawer .drawer-panel > .flex-1.overflow-y-auto {
+    padding-left: max(16px, var(--safe-left)) !important; padding-right: max(16px, var(--safe-right)) !important;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scroll-padding-bottom: 24px;
+  }
+  /* Sticky bottom bar: requirement list on top, one row of actions below */
+  html body #tradeDrawer .drawer-panel > .sticky.bottom-0 {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 10px max(16px, var(--safe-right)) calc(10px + var(--safe-bottom)) max(16px, var(--safe-left)) !important;
+  }
+  html body #tradeDrawer .drawer-panel > .sticky.bottom-0 > * { margin: 0 !important; }
+  html body #tradeDrawer .drawer-panel > .sticky.bottom-0 > div.flex { display: contents; }
+  html body #tradeDrawer #drawerSaveGateMsg { order: -1; flex: 1 1 100%; font-size: 12px !important; max-height: 30vh; overflow-y: auto; }
+  html body #tradeDrawer #drawerSaveGateMsg:empty { display: none; }
+  html body #tradeDrawer #drawerSaveBtn { order: 1; flex: 2 1 0; font-size: 15px !important; }
+  html body #tradeDrawer #drawerAiBtn { order: 2; flex: 1 1 0; width: auto !important; padding: 0 12px !important; font-size: 13px !important; white-space: nowrap; }
+  html body #tradeDrawer #drawerDeleteBtn { order: 3; flex: 0 0 auto; font-size: 13px !important; }
+  /* Calendar panel fields: one column, roomy */
+  html body #tradeDrawer .ob-log-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  html body #tradeDrawer .ob-log-grid label { font-size: 12.5px; }
+  /* Screenshot thumbnails a bit taller */
+  html body #tradeDrawer .screenshot-thumb { height: 96px; }
+  /* While the on-screen keyboard is open: keep only the Save row */
+  body.ob-kb-open #tradeDrawer #drawerSaveGateMsg,
+  body.ob-kb-open #tradeDrawer #drawerAiBtn { display: none !important; }
+}
+@media (max-width: 380px) {
+  html body #tradeDrawer .ob-log-grid { grid-template-columns: minmax(0, 1fr); }
+}
+/* Narrow phones: AI button shows its icon only (aria-label keeps the name) so
+   Save · AI · Delete fit on one row. */
+@media (max-width: 430px) {
+  html body #tradeDrawer #drawerAiBtn { flex: 0 0 52px; padding: 0 !important; }
+  html body #tradeDrawer #drawerAiBtn #drawerAiBtnLabel { display: none; }
+}
+/* Keyboard open (mobile.js sets --vvh / --vvt from visualViewport): the drawer
+   fits the visible area so the sticky bar sits above the keyboard. */
+body.ob-kb-open #tradeDrawer { top: var(--vvt, 0px) !important; bottom: auto !important; height: var(--vvh, 100%) !important; }
+
+@media (max-width: 1023px), (pointer: coarse) {
+  html body #tradeDrawer button[onclick="closeDrawer()"] { width: var(--tap) !important; height: var(--tap) !important; font-size: 20px !important; }
+  html body #tradeDrawer #drawerSaveBtn,
+  html body #tradeDrawer #drawerDeleteBtn,
+  html body #tradeDrawer #drawerAiBtn,
+  html body #tradeDrawer .ob-seg button,
+  html body #tradeDrawer .ob-log-grid input,
+  html body #tradeDrawer .ob-dd-btn,
+  html body #tradeDrawer .ob-mini-btn,
+  html body #tradeDrawer #drawerAiRerunBtn { min-height: var(--tap) !important; }
+  html body #tradeDrawer .ob-dd-btn { height: var(--tap) !important; font-size: 15px !important; }
+  html body #tradeDrawer .ob-seg button { height: var(--tap) !important; font-size: 13px !important; }
+  html body #tradeDrawer .chk-btn { width: var(--tap); height: var(--tap); font-size: 16px; border-radius: 12px; }
+  html body #tradeDrawer .chk-item .chk-text { font-size: 13.5px; }
+  html body #tradeDrawer .ob-note-toolbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  html body #tradeDrawer .ob-note-toolbar > * { flex-shrink: 0; }
+  html body #tradeDrawer .ob-note-toolbar button { width: var(--tap); height: var(--tap); font-size: 15px; }
+  html body #tradeDrawer .ob-shot-add { width: var(--tap); height: var(--tap); font-size: 15px; }
+  html body #tradeDrawer #drawerScreenshotsGrid button { width: 32px !important; height: 32px !important; font-size: 13px !important; }
+  html body #tradeDrawer #drawerScreenshotsGrid button::before { content: ''; position: absolute; inset: -6px; }
+  html body #tradeDrawer .ob-tag-pill { padding: 4px 4px 4px 12px; font-size: 13px; }
+  html body #tradeDrawer .ob-tag-pill button { min-width: var(--tap); min-height: var(--tap); margin: -6px 0; font-size: 16px; }
+  html body #tradeDrawer #drawerTagInput { min-height: var(--tap); }
+  html body #tradeDrawer #drawerTagChips button,
+  html body #tradeDrawer .ob-feeling { min-height: var(--tap); }
+  html body #tradeDrawer .ob-feeling { min-width: 64px; }
+  html body #tradeDrawer .ob-feeling span:last-child { font-size: 11.5px; }
+}
