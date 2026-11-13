@@ -225,3 +225,99 @@ html[data-theme] #ob-analytics-drivers .db-card { background: var(--ds-surface) 
   .ap-chart { height: 180px; }
   .ap-chart-tall { height: 220px; }
 }
+
+/* ── 4. Journal ("Review") ─────────────────────────────────────────────── */
+#pageJournal.jp-v2 { display: flex !important; flex-direction: column; gap: var(--ds-gap); }
+#pageJournal.jp-v2 > * { margin: 0 !important; min-width: 0; }
+#pageJournal.jp-v2 > .journal-analytics-mode-menu { order: 1; }
+#pageJournal.jp-v2 > .journal-analytics-account-menu { order: 2; }
+#pageJournal.jp-v2 > #jpHeadReview { order: 10; margin-top: var(--ds-s4) !important; }
+#pageJournal.jp-v2 > #ob-journal-equity-discipline-row { order: 11; }
+#pageJournal.jp-v2 > #jpHeadTrades { order: 20; margin-top: calc(var(--ds-section-gap) - var(--ds-gap)) !important; }
+#pageJournal.jp-v2 > .jp-filters { order: 21; }
+#pageJournal.jp-v2 > .jp-table { order: 22; }
+#pageJournal.jp-v2 > :not(.journal-analytics-mode-menu):not(.journal-analytics-account-menu):not(.jp-head):not(#ob-journal-equity-discipline-row):not(.jp-filters):not(.jp-table) { order: 30; }
+
+/* Equity chart removed from the Journal (Analytics has it) */
+html body #pageJournal .glass-card.jp-removed { display: none !important; }
+
+/* Review row: queue (8) + Discipline & Rules Status (4) */
+html body #pageJournal #ob-journal-equity-discipline-row {
+  display: grid !important; grid-template-columns: repeat(12, minmax(0, 1fr)) !important; gap: var(--ds-gap) !important; margin: 0 !important; align-items: start !important;
+}
+html body #pageJournal #ob-journal-equity-discipline-row > #jpQueue { grid-column: span 8; order: 1; }
+html body #pageJournal #ob-journal-equity-discipline-row > .jp-discipline { grid-column: span 4; order: 2; }
+@media (max-width: 1199px) {
+  html body #pageJournal #ob-journal-equity-discipline-row > #jpQueue { grid-column: span 7; }
+  html body #pageJournal #ob-journal-equity-discipline-row > .jp-discipline { grid-column: span 5; }
+}
+@media (max-width: 1023px) {
+  html body #pageJournal #ob-journal-equity-discipline-row > #jpQueue,
+  html body #pageJournal #ob-journal-equity-discipline-row > .jp-discipline { grid-column: 1 / -1; }
+}
+
+/* Not reviewed yet queue */
+.jp-queue { display: flex; flex-direction: column; gap: var(--ds-s3); }
+.jp-q-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--ds-s3); flex-wrap: wrap; }
+.jp-q-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.jp-q-list > li + li { border-top: 1px solid var(--ds-line); }
+.jp-q-item {
+  width: 100%; display: grid; grid-template-columns: minmax(120px, 1.1fr) minmax(0, 1.6fr) 64px auto; align-items: center; gap: var(--ds-s3);
+  padding: 10px 6px; background: transparent; border: 0; border-radius: var(--ds-radius-ctl); text-align: left; cursor: pointer; color: var(--ds-text); min-height: 48px;
+}
+.jp-q-item:hover { background: var(--ds-surface-2); }
+.jp-q-item:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
+.jp-q-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.jp-q-main b { font-weight: 600; font-size: 14px; }
+.jp-q-miss { display: flex; gap: 6px; flex-wrap: wrap; }
+.jp-q-r { text-align: right; font-weight: 600; font-size: 13px; }
+.jp-q-go { min-height: 0 !important; }
+.jp-q-more { align-self: flex-start; }
+.jp-q-empty { font-size: 13px; color: var(--ds-muted); padding: var(--ds-s4) 0; }
+@media (max-width: 640px) {
+  .jp-q-item { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "main r" "miss go"; row-gap: 8px; padding: 12px 2px; }
+  .jp-q-main { grid-area: main; } .jp-q-r { grid-area: r; } .jp-q-miss { grid-area: miss; } .jp-q-go { grid-area: go; }
+}
+
+/* Discipline & Rules Status: quiet rows instead of tinted boxes */
+html[data-theme] #pageJournal .jp-discipline { padding: var(--ds-s5) !important; gap: var(--ds-s3) !important; }
+html[data-theme] #pageJournal .jp-discipline > div > div:first-child { border: 0 !important; padding-bottom: 0 !important; }
+html[data-theme] #pageJournal .jp-discipline .space-y-3 > div {
+  background: transparent !important; border: 0 !important; border-top: 1px solid var(--ds-line) !important; border-radius: 0 !important; padding: 11px 0 !important;
+}
+html[data-theme] #pageJournal .jp-discipline .space-y-3 > div span.text-xs { color: var(--ds-text) !important; font-weight: 500 !important; font-size: 13px !important; }
+html[data-theme] #pageJournal .jp-discipline .space-y-3 > div .font-mono { font-size: 14px !important; }
+html[data-theme] #pageJournal .jp-discipline #statCleanTrades { color: var(--ds-pos) !important; }
+html[data-theme] #pageJournal .jp-discipline #statViolations { color: var(--ds-neg) !important; }
+html[data-theme] #pageJournal .jp-discipline #statPendingReview { color: var(--ds-warn) !important; }
+html[data-theme] #pageJournal .jp-discipline > button {
+  background: transparent !important; border: 1px solid var(--ds-line-strong) !important; color: var(--ds-text) !important; border-radius: var(--ds-radius-ctl) !important;
+  font-family: var(--ds-mono); font-size: 10.5px !important; letter-spacing: .08em; text-transform: uppercase; min-height: 38px;
+}
+html[data-theme] #pageJournal .jp-discipline #disciplinePassBadge { font-family: var(--ds-mono); letter-spacing: .08em; border-radius: 999px !important; }
+
+/* Filters: controls on the page, no box */
+html[data-theme] #pageJournal .glass-card.jp-filters {
+  background: transparent !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; padding: 0 !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+html[data-theme] #pageJournal .jp-filters input, html[data-theme] #pageJournal .jp-filters select {
+  background: var(--ds-surface-solid) !important; border: 1px solid var(--ds-line-strong) !important; color: var(--ds-text) !important;
+  border-radius: var(--ds-radius-ctl) !important; min-height: 38px; font-size: 12.5px !important;
+}
+html[data-theme] #pageJournal .jp-filters button {
+  background: transparent !important; border: 1px solid var(--ds-line-strong) !important; color: var(--ds-text) !important; border-radius: var(--ds-radius-ctl) !important;
+  font-family: var(--ds-mono); font-size: 10.5px !important; letter-spacing: .08em; text-transform: uppercase; min-height: 38px;
+}
+@media (pointer: coarse), (max-width: 1023px) {
+  html[data-theme] #pageJournal .jp-filters input, html[data-theme] #pageJournal .jp-filters select, html[data-theme] #pageJournal .jp-filters button { min-height: var(--ds-tap) !important; font-size: 16px !important; }
+}
+
+/* Trade table */
+html[data-theme] #pageJournal .jp-table > div:first-child { border-color: var(--ds-line) !important; padding: var(--ds-s4) var(--ds-s5) !important; }
+html[data-theme] #pageJournal .jp-table thead tr { background: transparent !important; border-color: var(--ds-line) !important; }
+html[data-theme] #pageJournal .jp-table th { font-family: var(--ds-mono); font-size: 10px !important; font-weight: 600 !important; letter-spacing: .1em !important; color: var(--ds-muted) !important; }
+html[data-theme] #pageJournal .jp-table tbody { border-color: var(--ds-line) !important; }
+html[data-theme] #pageJournal .jp-table tbody > tr { border-color: var(--ds-line) !important; }
+html[data-theme] #pageJournal .jp-table tbody > tr:hover { background: var(--ds-surface-2) !important; }
+html[data-theme] #pageJournal .jp-table td[data-col="strategy"] { color: var(--ds-text) !important; }
