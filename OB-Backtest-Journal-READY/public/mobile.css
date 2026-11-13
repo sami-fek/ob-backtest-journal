@@ -72,7 +72,7 @@ main img, main video, main canvas { max-width: 100%; }
   html body > header { padding-bottom: 8px !important; }
   /* Signed in, the avatar replaces "Get started" (it only opens Trading,
      which the nav already has). Extends theme.css's ≤479px rule to tablets. */
-  html body > header .ob-has-account > button:not(#ob-account-btn) { display: none !important; }
+  html body > header .ob-has-account > button:not(#ob-account-btn):not(#ob-ai-fab) { display: none !important; }
   html body > header > div { flex-wrap: wrap !important; row-gap: 8px !important; column-gap: 8px !important; }
   html body > header > div > div:first-child { min-width: 0; flex: 1 1 auto; }
   html body > header > div > div:first-child { min-height: var(--tap); }
@@ -521,3 +521,65 @@ body.ob-kb-open #tradeDrawer { top: var(--vvt, 0px) !important; bottom: auto !im
 /* MT5 dialogs: never taller than the visible screen (inline 90vh/80vh) */
 #mt5IntegrationModal > div { max-height: calc(100vh - 24px) !important; max-height: calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom)) !important; overscroll-behavior: contain; }
 #mt5-history-modal .mt5-hm-box { max-height: calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom)) !important; }
+
+/* ── 7. AI Coach button, chat panel, dialogs within the screen ────────────── */
+/* Docked AI Coach button (mobile.js moves #ob-ai-fab into the header ≤1023px) */
+html body > header .ob-has-account > #ob-ai-fab.ob-fab-docked,
+html body #ob-ai-fab.ob-fab-docked {
+  position: static !important; right: auto !important; bottom: auto !important;
+  width: var(--tap); height: var(--tap); padding: 0 !important; border-radius: 999px !important;
+  display: inline-grid !important; place-items: center; flex-shrink: 0;
+  font-size: 0 !important; min-height: var(--tap); box-shadow: none !important; transform: none !important;
+}
+html body #ob-ai-fab.ob-fab-docked i { font-size: 17px; margin: 0 !important; }
+html[data-theme="dark"] body #ob-ai-fab.ob-fab-docked { background: var(--raised, #171717) !important; border-color: var(--border, #262626) !important; }
+html body header > div > div:last-child:has(#ob-ai-fab.ob-fab-docked) { gap: 8px !important; }
+/* The trade drawer hides the floating button on small screens; docked it can stay. */
+body.ob-drawer-open #ob-ai-fab.ob-fab-docked { display: inline-grid !important; }
+
+/* AI Coach chat panel: full screen on phones, safe areas, 44px controls, keyboard-aware */
+@media (max-width: 640px) {
+  html body #ob-ai-chat .chat-panel { border-left: 0 !important; }
+  html body #ob-ai-chat .chat-panel > :first-child { padding-top: max(12px, calc(var(--safe-top) + 6px)) !important; }
+  html body #ob-ai-chat .chat-input { padding-bottom: calc(10px + var(--safe-bottom)) !important; }
+}
+@media (max-width: 1023px), (pointer: coarse) {
+  html body #ob-ai-chat #obChatClose { width: var(--tap); height: var(--tap); font-size: 20px; }
+  html body #ob-ai-chat .tool, html body #ob-ai-chat .send { height: var(--tap) !important; min-width: var(--tap); }
+}
+body.ob-kb-open #ob-ai-chat { top: var(--vvt, 0px) !important; bottom: auto !important; height: var(--vvh, 100%) !important; }
+
+/* Every dialog: overlay scrolls if needed, box never taller than the visible
+   screen, safe areas respected. */
+#ob-strategy-editor, #ob-strategy-delete, #ob-daily-limit-block, #ob-discipline-modal,
+#accountAddModal, #accountEditModal, #mt5LinkModal, #mt5IntegrationModal, #mt5-history-modal, .ac-modal {
+  padding: max(12px, var(--safe-top)) max(12px, var(--safe-right)) max(12px, var(--safe-bottom)) max(12px, var(--safe-left)) !important;
+  overflow-y: auto; overscroll-behavior: contain;
+}
+#ob-strategy-editor > div, #ob-strategy-delete > div, #ob-daily-limit-block > div, #ob-discipline-modal .ob-dm-box,
+#accountAddModal > div, #accountEditModal > div, #mt5LinkModal .mt5-modal {
+  max-height: calc(100vh - 24px) !important;
+  max-height: calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom)) !important;
+  overflow-y: auto !important;
+  max-width: 100%;
+}
+@media (max-width: 1023px), (pointer: coarse) {
+  #ob-strategy-editor button, #ob-strategy-editor input,
+  #ob-strategy-delete button, #ob-strategy-delete select,
+  #ob-daily-limit-block button,
+  #accountAddModal button, #accountAddModal input, #accountEditModal button, #accountEditModal input,
+  #mt5LinkModal button { min-height: var(--tap); }
+  #ob-strategy-editor button, #mt5IntegrationModal button, #accountAddModal button, #accountEditModal button { min-width: var(--tap); }
+}
+@media (max-width: 767px) {
+  #ob-discipline-modal .ob-dm-box, #ob-daily-limit-block > div { padding: 22px 18px !important; }
+  #ob-discipline-modal .ob-dm-actions { flex-wrap: wrap; }
+}
+/* Signed out on phones the coach cannot be used (sign-in modal); keep the
+   header to logo + "Get started" so it stays on one row. */
+@media (max-width: 767px) {
+  html body > header > div > div:last-child:not(.ob-has-account) > #ob-ai-fab.ob-fab-docked { display: none !important; }
+}
+@media (max-width: 400px) {
+  html body > header:has(> div > div:last-child:not(.ob-has-account)) h1 + span { display: none; }
+}

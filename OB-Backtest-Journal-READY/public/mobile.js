@@ -11,6 +11,9 @@
  *    sticky bar and the keyboard never hide what you are typing.
  * 4. Collapsible sections ([data-ob-collapse] with a .ob-collapse-toggle):
  *    collapsed by default on phones, always open on wider screens.
+ * 5. AI Coach button: on phones and tablets it is docked in the header (next to
+ *    the avatar) as an icon button, so it never floats over page content.
+ *    Desktop keeps the floating button. Same element, same click handler.
  */
 (() => {
   'use strict';
@@ -100,10 +103,36 @@
     });
   }
 
+  // ── 5. AI Coach button ────────────────────────────────────────────────────
+  const DOCK_MQ = window.matchMedia('(max-width: 1023px)');
+  function dockCoach() {
+    const fab = document.getElementById('ob-ai-fab');
+    if (!fab) return;
+    if (!fab.getAttribute('aria-label')) fab.setAttribute('aria-label', 'Open AI Coach');
+    const slot = document.querySelector('header > div > div:last-child');
+    if (DOCK_MQ.matches && slot) {
+      if (fab.parentElement !== slot) slot.insertBefore(fab, slot.firstChild);
+      fab.classList.add('ob-fab-docked');
+    } else if (fab.parentElement !== document.body) {
+      document.body.appendChild(fab);
+      fab.classList.remove('ob-fab-docked');
+    } else {
+      fab.classList.remove('ob-fab-docked');
+    }
+  }
+  function watchCoach() {
+    dockCoach();
+    // ai-coach.js creates the button after load; dock it as soon as it appears.
+    const mo = new MutationObserver(() => { if (document.getElementById('ob-ai-fab')) dockCoach(); });
+    mo.observe(document.body, { childList: true });
+    DOCK_MQ.addEventListener('change', dockCoach);
+  }
+
   function init() {
     watchNav();
     trackKeyboard();
     wireCollapsibles();
+    watchCoach();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
