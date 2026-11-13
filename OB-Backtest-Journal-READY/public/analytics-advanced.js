@@ -621,6 +621,7 @@
     renderSessionChart(list);
     renderDayOfWeekChart(list);
     renderStrategyCompare(list);
+    window.dispatchEvent(new CustomEvent('ob-analytics-refresh'));
 
     // Also refresh the existing KPI/chart renders with the filtered set
     if (typeof window.renderAnalyticsKPIs === 'function') {
@@ -632,6 +633,8 @@
   }
 
   window.__obAnalyticsRefresh = refresh;
+  // Same filtered, account-scoped list for the Behavior sub-tab (psychology-ui.js).
+  window.obAnalyticsFilteredTrades = filteredTrades;
 
   // ─── boot ─────────────────────────────────────────────────────────────────────
 

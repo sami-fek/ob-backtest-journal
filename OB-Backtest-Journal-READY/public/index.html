@@ -819,6 +819,8 @@
   <script src="/save-rule.js"></script>
   <!-- Account maths: balance with cash movements, $ equity curve, import plan, CSV -->
   <script src="/account-balance.js"></script>
+  <!-- Psychology Status numbers (tags, feelings, checklist) -->
+  <script src="/psychology.js"></script>
   <script>
     const TRADES_KEY = 'ob-trades';
     const SETTINGS_KEY = 'ob-os-settings';
@@ -1178,7 +1180,7 @@
     // ── Account center bridge ────────────────────────────────────────────────
     // Read / update settings from account-center.js without a second copy.
     window.obGetSettings = function () {
-      return { ...settingsExtra, initialCapital, riskPercent, defaultRR, maxDailyTrades, hardStopLosses };
+      return { ...settingsExtra, initialCapital, riskPercent, defaultRR, maxDailyTrades, hardStopLosses, tagLibrary: tagLibrary.slice(), feelings: feelingOptions.slice() };
     };
     window.obUpdateSettings = async function (patch) {
       const p = patch || {};
@@ -2941,5 +2943,6 @@
   </script>
   <script src="/ai-coach.js"></script>
   <script src="/account-center.js"></script>
+  <script src="/psychology-ui.js"></script>
 </body>
 </html>
