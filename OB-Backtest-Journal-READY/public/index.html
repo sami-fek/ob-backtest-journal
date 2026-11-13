@@ -881,6 +881,8 @@
   <!-- JAVASCRIPT APPLICATION LOGIC -->
   <!-- Trade save rule (50% checklist + note + screenshot); also unit-tested -->
   <script src="/note-utils.js"></script>
+  <!-- Screenshots stored as files; trades keep references (BUILD-PLAN-2 Part 4) -->
+  <script src="/shots.js"></script>
   <script src="/save-rule.js"></script>
   <!-- Account maths: balance with cash movements, $ equity curve, import plan, CSV -->
   <script src="/account-balance.js"></script>
@@ -1076,6 +1078,12 @@
         });
         if (res.ok) {
           hasServerStorage = true;
+          // Trades: the server moves embedded screenshots to file storage and answers
+          // with the slim record; keep its references so images are not sent again.
+          if (key === TRADES_KEY) {
+            const body = await res.json().catch(() => null);
+            if (body && typeof body.value === 'string') { window.obShots.adoptRefs(trades, body.value); value = body.value; }
+          }
           try { localStorage.setItem(key, value); } catch (e) {}
           if (key === TRADES_KEY) { try { localStorage.setItem('my_journal_trades_v1', value); } catch (e) {} }
           return true;
@@ -2392,9 +2400,19 @@
         screenshotDataUrl(file).then(dataUrl => {
           if (!dataUrl || !drawerDraft || currentDrawerTradeId !== id) return; // drawer closed
           if (drawerDraft.screenshots.length >= max) return;
-          drawerDraft.screenshots.push(dataUrl);
+          const draft = drawerDraft;
+          draft.screenshots.push(dataUrl);
           renderDrawerScreenshots(drawerViewTrade());
           updateDrawerSaveGate();
+          // Upload to file storage; the draft then keeps only the reference.
+          // (If the upload fails the image stays embedded and the server moves it on save.)
+          window.obShots.store(dataUrl).then(ref => {
+            const i = draft.screenshots.indexOf(dataUrl);
+            if (ref !== dataUrl && i >= 0) {
+              draft.screenshots[i] = ref;
+              if (drawerDraft === draft && currentDrawerTradeId === id) renderDrawerScreenshots(drawerViewTrade());
+            }
+          });
         });
       });
     }
@@ -2737,8 +2755,9 @@
       if (btnLabel) { btnLabel.dataset.original = btnLabel.textContent || 'Analyze with AI'; btnLabel.textContent = 'Analyzing…'; }
       showDrawerAi('loading');
 
-      // Pick model based on screenshot images
-      const hasImages = Array.isArray(t.screenshots) && t.screenshots.some(x => typeof x === 'string' && x.startsWith('data:image/'));
+      // Pick model based on screenshot images (stored files are fetched as data URLs for the AI)
+      const shotImages = await window.obShots.asDataUrls(t.screenshots);
+      const hasImages = shotImages.length > 0;
       const model = hasImages ? 'qwen/qwen3.8-27b' : 'openai/gpt-oss-20b'; // Groq shut down qwen3.6-27b on 2026-09-14
 
       const checklistSummary = (() => {
@@ -2777,7 +2796,7 @@
         ];
 
         if (hasImages) {
-          const imgParts = t.screenshots.filter(x => typeof x === 'string' && x.startsWith('data:image/')).slice(0, 3).map(url => ({ type: 'image_url', image_url: { url } }));
+          const imgParts = shotImages.slice(0, 3).map(url => ({ type: 'image_url', image_url: { url } }));
           const textPart = { type: 'text', text: promptLines.join('\n') + '\n\nAlso analyze the attached screenshots. Call out anything visible about structure, entry location, invalidation, and targets.' };
           messages[1] = { role: 'user', content: [textPart, ...imgParts] };
         }
@@ -2937,14 +2956,18 @@
       const csvContent = "ID,Date,Pair,Timeframe,Regime,Direction,Result,RMultiple\n" + modeTrades.map(t => `${t.id},${t.date},${t.pair},${t.timeframe},${t.regime},${t.direction},${t.result},${t.rMultiple}`).join("\n");
       navigator.clipboard.writeText(csvContent).then(() => alert('Trading Console CSV copied to clipboard!'));
     }
-    function exportDataJSON() {
-      const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(trades, null, 2));
+    async function exportDataJSON() {
+      // Self-contained backup: stored screenshot files are embedded as images again.
+      const full = await window.obShots.embedForExport(trades);
+      const blob = new Blob([JSON.stringify(full, null, 2)], { type: 'application/json' });
+      const href = URL.createObjectURL(blob);
       const dl = document.createElement('a');
-      dl.setAttribute("href", str);
+      dl.setAttribute("href", href);
       dl.setAttribute("download", `MY_Journal_Backup_${Date.now()}.json`);
       document.body.appendChild(dl);
       dl.click();
       dl.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 4000);
     }
 
     function importDataJSON(event) {
@@ -3013,6 +3036,9 @@
         const toAdd = normalised.filter(t => !existingIds.has(t.id));
         const skipped = normalised.length - toAdd.length;
 
+        // Imported screenshots go to file storage first (keeps the save small)
+        showMsg('Importing…', false);
+        await window.obShots.uploadEmbedded(toAdd);
         // Prepend new trades (newest-first convention)
         trades = [...toAdd, ...trades];
         await saveState();

@@ -171,8 +171,9 @@
     const trade=currentTradeId!=null?readTrade(currentTradeId):null;
     input.value=''; addMessage('user',question); const pending=addMessage('ai','Thinking…'); busy=true; root.querySelector('#obChatSend').disabled=true;
     try {
-      const hasTradeShots=!!(trade&&Array.isArray(trade.screenshots)&&trade.screenshots.some(x=>typeof x==='string'&&x.startsWith('data:image/')));
-      if(!currentImages.length && hasTradeShots) currentImages=trade.screenshots.filter(x=>typeof x==='string'&&x.startsWith('data:image/')).slice(0,3);
+      // Trade screenshots may be stored files (references): fetch them as data URLs for the AI.
+      const tradeShots=(trade&&Array.isArray(trade.screenshots))?(window.obShots?await window.obShots.asDataUrls(trade.screenshots.slice(0,3)):trade.screenshots.filter(x=>typeof x==='string'&&x.startsWith('data:image/')).slice(0,3)):[];
+      if(!currentImages.length && tradeShots.length) currentImages=tradeShots.slice(0,3);
       const hasImages=currentImages.length>0;
       const model=hasImages?'qwen/qwen3.8-27b':'openai/gpt-oss-20b'; // Groq shut down qwen3.6-27b on 2026-09-14
       const messages=makeMessages(question,trade);

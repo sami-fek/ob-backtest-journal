@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { localStore, supabaseStore, extractEmbedded, hasEmbedded, collectGarbage, isShotId, parseDataUrl, refFor, MAX_SHOT_BYTES } from './shots-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -66,6 +67,14 @@ if (!useSupabase) {
   // Add google_sub column to existing DBs that predate this migration
   try { db.exec(`ALTER TABLE users ADD COLUMN google_sub TEXT UNIQUE`); } catch (_) {}
 }
+
+// ─── Screenshot file storage (BUILD-PLAN-2 Part 4) ──────────────────────────────
+// Trades keep only references (/api/shots/<id>); images live in Supabase Storage
+// (production) or a local folder next to the SQLite database.
+const SHOT_TRADES_KEY = 'ob-trades';
+const shots = useSupabase
+  ? supabaseStore({ url: process.env.SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY, bucket: process.env.SUPABASE_SCREENSHOTS_BUCKET || 'trade-screenshots' })
+  : localStore(path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'shots'));
 
 // ─── Supabase helpers ─────────────────────────────────────────────────────────
 
@@ -235,6 +244,7 @@ async function setUserPasswordHash(id, passwordHash) {
 const MT5_TOKEN_SESSION = '__mt5_bridge_tokens_v2';
 async function deleteUserAndData(id) {
   if (!id || id === MT5_TOKEN_SESSION) throw new Error('invalid user id');
+  try { await shots.removeAll(id); } catch (err) { console.warn('[shots] could not delete screenshots for a deleted account:', err.message); }
   const ownsToken = value => { try { return JSON.parse(value)?.sessionId === id; } catch { return false; } };
   if (!useSupabase) {
     const tokenRows = db.prepare('SELECT key, value FROM kv WHERE session_id = ?').all(MT5_TOKEN_SESSION)
@@ -583,8 +593,17 @@ app.get('/api/storage/:key', async (req, res) => {
   try {
     const user = await requireAuth(req, res);
     if (!user) return unauthorized(res);
-    const value = await getStoredValue(user.id, req.params.key);
+    let value = await getStoredValue(user.id, req.params.key);
     if (value == null) return res.status(404).json({ value: null });
+    // Migration: screenshots still embedded in the trades record move to file
+    // storage on first read. The slim record is written back only after every
+    // moved file is stored; on any error the original value is returned as is.
+    if (req.params.key === SHOT_TRADES_KEY && hasEmbedded(value)) {
+      try {
+        const out = await extractEmbedded(shots, user.id, value);
+        if (out.changed) { await setStoredValue(user.id, SHOT_TRADES_KEY, out.json); value = out.json; }
+      } catch (err) { console.warn('[shots] migration on read failed:', err.message); }
+    }
     res.json({ value });
   } catch (err) { console.error('Storage GET failed:', err); res.status(500).json({ error: 'Storage read failed' }); }
 });
@@ -594,16 +613,66 @@ app.put('/api/storage/:key', async (req, res) => {
     const user = await requireAuth(req, res);
     if (!user) return unauthorized(res);
     if (typeof req.body?.value !== 'string') return res.status(400).json({ error: 'value must be a string' });
-    await setStoredValue(user.id, req.params.key, req.body.value);
-    res.json({ ok: true });
+    let value = req.body.value;
+    if (req.params.key !== SHOT_TRADES_KEY) {
+      await setStoredValue(user.id, req.params.key, value);
+      return res.json({ ok: true });
+    }
+    // Trades: embedded screenshots (offline saves, imported backups) move to file
+    // storage; files no longer referenced are deleted after the record is saved.
+    const before = await getStoredValue(user.id, SHOT_TRADES_KEY);
+    if (hasEmbedded(value)) {
+      try { value = (await extractEmbedded(shots, user.id, value)).json; } catch (err) { console.warn('[shots] extract on write failed:', err.message); }
+    }
+    await setStoredValue(user.id, SHOT_TRADES_KEY, value);
+    try { await collectGarbage(shots, user.id, before, value); } catch (err) { console.warn('[shots] cleanup failed:', err.message); }
+    res.json({ ok: true, ...(value !== req.body.value ? { value } : {}) });
   } catch (err) { console.error('Storage PUT failed:', err); res.status(500).json({ error: 'Storage write failed' }); }
+});
+
+// ─── Screenshot routes (protected; a user only ever sees their own files) ──────
+app.post('/api/shots', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    const parsed = parseDataUrl(req.body?.dataUrl);
+    if (!parsed) return res.status(400).json({ error: 'dataUrl must be a PNG, JPEG, WebP or GIF image', code: 'BAD_IMAGE' });
+    if (parsed.buffer.length > MAX_SHOT_BYTES) return res.status(413).json({ error: 'Image is larger than 8 MB', code: 'IMAGE_TOO_LARGE' });
+    const id = await shots.save(user.id, parsed.buffer, parsed.mime);
+    res.status(201).json({ ok: true, id, ref: refFor(id) });
+  } catch (err) { console.error('Screenshot upload failed:', err); res.status(500).json({ error: 'Screenshot upload failed' }); }
+});
+
+app.get('/api/shots/:id', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    if (!isShotId(req.params.id)) return res.status(404).json({ error: 'Not found' });
+    const file = await shots.read(user.id, req.params.id);
+    if (!file) return res.status(404).json({ error: 'Not found' });
+    res.setHeader('Content-Type', file.mime);
+    res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+    res.send(file.buffer);
+  } catch (err) { console.error('Screenshot read failed:', err); res.status(500).json({ error: 'Screenshot read failed' }); }
+});
+
+app.delete('/api/shots/:id', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    if (!isShotId(req.params.id)) return res.status(404).json({ error: 'Not found' });
+    await shots.remove(user.id, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { console.error('Screenshot delete failed:', err); res.status(500).json({ error: 'Screenshot delete failed' }); }
 });
 
 app.delete('/api/storage/:key', async (req, res) => {
   try {
     const user = await requireAuth(req, res);
     if (!user) return unauthorized(res);
+    const before = req.params.key === SHOT_TRADES_KEY ? await getStoredValue(user.id, SHOT_TRADES_KEY) : null;
     await deleteStoredValue(user.id, req.params.key);
+    if (before) { try { await collectGarbage(shots, user.id, before, '[]'); } catch (err) { console.warn('[shots] cleanup failed:', err.message); } }
     res.json({ ok: true });
   } catch (err) { console.error('Storage DELETE failed:', err); res.status(500).json({ error: 'Storage delete failed' }); }
 });
@@ -868,7 +937,7 @@ app.post('/api/trades', async (req, res) => {
       updated = [trade, ...tradeList];
     }
 
-    await setStoredValue(user.id, TRADES_KEY, JSON.stringify(updated));
+    await setStoredValue(user.id, SHOT_TRADES_KEY, JSON.stringify(updated));
     return res.status(201).json({ ok: true, id: trade.id, total: updated.length });
   } catch (err) {
     console.error('POST /api/trades failed:', err);

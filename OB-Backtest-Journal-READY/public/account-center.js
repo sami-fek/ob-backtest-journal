@@ -923,7 +923,8 @@
         <div id="dxPlan" style="margin-top:12px"></div>
       </div>`;
     $('#dxCsv', body)?.addEventListener('click', () => download(`MY_Journal_Trades_${stamp}.csv`, '﻿' + B().tradesToCSV(allTrades()), 'text/csv;charset=utf-8'));
-    $('#dxJson', body)?.addEventListener('click', () => download(`MY_Journal_Backup_${stamp}.json`, JSON.stringify(allTrades(), null, 2), 'application/json'));
+    // Full backup: screenshot files are embedded again so the file stands on its own.
+    $('#dxJson', body)?.addEventListener('click', async () => { const full = window.obShots ? await window.obShots.embedForExport(allTrades()) : allTrades(); download(`MY_Journal_Backup_${stamp}.json`, JSON.stringify(full, null, 2), 'application/json'); });
     $('#dxFile', body).addEventListener('change', e => {
       const file = e.target.files?.[0];
       e.target.value = '';
@@ -947,6 +948,8 @@
           $('#dxGo', out).disabled = true;
           // Re-plan against the current list in case trades changed meanwhile.
           const fresh = B().planImport(parsed, allTrades(), window.obNormalizeTrade);
+          // Imported screenshots go to file storage first (keeps the save small).
+          if (window.obShots) await window.obShots.uploadEmbedded(fresh.toAdd);
           await window.obReplaceTrades(list => [...fresh.toAdd, ...list]);
           out.innerHTML = `<div class="ac-msg ok">Imported ${fresh.add} trade${fresh.add === 1 ? '' : 's'}. You now have ${allTrades().length} trades.</div>`;
         });
