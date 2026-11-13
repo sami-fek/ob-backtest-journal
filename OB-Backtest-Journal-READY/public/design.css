@@ -125,12 +125,12 @@ html body.min-h-screen { background-color: transparent !important; position: rel
 body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(circle at 8% 14%, var(--ds-dot) 0 2.5px, transparent 3.5px),
-    radial-gradient(circle at 8% 14%, transparent 0 9px, var(--ds-dot-ring) 9.5px 10.5px, transparent 11px),
-    radial-gradient(circle at 91% 22%, var(--ds-dot) 0 2.5px, transparent 3.5px),
-    radial-gradient(circle at 74% 78%, var(--ds-dot) 0 2px, transparent 3px),
-    radial-gradient(circle at 74% 78%, transparent 0 8px, var(--ds-dot-ring) 8.5px 9.5px, transparent 10px),
-    radial-gradient(circle at 22% 88%, var(--ds-dot) 0 2px, transparent 3px),
+    radial-gradient(circle at 1.6% 34%, var(--ds-dot) 0 2.5px, transparent 3.5px),
+    radial-gradient(circle at 1.6% 34%, transparent 0 9px, var(--ds-dot-ring) 9.5px 10.5px, transparent 11px),
+    radial-gradient(circle at 98.4% 21%, var(--ds-dot) 0 2.5px, transparent 3.5px),
+    radial-gradient(circle at 98.2% 74%, var(--ds-dot) 0 2px, transparent 3px),
+    radial-gradient(circle at 98.2% 74%, transparent 0 8px, var(--ds-dot-ring) 8.5px 9.5px, transparent 10px),
+    radial-gradient(circle at 1.8% 90%, var(--ds-dot) 0 2px, transparent 3px),
     var(--ds-grid-svg) 0 0 / 96px 96px repeat,
     linear-gradient(180deg, var(--ds-bg-top) 0%, var(--ds-bg-bottom) 100%);
 }
@@ -210,7 +210,7 @@ html body > main:has(> #pageTrading:not(.hidden)) {
 .ds-section-head .ds-label { color: var(--ds-text-2); }
 /* period tag: every number says which period it covers */
 .ds-period { font-family: var(--ds-mono); font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-muted); white-space: nowrap; }
-.ds-section-head .ds-period { font-family: var(--ds-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-muted); }
+.ds-section-head .ds-period { white-space: normal; font-family: var(--ds-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-muted); }
 .ds-card {
   background: var(--ds-surface); border: 1px solid var(--ds-line); border-radius: var(--ds-radius-card);
   box-shadow: var(--ds-shadow); padding: var(--ds-s5); min-width: 0;
@@ -268,7 +268,7 @@ html body > main:has(> #pageTrading:not(.hidden)) {
 .ds-btn-sm { min-height: 30px; padding: 0 11px; font-size: 10.5px; }
 .ds-icon-btn { width: 34px; height: 34px; padding: 0; }
 @media (pointer: coarse), (max-width: 1023px) {
-  .ds-btn, .ds-btn-sm, .ds-icon-btn { min-height: var(--ds-tap); }
+  .ds-btn, .ds-btn-sm, .ds-icon-btn, .ds-link { min-height: var(--ds-tap); }
   .ds-icon-btn { width: var(--ds-tap); }
 }
 

@@ -1,0 +1,131 @@
+/* Trading page v2 (BUILD-PLAN-2 Part 1 step 3/4). Design-system tokens only.
+   Order: toolbar strip → Can I trade? → Log a trade → Today's trades → MT5 open positions.
+   The older blocks (mode bar, MT5 status panel, hard-stop/daily banner, KPI cards,
+   calendar + balance widget, activity heatmap, execution log) stay in the DOM for
+   the scripts that update them and are hidden here. Their data lives on the
+   Dashboard (calendar, activity, equity) and the Journal (full history). */
+
+#pageTrading.tp-v2:not(.hidden) { display: flex; flex-direction: column; gap: var(--ds-section-gap); }
+#pageTrading.tp-v2 > * { margin: 0 !important; }
+#pageTrading.tp-v2 > #tpOldModeBar,
+#pageTrading.tp-v2 > #mt5-status-panel,
+#pageTrading.tp-v2 > #ob-discipline-banner,
+#pageTrading.tp-v2 > #tpOldKpis,
+#pageTrading.tp-v2 > #ob-trading-pnl-account-row,
+#pageTrading.tp-v2 > #ob-activity-card,
+#pageTrading.tp-v2 > #tpOldExecLog { display: none !important; }
+#pageTrading.tp-v2 > #tpStrip { order: 1; }
+#pageTrading.tp-v2 > #tpCan { order: 2; }
+#pageTrading.tp-v2 > #tpLogSection { order: 3; }
+#pageTrading.tp-v2 > #tpToday { order: 4; }
+#pageTrading.tp-v2 > #mt5OpenPositions { order: 5; }
+#pageTrading.tp-v2 > :not(#tpStrip):not(#tpCan):not(#tpLogSection):not(#tpToday):not(#mt5OpenPositions) { order: 9; }
+
+/* ── 1. toolbar strip (not a card) ──────────────────────────────────────── */
+.tp-strip { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--ds-line); margin-top: calc(var(--ds-section-gap) * -0.25) !important; }
+.tp-strip-l, .tp-strip-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.tp-sep { width: 1px; height: 20px; background: var(--ds-line-strong); margin: 0 4px; }
+.tp-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 11px; border-radius: 999px; font-family: var(--ds-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ds-text-2); background: var(--ds-surface-2); white-space: nowrap; }
+.tp-chip .ds-dot { color: var(--ds-muted); }
+.tp-chip.pos { color: var(--ds-pos); background: var(--ds-pos-tint); } .tp-chip.pos .ds-dot { color: var(--ds-pos); }
+.tp-chip.warn { color: var(--ds-warn); background: var(--ds-warn-tint); } .tp-chip.warn .ds-dot { color: var(--ds-warn); }
+.tp-chip.neg { color: var(--ds-neg); background: var(--ds-neg-tint); }
+.tp-danger:hover { color: var(--ds-neg); }
+
+/* ── 2. Can I trade? ────────────────────────────────────────────────────── */
+.tp-can { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 0; padding: 0; overflow: hidden; }
+.tp-verdict { display: flex; gap: 14px; align-items: flex-start; padding: 24px; background: var(--ds-surface-2); }
+.tp-verdict b { display: block; font-size: 20px; font-weight: 500; letter-spacing: -.015em; color: var(--ds-text); line-height: 1.25; }
+.tp-verdict p { margin-top: 6px; }
+.tp-light { width: 12px; height: 12px; border-radius: 999px; margin-top: 6px; flex: none; background: var(--ds-muted); }
+.tp-pos .tp-verdict { background: var(--ds-pos-tint); } .tp-pos .tp-light { background: var(--ds-pos); box-shadow: 0 0 0 5px var(--ds-pos-tint); }
+.tp-warn .tp-verdict { background: var(--ds-warn-tint); } .tp-warn .tp-light { background: var(--ds-warn); box-shadow: 0 0 0 5px var(--ds-warn-tint); }
+.tp-neg .tp-verdict { background: var(--ds-neg-tint); } .tp-neg .tp-light { background: var(--ds-neg); box-shadow: 0 0 0 5px var(--ds-neg-tint); }
+.tp-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tp-metric { display: flex; flex-direction: column; gap: 9px; padding: 22px 24px; min-width: 0; }
+.tp-metric + .tp-metric { border-left: 1px solid var(--ds-line); }
+.tp-metric-wide { grid-column: 1 / -1; justify-content: center; }
+.tp-metric-val b { font-size: 26px; font-weight: 600; letter-spacing: -.03em; color: var(--ds-text); }
+.tp-metric .ds-link { font-size: 10.5px; padding: 0; }
+
+/* ── 3. Log a trade (existing form, restyled) ───────────────────────────── */
+#tpLogSection { display: flex; flex-direction: column; gap: var(--ds-s3); }
+#pageTrading #tpLogCard.glass-card { background: var(--ds-surface) !important; border: 1px solid var(--ds-line) !important; border-radius: var(--ds-radius-card) !important; box-shadow: var(--ds-shadow) !important; padding: 20px 24px 22px !important; }
+#pageTrading #tradeForm { gap: 14px 12px !important; align-items: end; }
+#pageTrading #tradeForm label { font-family: var(--ds-mono) !important; font-size: 10px !important; font-weight: 600 !important; letter-spacing: .09em; text-transform: uppercase; color: var(--ds-muted) !important; margin-bottom: 6px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pageTrading #tradeForm input:not([type=hidden]),
+#pageTrading #tradeForm .ob-dd-btn {
+  height: 40px !important; min-height: 40px; border-radius: var(--ds-radius-ctl) !important; border: 1px solid var(--ds-line-strong) !important;
+  background: var(--ds-surface-solid) !important; color: var(--ds-text) !important; box-shadow: none !important;
+}
+#pageTrading #tradeForm input:focus, #pageTrading #tradeForm .ob-dd-btn:focus-visible { outline: 2px solid var(--ds-accent) !important; outline-offset: 1px; }
+#pageTrading #tradeForm .flex.gap-1 > button { height: 40px; border-radius: var(--ds-radius-ctl) !important; font-family: var(--ds-mono); font-size: 11px; letter-spacing: .05em; }
+#pageTrading #tradeForm #tpAddTrade { height: 40px; min-height: 40px; }
+@media (min-width: 1280px) {
+  #pageTrading #tradeForm { grid-template-columns: 1.15fr 1fr .8fr 1fr 1fr 1.25fr 1.6fr .8fr 1.15fr 1.15fr !important; }
+}
+@media (min-width: 641px) and (max-width: 1279px) {
+  #pageTrading #tradeForm { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  #pageTrading #tradeForm > * { grid-column: auto !important; }
+}
+
+/* ── 4. Today's trades ──────────────────────────────────────────────────── */
+#tpToday .ds-section-head { align-items: center; }
+.tp-today-links { display: flex; align-items: center; gap: 14px; margin-left: auto; }
+.tp-today-card { padding: 8px; }
+.tp-list { list-style: none; margin: 0; padding: 0; }
+.tp-row { display: flex; align-items: center; gap: 8px; }
+.tp-row + .tp-row { border-top: 1px solid var(--ds-line); }
+.tp-open { flex: 1; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(110px, auto); gap: 14px; align-items: center; padding: 12px 10px; background: transparent; border: 0; border-radius: 10px; text-align: left; cursor: pointer; color: var(--ds-text); font: inherit; }
+.tp-open:hover, .tp-open:focus-visible { background: var(--ds-btn2-hover); outline: none; }
+.tp-open:focus-visible { box-shadow: 0 0 0 2px var(--ds-accent); }
+.tp-main, .tp-res { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tp-main b, .tp-res b { font-size: 13px; font-weight: 600; }
+.tp-main small, .tp-res small { font-size: 11.5px; color: var(--ds-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-res { text-align: right; }
+.tp-del { margin-right: 6px; color: var(--ds-muted); }
+.tp-del:hover { color: var(--ds-neg); }
+
+/* MT5 open positions: quieter frame, same content */
+#pageTrading > #mt5OpenPositions.glass-card { border: 1px solid var(--ds-line) !important; border-radius: var(--ds-radius-card) !important; box-shadow: var(--ds-shadow) !important; }
+
+/* ── tablet ─────────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .tp-can { grid-template-columns: 1fr; }
+  .tp-verdict { padding: 20px; }
+  .tp-metric { padding: 18px 20px; }
+}
+
+/* ── phone: designed order and rhythm, one column ───────────────────────── */
+@media (max-width: 640px) {
+  .tp-strip { flex-direction: column; align-items: stretch; gap: 10px; padding-bottom: 16px; }
+  .tp-strip-l { display: grid; grid-template-columns: 1fr; }
+  .tp-modes { display: flex; width: 100%; overflow-x: auto; }
+  .tp-modes button { flex: 1 0 auto; justify-content: center; }
+  .tp-strip-l .ds-select { max-width: none; width: 100%; }
+  .tp-strip-r { gap: 8px; }
+  .tp-strip-r .tp-sep { display: none; }
+  .tp-strip-r .tp-chip { min-height: 44px; flex: 1 1 100%; justify-content: flex-start; white-space: normal; line-height: 1.35; padding: 8px 14px; border-radius: 12px; }
+  .tp-strip-r .ds-btn { flex: 1 1 0; }
+  .tp-strip-r .ds-icon-btn { flex: 0 0 var(--ds-tap); }
+  .tp-verdict { padding: 18px 16px; }
+  .tp-verdict b { font-size: 18px; }
+  .tp-metrics { grid-template-columns: 1fr; }
+  .tp-metric { padding: 16px; gap: 8px; }
+  .tp-metric + .tp-metric { border-left: 0; border-top: 1px solid var(--ds-line); }
+  .tp-metric-val b { font-size: 22px; }
+  #pageTrading #tpLogCard.glass-card { padding: 16px !important; }
+  #pageTrading #tradeForm label { font-size: 11px !important; }
+  #pageTrading #tradeForm input:not([type=hidden]), #pageTrading #tradeForm .ob-dd-btn, #pageTrading #tradeForm .flex.gap-1 > button, #pageTrading #tradeForm #tpAddTrade { height: var(--ds-tap) !important; min-height: var(--ds-tap); }
+  #pageTrading #tradeForm #tpAddTrade { margin-top: 6px; }
+  #tpToday .ds-section-head { flex-wrap: wrap; }
+  .tp-today-links { width: 100%; margin-left: 0; justify-content: space-between; }
+  .tp-today-links .ds-link { min-height: var(--ds-tap); }
+  .tp-today-card { padding: 4px; }
+  .tp-open { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "side main res" "side rule res"; gap: 6px 10px; padding: 12px 8px; }
+  .tp-open > .db2-side { grid-area: side; align-self: center; width: 48px; }
+  .tp-open > .tp-main { grid-area: main; }
+  .tp-open > .tp-rule { grid-area: rule; }
+  .tp-open > .tp-res { grid-area: res; }
+  .tp-del { margin-right: 4px; }
+}

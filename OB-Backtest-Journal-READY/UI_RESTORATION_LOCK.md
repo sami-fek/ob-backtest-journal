@@ -16,9 +16,9 @@ Git history is the source of truth. Do not reconstruct the UI from memory and do
 1. AI Coach: floating button, right-side panel, multi-turn chat, image upload, selected-trade context, `/api/ai`.
 2. Accounts: Demo / Real / Funded separation, multiple accounts, carousel, arrow-only navigation, active account switching, Add Account, 3-dot rename, account-specific balance/P&L/analytics.
 3. MT5: Link MT5, account-specific state, open positions, balance/equity, read-only bridge architecture.
-4. Trading P&L heatmap: calendar, previous/next month, This Month, daily P&L, no-trade days, weekly totals, monthly totals, mode/account filtering.
+4. P&L heatmap (Dashboard since BUILD-PLAN-2): calendar, previous/next month, This Month, daily P&L, no-trade days, weekly totals, monthly totals, mode/account filtering.
 5. Journal: Cumulative Equity Growth + Discipline & Rules Status side-by-side.
-6. Trading: P&L Heatmap + Account Widget side-by-side.
+6. Trading (changed by BUILD-PLAN-2 Part 1, 2026-11-13): the page answers "Can I trade right now, and how do I log it?" — toolbar strip (mode, account, MT5 status, rule status), "Can I trade?" panel, LOG A TRADE, today's trades (full history on Journal), MT5 open positions. The P&L calendar, Trading Activity heatmap, all-time KPI cards and Account Balance widget moved off Trading: calendar + activity + equity live on the Dashboard; accounts are switched in the toolbar strip and managed in the Account center. The old blocks stay in the DOM (hidden) so their scripts keep working.
 7. No duplicate P&L heatmap on Journal or Analytics.
 8. Client-side navigation: no full reload when changing tabs; refresh preserves active page; browser back/forward works.
 9. Smooth but lightweight page/account transitions.

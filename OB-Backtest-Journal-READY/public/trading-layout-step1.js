@@ -37,7 +37,8 @@
 
   function findLogTradeCard(trading) {
     const form = trading.querySelector('#tradeForm');
-    if (form) return form.closest('.glass-card') || form;
+    // The direct child of #pageTrading that holds the form (it sits inside a section wrapper since BUILD-PLAN-2).
+    if (form) return form.closest('#pageTrading > *') || form.closest('.glass-card') || form;
     return [...trading.querySelectorAll('.glass-card')].find(card =>
       /log a trade/i.test(card.textContent || '')
     ) || null;
