@@ -205,6 +205,61 @@ async function findOrCreateUserByGoogle(sub, email) {
   return createUser(email, null, sub);
 }
 
+// Full row (incl. password_hash / google_sub) for the security endpoints.
+// Never send this row to the client.
+async function getUserAuthRow(id) {
+  if (!id) return null;
+  if (!useSupabase) {
+    return db.prepare('SELECT id, email, password_hash, google_sub, created_at FROM users WHERE id = ?').get(id) ?? null;
+  }
+  const q = new URLSearchParams({ select: 'id,email,password_hash,google_sub,created_at', id: `eq.${id}`, limit: '1' });
+  const rows = await supabaseRequest(`users?${q.toString()}`);
+  return rows?.[0] ?? null;
+}
+
+async function setUserPasswordHash(id, passwordHash) {
+  if (!useSupabase) {
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, id);
+    return;
+  }
+  await supabaseRequest(`users?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ password_hash: passwordHash })
+  });
+}
+
+// Deletes everything stored for one user: their kv rows, the MT5 bridge-token
+// records that point at them (stored under the shared token session), and the
+// user row itself. Other users' rows are never touched.
+const MT5_TOKEN_SESSION = '__mt5_bridge_tokens_v2';
+async function deleteUserAndData(id) {
+  if (!id || id === MT5_TOKEN_SESSION) throw new Error('invalid user id');
+  const ownsToken = value => { try { return JSON.parse(value)?.sessionId === id; } catch { return false; } };
+  if (!useSupabase) {
+    const tokenRows = db.prepare('SELECT key, value FROM kv WHERE session_id = ?').all(MT5_TOKEN_SESSION)
+      .filter(r => ownsToken(r.value));
+    const run = db.transaction(() => {
+      const delToken = db.prepare('DELETE FROM kv WHERE session_id = ? AND key = ?');
+      for (const r of tokenRows) delToken.run(MT5_TOKEN_SESSION, r.key);
+      db.prepare('DELETE FROM kv WHERE session_id = ?').run(id);
+      db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    });
+    run();
+    return;
+  }
+  const tq = new URLSearchParams({ select: 'key,value', session_id: `eq.${MT5_TOKEN_SESSION}` });
+  const tokenRows = (await supabaseRequest(`kv?${tq.toString()}`)) || [];
+  for (const r of tokenRows.filter(r => ownsToken(r.value))) {
+    const q = new URLSearchParams({ session_id: `eq.${MT5_TOKEN_SESSION}`, key: `eq.${r.key}` });
+    await supabaseRequest(`kv?${q.toString()}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+  }
+  const kq = new URLSearchParams({ session_id: `eq.${id}` });
+  await supabaseRequest(`kv?${kq.toString()}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+  const uq = new URLSearchParams({ id: `eq.${id}` });
+  await supabaseRequest(`users?${uq.toString()}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+}
+
 // Find or create a user by email — kept for password register flow
 async function findOrCreateUser(email) {
   const existing = await getUserByEmail(email);
@@ -330,7 +385,82 @@ app.post('/api/auth/logout', (req, res) => {
 app.get('/api/auth/me', async (req, res) => {
   const user = await requireAuth(req, res);
   if (!user) return unauthorized(res);
-  return res.json({ ok: true, user: { id: user.id, email: user.email } });
+  // hasPassword / hasGoogle let the Account center's Security section show
+  // "Signed in with Google" and offer to set a first password.
+  let hasPassword = null, hasGoogle = null;
+  try {
+    const row = await getUserAuthRow(user.id);
+    hasPassword = Boolean(row?.password_hash);
+    hasGoogle = Boolean(row?.google_sub);
+  } catch (err) { console.warn('[Auth] /me auth flags unavailable:', err.message); }
+  return res.json({ ok: true, user: { id: user.id, email: user.email, created_at: user.created_at, hasPassword, hasGoogle } });
+});
+
+// POST /api/auth/change-password  { currentPassword?, newPassword }
+// Users with a password must give the current one. Google-only users (no
+// password_hash) may set a first password without it. Passwords are never logged.
+app.post('/api/auth/change-password', async (req, res) => {
+  try {
+    const sessionUser = await requireAuth(req, res);
+    if (!sessionUser) return unauthorized(res);
+    const { currentPassword, newPassword } = req.body || {};
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ error: 'The new password must be at least 8 characters.', code: 'PASSWORD_TOO_SHORT' });
+    }
+    if (newPassword.length > 200) {
+      return res.status(400).json({ error: 'The new password is too long (max 200 characters).', code: 'PASSWORD_TOO_LONG' });
+    }
+    const user = await getUserAuthRow(sessionUser.id);
+    if (!user) return unauthorized(res);
+    if (user.password_hash) {
+      if (!currentPassword || typeof currentPassword !== 'string') {
+        return res.status(400).json({ error: 'Enter your current password.', code: 'CURRENT_PASSWORD_REQUIRED' });
+      }
+      const valid = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!valid) {
+        return res.status(401).json({ error: 'Your current password is incorrect.', code: 'WRONG_PASSWORD' });
+      }
+      if (await bcrypt.compare(newPassword, user.password_hash)) {
+        return res.status(400).json({ error: 'The new password must be different from the current one.', code: 'PASSWORD_UNCHANGED' });
+      }
+    }
+    const firstPassword = !user.password_hash;
+    await setUserPasswordHash(user.id, await bcrypt.hash(newPassword, 12));
+    return res.json({ ok: true, passwordSet: firstPassword });
+  } catch (err) {
+    console.error('Change password failed:', err?.message || err);
+    return authServerError(res, err, 'Password change', 'CHANGE_PASSWORD_FAILED');
+  }
+});
+
+// DELETE /api/auth/account  { confirm: "DELETE", password? }
+// Deletes the signed-in user's stored data and user row, then clears the cookie.
+app.delete('/api/auth/account', async (req, res) => {
+  try {
+    const sessionUser = await requireAuth(req, res);
+    if (!sessionUser) return unauthorized(res);
+    const { confirm, password } = req.body || {};
+    if (confirm !== 'DELETE') {
+      return res.status(400).json({ error: 'Type DELETE to confirm that you want to delete your account.', code: 'CONFIRM_REQUIRED' });
+    }
+    const user = await getUserAuthRow(sessionUser.id);
+    if (!user) return unauthorized(res);
+    if (user.password_hash) {
+      if (!password || typeof password !== 'string') {
+        return res.status(400).json({ error: 'Enter your password to delete your account.', code: 'PASSWORD_REQUIRED' });
+      }
+      if (!(await bcrypt.compare(password, user.password_hash))) {
+        return res.status(401).json({ error: 'Your password is incorrect. The account was not deleted.', code: 'WRONG_PASSWORD' });
+      }
+    }
+    await deleteUserAndData(user.id);
+    clearSessionCookie(res);
+    console.log(`[Auth] Account deleted: user ${user.id.slice(0, 8)}…`);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete account failed:', err?.message || err);
+    return authServerError(res, err, 'Account deletion', 'DELETE_ACCOUNT_FAILED');
+  }
 });
 
 // ─── Google Sign-In ───────────────────────────────────────────────────────────
