@@ -368,3 +368,10 @@ html[data-theme="light"] #pageTrading .from-blue-900.to-slate-900[style*="transp
 html[data-theme="light"] #pageTrading .from-blue-900.to-slate-900[style*="transparent"] .wallet-capital,
 html[data-theme="light"] #pageTrading .from-blue-900.to-slate-900[style*="transparent"].text-white > .text-blue-200 { color: var(--muted) !important; }
 html[data-theme="light"] #pageTrading .from-blue-900.to-slate-900[style*="transparent"] .border-blue-800\/60 { border-color: var(--border) !important; }
+
+/* Part 4: analytics insight banner keeps a coloured gradient in dark (promo purple) */
+html[data-theme="dark"] #pageAnalytics .glass-card.bg-gradient-to-r {
+  background: linear-gradient(90deg, #26145f 0%, #171717 100%) !important;
+  border-color: #2e2e2e !important;
+}
+html[data-theme="dark"] #pageAnalytics .glass-card.bg-gradient-to-r .text-blue-100 { color: #d4d4f7 !important; }
