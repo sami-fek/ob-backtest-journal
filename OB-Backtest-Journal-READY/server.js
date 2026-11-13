@@ -77,6 +77,33 @@ const shots = useSupabase
   ? supabaseStore({ url: process.env.SUPABASE_URL, key: process.env.SUPABASE_SERVICE_ROLE_KEY, bucket: process.env.SUPABASE_SCREENSHOTS_BUCKET || 'trade-screenshots' })
   : localStore(path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'shots'));
 
+// Which screenshot store is in use (reported by /api/health):
+//   'supabase-storage' | 'local' | 'embedded-fallback' (storage unavailable: images stay inside the trades record)
+const shotState = { available: true, reason: '' };
+function shotStoreName() { return !shotState.available ? 'embedded-fallback' : (useSupabase ? 'supabase-storage' : 'local'); }
+function shotStorageFailed(err) {
+  const reason = String(err && err.message || err || 'unknown error').slice(0, 200);
+  if (shotState.available) console.warn(`[shots] WARNING: screenshot storage (${useSupabase ? 'Supabase Storage' : 'local folder'}) is unavailable: ${reason}. Screenshots are being stored inside the trades record (embedded fallback) until it works again.`);
+  shotState.available = false; shotState.reason = reason;
+}
+function shotStorageWorked() {
+  if (!shotState.available) console.warn(`[shots] screenshot storage (${useSupabase ? 'Supabase Storage' : 'local folder'}) works again; new screenshots are stored as files.`);
+  shotState.available = true; shotState.reason = '';
+}
+// Startup check (non-blocking)
+shots.probe().then(shotStorageWorked, shotStorageFailed);
+
+// Orphaned screenshot files: { id: markedAtMs }, kept per user; files are deleted
+// only after 30 days unreferenced (see collectGarbage). Server-managed: read-only for the app.
+const SHOT_ORPHANS_KEY = 'ob-shots-orphans';
+async function shotCleanup(uid, beforeJson, afterJson) {
+  let marks = {};
+  try { marks = JSON.parse(await getStoredValue(uid, SHOT_ORPHANS_KEY) || '{}') || {}; } catch { marks = {}; }
+  const out = await collectGarbage(shots, uid, beforeJson, afterJson, marks);
+  if (JSON.stringify(out.marks) !== JSON.stringify(marks)) await setStoredValue(uid, SHOT_ORPHANS_KEY, JSON.stringify(out.marks));
+  return out;
+}
+
 // ─── Supabase helpers ─────────────────────────────────────────────────────────
 
 async function supabaseRequest(pathname, options = {}) {
@@ -602,6 +629,7 @@ app.get('/api/storage/:key', async (req, res) => {
     if (req.params.key === SHOT_TRADES_KEY && hasEmbedded(value)) {
       try {
         const out = await extractEmbedded(shots, user.id, value);
+        if (out.failed) shotStorageFailed(new Error(`${out.failed} embedded screenshot(s) could not be moved`)); else if (out.moved) shotStorageWorked();
         if (out.changed) { await setStoredValue(user.id, SHOT_TRADES_KEY, out.json); value = out.json; }
       } catch (err) { console.warn('[shots] migration on read failed:', err.message); }
     }
@@ -614,6 +642,7 @@ app.put('/api/storage/:key', async (req, res) => {
     const user = await requireAuth(req, res);
     if (!user) return unauthorized(res);
     if (typeof req.body?.value !== 'string') return res.status(400).json({ error: 'value must be a string' });
+    if (req.params.key === SHOT_ORPHANS_KEY) return res.status(403).json({ error: 'This record is managed by the server', code: 'READ_ONLY' });
     let value = req.body.value;
     if (req.params.key !== SHOT_TRADES_KEY) {
       await setStoredValue(user.id, req.params.key, value);
@@ -623,11 +652,15 @@ app.put('/api/storage/:key', async (req, res) => {
     // storage; files no longer referenced are deleted after the record is saved.
     const before = await getStoredValue(user.id, SHOT_TRADES_KEY);
     if (hasEmbedded(value)) {
-      try { value = (await extractEmbedded(shots, user.id, value)).json; } catch (err) { console.warn('[shots] extract on write failed:', err.message); }
+      try {
+        const out = await extractEmbedded(shots, user.id, value);
+        value = out.json;
+        if (out.failed) shotStorageFailed(new Error(`${out.failed} embedded screenshot(s) could not be moved`)); else if (out.moved) shotStorageWorked();
+      } catch (err) { console.warn('[shots] extract on write failed:', err.message); }
     }
     await setStoredValue(user.id, SHOT_TRADES_KEY, value);
-    try { await collectGarbage(shots, user.id, before, value); } catch (err) { console.warn('[shots] cleanup failed:', err.message); }
-    res.json({ ok: true, ...(value !== req.body.value ? { value } : {}) });
+    try { await shotCleanup(user.id, before, value); } catch (err) { console.warn('[shots] cleanup failed:', err.message); }
+    res.json({ ok: true, ...(value !== req.body.value ? { value } : {}), ...(shotState.available ? {} : { shotStorage: 'embedded-fallback' }) });
   } catch (err) { console.error('Storage PUT failed:', err); res.status(500).json({ error: 'Storage write failed' }); }
 });
 
@@ -639,7 +672,13 @@ app.post('/api/shots', async (req, res) => {
     const parsed = parseDataUrl(req.body?.dataUrl);
     if (!parsed) return res.status(400).json({ error: 'dataUrl must be a PNG, JPEG, WebP or GIF image', code: 'BAD_IMAGE' });
     if (parsed.buffer.length > MAX_SHOT_BYTES) return res.status(413).json({ error: 'Image is larger than 8 MB', code: 'IMAGE_TOO_LARGE' });
-    const id = await shots.save(user.id, parsed.buffer, parsed.mime);
+    let id;
+    try { id = await shots.save(user.id, parsed.buffer, parsed.mime); }
+    catch (err) {
+      shotStorageFailed(err);
+      return res.status(503).json({ error: 'Screenshot storage is not available; the image stays inside the trade.', code: 'SHOT_STORAGE_UNAVAILABLE', store: 'embedded-fallback' });
+    }
+    shotStorageWorked();
     res.status(201).json({ ok: true, id, ref: refFor(id) });
   } catch (err) { console.error('Screenshot upload failed:', err); res.status(500).json({ error: 'Screenshot upload failed' }); }
 });
@@ -671,9 +710,10 @@ app.delete('/api/storage/:key', async (req, res) => {
   try {
     const user = await requireAuth(req, res);
     if (!user) return unauthorized(res);
+    if (req.params.key === SHOT_ORPHANS_KEY) return res.status(403).json({ error: 'This record is managed by the server', code: 'READ_ONLY' });
     const before = req.params.key === SHOT_TRADES_KEY ? await getStoredValue(user.id, SHOT_TRADES_KEY) : null;
     await deleteStoredValue(user.id, req.params.key);
-    if (before) { try { await collectGarbage(shots, user.id, before, '[]'); } catch (err) { console.warn('[shots] cleanup failed:', err.message); } }
+    if (before) { try { await shotCleanup(user.id, before, '[]'); } catch (err) { console.warn('[shots] cleanup failed:', err.message); } }
     res.json({ ok: true });
   } catch (err) { console.error('Storage DELETE failed:', err); res.status(500).json({ error: 'Storage delete failed' }); }
 });
@@ -830,6 +870,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     storage: useSupabase ? 'supabase' : 'sqlite',
+    screenshots: shotStoreName(),
     auth: 'enabled',
     ai: {
       groq:     Boolean(process.env.GROQ_API_KEY),

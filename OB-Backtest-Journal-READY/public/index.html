@@ -1085,6 +1085,7 @@
           if (key === TRADES_KEY) {
             const body = await res.json().catch(() => null);
             if (body && typeof body.value === 'string') { window.obShots.adoptRefs(trades, body.value); value = body.value; }
+            if (body && body.shotStorage === 'embedded-fallback' && typeof value === 'string' && value.includes('data:image/')) window.obShots.fallbackNotice();
           }
           try { localStorage.setItem(key, value); } catch (e) {}
           if (key === TRADES_KEY) { try { localStorage.setItem('my_journal_trades_v1', value); } catch (e) {} }

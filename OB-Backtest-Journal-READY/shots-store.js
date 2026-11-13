@@ -118,7 +118,12 @@ export function localStore(rootDir) {
       try { names = fs.readdirSync(dirFor(userId)); } catch { return []; }
       return names.filter(isShotId).map(id => { let at = 0; try { at = fs.statSync(path.join(dirFor(userId), id)).mtimeMs; } catch {} return { id, createdAt: at }; });
     },
-    async removeAll(userId) { try { fs.rmSync(dirFor(userId), { recursive: true, force: true }); } catch {} }
+    async removeAll(userId) { try { fs.rmSync(dirFor(userId), { recursive: true, force: true }); } catch {} },
+    async probe() {
+      fs.mkdirSync(rootDir, { recursive: true });
+      const f = path.join(rootDir, '.probe-' + process.pid);
+      fs.writeFileSync(f, 'ok'); fs.unlinkSync(f);
+    }
   };
 }
 
@@ -176,21 +181,49 @@ export function supabaseStore({ url, key, bucket = 'trade-screenshots', fetchImp
       }
       return out;
     },
-    async removeAll(userId) { const all = await this.list(userId); await this.remove(userId, all.map(x => x.id)); }
+    async removeAll(userId) { const all = await this.list(userId); await this.remove(userId, all.map(x => x.id)); },
+    async probe() {
+      await ensureBucket();
+      const r = await fetchImpl(`${base}/object/list/${bucket}`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ prefix: '', limit: 1, offset: 0 }) });
+      if (!r.ok) throw new Error(`Supabase Storage list ${r.status}`);
+    }
   };
 }
 
+export const ORPHAN_GRACE_MS = 30 * 24 * 3600 * 1000;
+
 /**
- * After the trades record changed: delete files no longer referenced.
- *  - ids referenced before and not after (screenshot removed, trade deleted, Clear all)
- *  - unreferenced files older than graceMs (uploads from trades that were never saved)
+ * After the trades record changed: files are never deleted straight away.
+ * A file no trade references is marked orphaned with a timestamp (marks = { id: markedAtMs }).
+ * It is deleted only when it is still unreferenced 30 days after it was marked.
+ * A marked file that a trade references again is un-orphaned.
+ * Covers removed screenshots, deleted trades, "Clear all trades" and uploads from
+ * trades that were never saved. (Deleting the account still removes everything at once.)
+ * Returns { deleted, marks } — the caller stores the new marks.
  */
-export async function collectGarbage(store, userId, beforeJson, afterJson, { graceMs = 24 * 3600 * 1000, now = Date.now() } = {}) {
-  const after = refsIn(afterJson);
-  const gone = [...refsIn(beforeJson)].filter(id => !after.has(id));
-  let stale = [];
-  try { stale = (await store.list(userId)).filter(f => !after.has(f.id) && f.createdAt && now - f.createdAt > graceMs).map(f => f.id); } catch {}
-  const ids = [...new Set([...gone, ...stale])];
-  if (ids.length) await store.remove(userId, ids);
-  return ids;
+export async function collectGarbage(store, userId, beforeJson, afterJson, marks, { graceMs = ORPHAN_GRACE_MS, now = Date.now() } = {}) {
+  const referenced = refsIn(afterJson);
+  const next = {};
+  for (const [id, at] of Object.entries(marks && typeof marks === 'object' ? marks : {})) {
+    if (isShotId(id) && Number.isFinite(Number(at))) next[id] = Number(at);
+  }
+  // Every stored file; if listing fails, at least the ids dropped by this change.
+  let files = null;
+  try { files = (await store.list(userId)).map(f => f.id); } catch { files = null; }
+  const known = new Set(files || [...refsIn(beforeJson), ...Object.keys(next)]);
+  for (const id of Object.keys(next)) {
+    if (referenced.has(id)) delete next[id];                 // used again → un-orphaned
+    else if (files && !known.has(id)) delete next[id];       // already gone
+  }
+  const deleted = [];
+  for (const id of known) {
+    if (referenced.has(id)) continue;
+    if (!(id in next)) next[id] = now;                       // newly orphaned
+    else if (now - next[id] >= graceMs) deleted.push(id);    // orphaned for 30 days
+  }
+  if (deleted.length) {
+    await store.remove(userId, deleted);
+    deleted.forEach(id => { delete next[id]; });
+  }
+  return { deleted, marks: next };
 }

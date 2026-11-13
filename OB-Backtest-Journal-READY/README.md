@@ -28,6 +28,17 @@ The `npm start` command launches `app-entry.js`. That gateway registers the MT5 
 
 `render.yaml` is included as a reference/config file.
 
+## Trade screenshots (file storage)
+
+Screenshots are stored as files, not inside the trades record (which has a 12 MB limit). Trades keep only a reference such as `/api/shots/<id>.png`, served to the signed-in owner only.
+- **On Render with Supabase:** files go to **Supabase Storage**, in a private bucket called `trade-screenshots`. The app creates it on first use with the existing service_role key; nothing to set up.
+  - Optional: set `SUPABASE_SCREENSHOTS_BUCKET` to use another bucket name.
+- **Locally (SQLite):** files go to `data/shots/<user id>/`.
+- **Older trades** that still hold embedded images are moved automatically on the next load or save. The embedded copy is replaced only after the file is stored, so nothing is lost if storage is unavailable.
+- **Cleanup:** a file no trade uses any more (removed screenshot, deleted trade, Clear all trades, upload from a trade that was never saved) is marked orphaned with a timestamp and deleted only after 30 days unreferenced. If a trade uses it again in the meantime, the mark is removed. Deleting the account deletes all of its files at once.
+- **Status:** `/api/health` reports `screenshots`: `supabase-storage`, `local` or `embedded-fallback` (storage unavailable: images stay inside the trades, the server logs a warning and the app shows a one-time notice).
+- **Export / import:** a JSON backup embeds the images again (self-contained); importing it uploads them back to file storage.
+
 ## Local use
 
 Node 20+:

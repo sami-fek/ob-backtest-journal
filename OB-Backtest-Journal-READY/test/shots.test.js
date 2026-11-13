@@ -82,7 +82,25 @@ test('migration: embedded screenshots move to files on read and on write, withou
   } finally { await srv.stop(); }
 });
 
-test('deletion: removed screenshots, deleted trades, cleared storage and deleted accounts remove files', { skip }, async () => {
+const DAY = 24 * 3600 * 1000;
+function ageMarks(srv, uid, days) {
+  // pretend the orphan marks were set `days` days ago
+  const db = openTestDb(srv.dataDir);
+  const row = db.prepare('SELECT value FROM kv WHERE session_id=? AND key=?').get(uid, 'ob-shots-orphans');
+  const marks = row ? JSON.parse(row.value) : {};
+  for (const id of Object.keys(marks)) marks[id] -= days * DAY;
+  db.prepare('UPDATE kv SET value=? WHERE session_id=? AND key=?').run(JSON.stringify(marks), uid, 'ob-shots-orphans');
+  db.close();
+  return marks;
+}
+function readMarks(srv, uid) {
+  const db = openTestDb(srv.dataDir);
+  const row = db.prepare('SELECT value FROM kv WHERE session_id=? AND key=?').get(uid, 'ob-shots-orphans');
+  db.close();
+  return row ? JSON.parse(row.value) : {};
+}
+
+test('deletion: unreferenced files are marked orphaned and deleted only after 30 days; account deletion removes everything', { skip }, async () => {
   const srv = await startLocalServer();
   try {
     const a = srv.client();
@@ -90,46 +108,115 @@ test('deletion: removed screenshots, deleted trades, cleared storage and deleted
     const uid = reg.body.user.id;
     const p = (await a.call('POST', '/api/shots', { dataUrl: PNG })).body.ref;
     const g = (await a.call('POST', '/api/shots', { dataUrl: GIF })).body.ref;
+    const pid = p.split('/').pop(), gid = g.split('/').pop();
     const dir = path.join(srv.dataDir, 'shots', uid);
     await a.call('PUT', '/api/storage/ob-trades', { value: JSON.stringify([trade('t1', [p]), trade('t2', [g])]) });
-    assert.equal(fs.readdirSync(dir).length, 2);
+    assert.deepEqual(Object.keys(readMarks(srv, uid)), [], 'nothing orphaned while referenced');
 
-    // remove the screenshot from t1 → its file goes
+    // remove the screenshot from t1 → file kept, marked orphaned with a timestamp
+    const t0 = Date.now();
     await a.call('PUT', '/api/storage/ob-trades', { value: JSON.stringify([trade('t1', []), trade('t2', [g])]) });
-    assert.equal((await raw(srv, a.cookie, p)).status, 404);
-    assert.equal((await raw(srv, a.cookie, g)).status, 200);
+    assert.equal((await raw(srv, a.cookie, p)).status, 200, 'not deleted immediately');
+    let marks = readMarks(srv, uid);
+    assert.deepEqual(Object.keys(marks), [pid]);
+    assert.ok(marks[pid] >= t0 - 1000 && marks[pid] <= Date.now() + 1000, 'marked with the current time');
 
-    // an upload from a trade that was never saved stays for 24 h (grace period)
-    const orphan = (await a.call('POST', '/api/shots', { dataUrl: PNG })).body.ref;
+    // referenced again → un-orphaned
+    await a.call('PUT', '/api/storage/ob-trades', { value: JSON.stringify([trade('t1', [p]), trade('t2', [g])]) });
+    assert.deepEqual(Object.keys(readMarks(srv, uid)), [], 'used again → mark removed');
+
+    // orphaned again; 29 days later it is still there
+    await a.call('PUT', '/api/storage/ob-trades', { value: JSON.stringify([trade('t1', []), trade('t2', [g])]) });
+    ageMarks(srv, uid, 29);
+    await a.call('PUT', '/api/storage/ob-trades', { value: JSON.stringify([trade('t1', []), trade('t2', [g])]) });
+    assert.equal((await raw(srv, a.cookie, p)).status, 200, '29 days: kept');
+    // 30 days unreferenced → deleted, mark removed
+    ageMarks(srv, uid, 1);
+    await a.call('PUT', '/api/storage/ob-trades', { value: JSON.stringify([trade('t1', []), trade('t2', [g])]) });
+    assert.equal((await raw(srv, a.cookie, p)).status, 404, '30 days: deleted');
+    assert.equal(readMarks(srv, uid)[pid], undefined);
+    assert.equal((await raw(srv, a.cookie, g)).status, 200, 'referenced file untouched');
+
+    // an upload from a trade that was never saved is marked at the next save, not deleted
+    const never = (await a.call('POST', '/api/shots', { dataUrl: PNG })).body.ref;
     await a.call('PUT', '/api/storage/ob-trades', { value: JSON.stringify([trade('t2', [g])]) });
-    assert.equal((await raw(srv, a.cookie, orphan)).status, 200);
+    assert.equal((await raw(srv, a.cookie, never)).status, 200);
+    assert.ok(readMarks(srv, uid)[never.split('/').pop()], 'never-saved upload marked');
 
-    // Clear all trades (DELETE of the record) → remaining referenced files go
+    // Clear all trades (DELETE of the record) → files kept and marked, not deleted
     await a.call('DELETE', '/api/storage/ob-trades');
-    assert.equal((await raw(srv, a.cookie, g)).status, 404);
+    assert.equal((await raw(srv, a.cookie, g)).status, 200, 'clear all: kept for 30 days');
+    assert.ok(readMarks(srv, uid)[gid], 'clear all: marked');
 
-    // deleting the account removes the whole folder
-    await a.call('POST', '/api/shots', { dataUrl: GIF });
-    r: {
-      const del = await a.call('DELETE', '/api/auth/account', { password: 'password123', confirm: 'DELETE' });
-      assert.ok([200, 204].includes(del.status), del.text);
-    }
+    // the marks record is managed by the server only
+    assert.equal((await a.call('PUT', '/api/storage/ob-shots-orphans', { value: '{}' })).status, 403);
+    assert.equal((await a.call('DELETE', '/api/storage/ob-shots-orphans')).status, 403);
+
+    // deleting the account removes the whole folder at once (unchanged)
+    const del = await a.call('DELETE', '/api/auth/account', { password: 'password123', confirm: 'DELETE' });
+    assert.ok([200, 204].includes(del.status), del.text);
     assert.equal(fs.existsSync(dir), false);
   } finally { await srv.stop(); }
 });
 
-test('garbage collection keeps referenced files and honours the grace period', async () => {
+test('health reports the screenshot store; uploads fall back to embedding when storage is unavailable', { skip }, async () => {
+  const srv = await startLocalServer();
+  try {
+    let h = await (await fetch(srv.base + '/api/health')).json();
+    assert.equal(h.screenshots, 'local');
+    assert.ok(!/[A-Za-z0-9_.-]{40,}/.test(JSON.stringify(h)), 'no key-like values in health output');
+    assert.deepEqual(Object.keys(h).filter(k => /screenshot/i.test(k)), ['screenshots']);
+    const a = srv.client();
+    await a.call('POST', '/api/auth/register', { email: 'fb@shots.local', password: 'password123' });
+    // break the local store: replace the shots folder with a plain file
+    const shotsDir = path.join(srv.dataDir, 'shots');
+    fs.rmSync(shotsDir, { recursive: true, force: true });
+    fs.writeFileSync(shotsDir, 'not a folder');
+    let r = await a.call('POST', '/api/shots', { dataUrl: PNG });
+    assert.equal(r.status, 503);
+    assert.equal(r.body.code, 'SHOT_STORAGE_UNAVAILABLE');
+    h = await (await fetch(srv.base + '/api/health')).json();
+    assert.equal(h.screenshots, 'embedded-fallback');
+    assert.match(srv.output(), /screenshot storage .* is unavailable/i, 'clear server warning');
+    // a save keeps the image embedded and says so
+    r = await a.call('PUT', '/api/storage/ob-trades', { value: JSON.stringify([trade('t1', [PNG])]) });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.shotStorage, 'embedded-fallback');
+    const stored = JSON.parse((await a.call('GET', '/api/storage/ob-trades')).body.value);
+    assert.equal(stored[0].screenshots[0], PNG, 'image kept inside the trade, not lost');
+    // storage works again → next upload stores a file, health recovers, the embedded image moves on read
+    fs.rmSync(shotsDir, { force: true });
+    r = await a.call('POST', '/api/shots', { dataUrl: GIF });
+    assert.equal(r.status, 201);
+    h = await (await fetch(srv.base + '/api/health')).json();
+    assert.equal(h.screenshots, 'local');
+    const moved = JSON.parse((await a.call('GET', '/api/storage/ob-trades')).body.value);
+    assert.match(moved[0].screenshots[0], /^\/api\/shots\//);
+  } finally { await srv.stop(); }
+});
+
+test('garbage collection: mark, un-mark, delete after 30 days, keep referenced files', async () => {
   const dir = fs.mkdtempSync(path.join(process.env.TEMP || '/tmp', 'shots-gc-'));
   try {
     const store = localStore(dir);
     const one = await store.save('u1', bytesOf(PNG), 'image/png');
     const two = await store.save('u1', bytesOf(GIF), 'image/gif');
-    const before = JSON.stringify([{ screenshots: ['/api/shots/' + one] }]);
-    const after = JSON.stringify([{ screenshots: [] }]);
-    let removed = await collectGarbage(store, 'u1', before, after);
-    assert.deepEqual([...removed], [one], 'only the dropped reference; the fresh orphan stays');
-    removed = await collectGarbage(store, 'u1', after, after, { now: Date.now() + 25 * 3600 * 1000 });
-    assert.deepEqual([...removed], [two], 'orphans older than 24 h are removed');
+    const withOne = JSON.stringify([{ screenshots: ['/api/shots/' + one] }]);
+    const none = JSON.stringify([{ screenshots: [] }]);
+    const now = Date.now();
+    let out = await collectGarbage(store, 'u1', withOne, withOne, {}, { now });
+    assert.equal(out.deleted.length, 0);
+    assert.deepEqual(Object.keys(out.marks), [two], 'unreferenced file marked, referenced one not');
+    out = await collectGarbage(store, 'u1', withOne, none, out.marks, { now: now + DAY });
+    assert.equal(out.deleted.length, 0, 'nothing deleted straight away');
+    assert.equal(out.marks[one], now + DAY);
+    assert.equal(out.marks[two], now, 'existing mark keeps its timestamp');
+    out = await collectGarbage(store, 'u1', none, withOne, out.marks, { now: now + 2 * DAY });
+    assert.equal(out.marks[one], undefined, 'referenced again → un-orphaned');
+    out = await collectGarbage(store, 'u1', withOne, withOne, out.marks, { now: now + 30 * DAY });
+    assert.deepEqual(out.deleted, [two], 'deleted after 30 days unreferenced');
+    assert.deepEqual(Object.keys(out.marks), []);
+    assert.equal((await store.list('u1')).length, 1);
     assert.equal(refsIn('not json').size, 0);
     assert.equal(parseDataUrl('data:image/svg+xml;base64,PHN2Zz4='), null, 'SVG is not accepted');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
