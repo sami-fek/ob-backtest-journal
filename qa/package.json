@@ -1,0 +1,6 @@
+{
+  "name": "my-journal-qa",
+  "private": true,
+  "description": "Browser sweep and checks for MY Journal (not part of the deployed app)",
+  "dependencies": { "puppeteer-core": "^23.11.1" }
+}

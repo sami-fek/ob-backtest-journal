@@ -1,0 +1,24 @@
+import { launch, wait, open, richUser, api } from './h2.mjs';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('  ok  ', m); } else { fail++; console.log('  FAIL', m); } };
+const b = await launch(); const errors = []; const cookie = await richUser(); await api(cookie, 'PUT', '/api/storage/ob-os-settings', { value: JSON.stringify({ currencySymbol: '€', dateFormat: 'DD/MM/YYYY' }) });
+const p = await open(b, cookie, { tab: 'analytics', errors }); await wait(900);
+const info = () => p.evaluate(() => {
+  const page = document.getElementById('pageAnalytics');
+  const cards = [...page.querySelectorAll('.glass-card, .ds-card, .db-card, .pc-card')].filter(c => c.offsetParent && !c.closest('#ob-analytics-filter-bar, #ob-analytics-subtabs, .journal-analytics-mode-menu, .journal-analytics-account-menu, #apSample') && !(c.parentElement.closest('.glass-card, .ds-card, .db-card, .pc-card')));
+  return { n: cards.length, missing: cards.filter(c => !c.querySelector('[data-ap-scope]')).map(c => (c.querySelector('h3,.ds-label,.pc-title')?.textContent || c.className).trim().slice(0, 40)), texts: [...new Set(cards.map(c => c.querySelector('[data-ap-scope]')?.textContent))] };
+});
+let r = await info();
+ok(r.n > 10 && r.missing.length === 0, `Performance: every card (${r.n}) shows a scope chip; missing: ${JSON.stringify(r.missing)}`);
+ok(r.texts.length === 1 && r.texts[0] === 'all time', 'no filters → "all time": ' + JSON.stringify(r.texts));
+await p.select('#af-pair', 'EURUSD'); await p.select('#af-session', 'London'); await wait(500);
+await p.$eval('#af-from', e => { e.value = '2026-10-14'; e.dispatchEvent(new Event('change', { bubbles: true })); });
+await p.$eval('#af-to', e => { e.value = '2026-11-13'; e.dispatchEvent(new Event('change', { bubbles: true })); }); await wait(700);
+r = await info();
+ok(r.missing.length === 0 && r.texts.length === 1 && r.texts[0] === '14/10/2026 – 13/11/2026 · EURUSD · London', 'filters → ' + JSON.stringify(r.texts));
+await p.evaluate(() => [...document.querySelectorAll('#pageAnalytics button')].find(x => /behavior/i.test(x.textContent))?.click()); await wait(1000);
+r = await info();
+ok(r.n > 0 && r.missing.length === 0 && r.texts[0] === '14/10/2026 – 13/11/2026 · EURUSD · London', `Behavior: every card (${r.n}) shows the same scope; missing ${JSON.stringify(r.missing)}`);
+await p.screenshot({ path: 'out/scope-behavior.png', fullPage: true });
+await p.evaluate(() => [...document.querySelectorAll('#pageAnalytics button')].find(x => /performance/i.test(x.textContent))?.click()); await wait(900);
+await p.screenshot({ path: 'out/scope-performance.png', fullPage: true });
+await b.close(); console.log(`\n${pass} passed, ${fail} failed`, 'errors', errors);
