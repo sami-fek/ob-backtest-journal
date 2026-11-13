@@ -1,4 +1,6 @@
 (() => {
+  // App page only (not /auth.html or any page without the trading UI)
+  if (!document.getElementById('pageTrading') && /\/auth\.html$/i.test(location.pathname)) return;
   const ACCOUNT_KEY = 'my_journal_accounts_v1';
   const DEFAULT_ACCOUNTS = {
     Demo: [{ id: 'demo-1', name: 'Demo 01', balance: 100000, startingBalance: 100000 }],

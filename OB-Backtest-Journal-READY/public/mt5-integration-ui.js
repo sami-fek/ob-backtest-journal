@@ -11,6 +11,8 @@
  *   GET  /api/mt5/history?accountId — closed trade history
  */
 (() => {
+  // App page only (not /auth.html): it patches switchMode, which only exists in the app.
+  if (/\/auth\.html$/i.test(location.pathname)) return;
   const K = 'my_journal_accounts_v1';
   const MODES = new Set(['Demo', 'Real', 'Funded']);
   const STYLE_ID = 'mt5-integration-ui-style-v3';

@@ -1,4 +1,8 @@
 (() => {
+  // The sign-in page (/auth.html) is not the app: it has its own form, no session yet,
+  // and none of the app page's elements. Loading the app feature scripts there only
+  // produced console errors (ui-rules.js, mt5-integration-ui.js) and 401 requests.
+  if (/^\/auth\.html$/i.test(location.pathname)) return;
   const ACCOUNT_STORAGE_KEY = 'my_journal_accounts_v1';
 
   async function readServerState(storageKey) {
