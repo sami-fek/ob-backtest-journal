@@ -54,10 +54,15 @@
   --ds-danger-hover: #b23636;
   --ds-danger-text: #ffffff;
 
-  /* Charts */
+  /* Charts: one softened palette for every series (theme.js maps chart colours onto it) */
   --ds-chart-pos: rgba(34, 160, 92, 0.78);
   --ds-chart-neg: rgba(226, 92, 92, 0.78);
-  --ds-chart-line: #3b82f6;
+  --ds-chart-1: #5d7fc4; /* blue */
+  --ds-chart-2: #8b80cf; /* violet */
+  --ds-chart-3: #c9964c; /* amber */
+  --ds-chart-4: #4c9c98; /* teal */
+  --ds-chart-5: #c27a9c; /* rose */
+  --ds-chart-line: var(--ds-chart-1);
   --chart-grid: rgba(16, 23, 41, 0.06);
   --chart-text: #8a93a5;
 }
@@ -104,7 +109,12 @@ html[data-theme="dark"] {
 
   --ds-chart-pos: rgba(52, 199, 112, 0.72);
   --ds-chart-neg: rgba(240, 98, 98, 0.72);
-  --ds-chart-line: #60a5fa;
+  --ds-chart-1: #86a3dc;
+  --ds-chart-2: #aaa0e2;
+  --ds-chart-3: #d9ad6c;
+  --ds-chart-4: #6fb8b3;
+  --ds-chart-5: #d595b4;
+  --ds-chart-line: var(--ds-chart-1);
   --chart-grid: rgba(255, 255, 255, 0.06);
   --chart-text: #7c8596;
 }

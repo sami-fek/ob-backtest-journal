@@ -175,11 +175,32 @@
     if (m) { let a = m[4] == null ? 1 : parseFloat(m[4]); if (String(m[4]).endsWith('%')) a /= 100; return { r: +m[1], g: +m[2], b: +m[3], a }; }
     return null;
   }
+  // Hue family of a saturated colour → index into the categorical tokens
+  // (--ds-chart-1 blue, -2 violet, -3 amber, -4 teal, -5 rose); greys stay as they are.
+  function catIndex(p) {
+    const r = p.r / 255, g = p.g / 255, b = p.b / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    if (mx === mn) return -1;
+    const d = mx - mn, s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if (s < 0.35) return -1;
+    let h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60;
+    if (h >= 190 && h < 232) return 0;
+    if (h >= 232 && h < 295) return 1;
+    if (h >= 20 && h < 65) return 2;
+    if (h >= 150 && h < 190) return 3;
+    if (h >= 295 && h < 345) return 4;
+    return -1;
+  }
   function softColor(c, pal) {
     const p = parseColor(c);
     if (!p) return c;
-    const kind = (p.g > p.r + 40 && p.g > p.b + 10) ? 'pos' : (p.r > p.g + 60 && p.r > p.b + 40) ? 'neg' : null;
-    if (!kind) return c;
+    // red = loss colour; amber/orange (green well above half of red) is a category, not a loss
+    const kind = (p.g > p.r + 40 && p.g > p.b + 10) ? 'pos' : (p.r > p.g + 60 && p.r > p.b + 40 && p.g < p.r * 0.55) ? 'neg' : null;
+    if (!kind) {
+      const i = catIndex(p);
+      const t = i >= 0 && pal.cat ? parseColor(pal.cat[i]) : null;
+      if (!t) return c;
+      return `rgba(${t.r},${t.g},${t.b},${+Math.min(p.a, 1).toFixed(3)})`;
+    }
     const t = parseColor(kind === 'pos' ? pal.pos : pal.neg);
     if (!t) return c;
     const a = Math.min(p.a, 1) * (p.a >= 0.5 ? t.a : 1);
@@ -226,7 +247,7 @@
     // Chart.js option objects are resolver proxies: only set leaf values on
     // objects that already exist (re-assigning containers can recurse forever).
     beforeUpdate(chart) {
-      try { styleDatasets(chart, { pos: cssVar('--ds-chart-pos', 'rgba(34,160,92,.78)'), neg: cssVar('--ds-chart-neg', 'rgba(226,92,92,.78)'), line: cssVar('--ds-chart-line', '#3b82f6') }); } catch (_) {}
+      try { styleDatasets(chart, { pos: cssVar('--ds-chart-pos', 'rgba(34,160,92,.78)'), neg: cssVar('--ds-chart-neg', 'rgba(226,92,92,.78)'), line: cssVar('--ds-chart-line', '#5d7fc4'), cat: [1, 2, 3, 4, 5].map(i => cssVar('--ds-chart-' + i, '')) }); } catch (_) {}
       try {
         const c = chartPalette();
         const o = chart.options;
