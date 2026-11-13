@@ -1,4 +1,4 @@
-Status: Part 1: DONE (2026-11-13, see OVERNIGHT-REPORT-P2-PART-1.md, awaiting your approval of the look) · Part 2: not started · Part 3: not started · Part 4: not started
+Status: Part 1: DONE (2026-11-13, OVERNIGHT-REPORT-P2-PART-1.md) · Part 2: DONE (2026-11-13, OVERNIGHT-REPORT-P2-PART-2.md) · Part 3: DONE (2026-11-13, OVERNIGHT-REPORT-P2-PART-3.md; Parts 2 and 3 run back to back at your request) · Part 4: not started
 
 You are working on the MY Journal app. Repo: ob-backtest-journal (app code in OB-Backtest-Journal-READY/, front end in OB-Backtest-Journal-READY/public/). Current live state = main @ 6dd268a (Parts 1–4 + Mobile round done; read BUILD-PLAN.md, OVERNIGHT-REPORT-PART-4.md and OVERNIGHT-REPORT-MOBILE.md first).
 

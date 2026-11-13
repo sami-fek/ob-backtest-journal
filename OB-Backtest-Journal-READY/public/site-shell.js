@@ -86,6 +86,18 @@
     homeReady = true;
     root.classList.add('hm-js');
 
+    // 0. screenshots: only the current theme's file is downloaded (lazy below the fold)
+    const shots = () => {
+      const t = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      page.querySelectorAll('img[data-hm-shot]').forEach(img => {
+        const src = `/home/${img.dataset.hmShot}-${t}.webp`;
+        if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+      });
+    };
+    shots();
+    window.addEventListener('ob-theme-change', shots);
+    new MutationObserver(shots).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+
     // 1. hero word
     const word = page.querySelector('.hm-cycle-word');
     if (word && !reduced()) {
