@@ -294,6 +294,7 @@ html[data-theme] #pageJournal .jp-discipline > button {
   background: transparent !important; border: 1px solid var(--ds-line-strong) !important; color: var(--ds-text) !important; border-radius: var(--ds-radius-ctl) !important;
   font-family: var(--ds-mono); font-size: 10.5px !important; letter-spacing: .08em; text-transform: uppercase; min-height: 38px;
 }
+@media (pointer: coarse), (max-width: 1023px) { html[data-theme] #pageJournal .jp-discipline > button { min-height: var(--ds-tap) !important; } }
 html[data-theme] #pageJournal .jp-discipline #disciplinePassBadge { font-family: var(--ds-mono); letter-spacing: .08em; border-radius: 999px !important; }
 
 /* Filters: controls on the page, no box */
