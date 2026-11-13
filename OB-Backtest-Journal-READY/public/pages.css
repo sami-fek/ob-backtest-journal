@@ -1,0 +1,227 @@
+/*
+ * pages.css — the design system rolled out to the other app pages
+ * (BUILD-PLAN-2 Part 2). Loaded after design.css and trading-page.css.
+ * Older markup (Tailwind classes, injected widgets) is restyled here so the
+ * scripts that render it keep working unchanged. Only --ds-* variables.
+ *
+ * 1. App frame for every app page
+ * 2. Shared pieces: cards, mode / account selectors, tables
+ * 3. Analytics
+ */
+
+/* ── 1. App frame: every app page (Home gets its own frame in Part 3) ───── */
+html body > main:has(> #pageJournal:not(.hidden)),
+html body > main:has(> #pageAnalytics:not(.hidden)),
+html body > main:has(> #pageAccounts:not(.hidden)),
+html body > main:has(> #pageSettings:not(.hidden)) {
+  max-width: var(--ds-max) !important;
+  padding-left: max(var(--ds-gutter), env(safe-area-inset-left)) !important;
+  padding-right: max(var(--ds-gutter), env(safe-area-inset-right)) !important;
+  padding-top: var(--ds-s6) !important;
+  padding-bottom: var(--ds-s8) !important;
+}
+@media (max-width: 640px) {
+  html body > main:has(> #pageJournal:not(.hidden)),
+  html body > main:has(> #pageAnalytics:not(.hidden)),
+  html body > main:has(> #pageAccounts:not(.hidden)),
+  html body > main:has(> #pageSettings:not(.hidden)) { padding-top: var(--ds-s5) !important; }
+}
+
+/* ── 2. Shared pieces ──────────────────────────────────────────────────── */
+/* Cards on app pages: faint border, soft shadow, one radius */
+html[data-theme] :is(#pageJournal, #pageAnalytics, #pageSettings) .glass-card {
+  background: var(--ds-surface) !important; border: 1px solid var(--ds-line) !important;
+  box-shadow: var(--ds-shadow) !important; border-radius: var(--ds-radius-card) !important;
+}
+/* Card titles: quiet sans title, icons in muted tone (no rainbow icons) */
+html[data-theme] :is(#pageJournal, #pageAnalytics) .glass-card h3 {
+  font-family: var(--ds-sans) !important; font-size: 14px !important; font-weight: 600 !important;
+  letter-spacing: -0.005em !important; text-transform: none !important; color: var(--ds-text) !important;
+}
+html[data-theme] :is(#pageJournal, #pageAnalytics) .glass-card h3 > i { color: var(--ds-muted) !important; font-size: 12px; }
+html[data-theme] :is(#pageJournal, #pageAnalytics) .glass-card .border-b { border-color: var(--ds-line) !important; }
+
+/* Mode selector (Journal + Analytics): a plain toolbar row, not a box */
+html[data-theme] .journal-analytics-mode-menu {
+  background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-radius: 0 !important;
+}
+html[data-theme] .journal-analytics-mode-menu > div:first-child {
+  background: var(--ds-surface-2) !important; border: 1px solid var(--ds-line); border-radius: calc(var(--ds-radius-ctl) + 3px) !important; padding: 3px !important; gap: 2px !important;
+}
+html[data-theme] .journal-analytics-mode-menu button[data-mode] {
+  font-family: var(--ds-mono); font-size: 10.5px !important; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  border-radius: var(--ds-radius-ctl) !important; min-height: 32px; padding: 0 14px !important; color: var(--ds-muted) !important; background: transparent !important; box-shadow: none !important;
+}
+html[data-theme] .journal-analytics-mode-menu button[data-mode].bg-white {
+  background: var(--ds-surface-solid) !important; color: var(--ds-text) !important; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px var(--ds-line) !important;
+}
+html[data-theme] .journal-analytics-mode-menu [data-mode-label] {
+  font-family: var(--ds-mono); font-size: 10.5px !important; letter-spacing: .08em; background: transparent !important;
+  border: 1px solid var(--ds-line-strong) !important; color: var(--ds-text-2) !important; border-radius: 999px !important;
+}
+html[data-theme] .journal-analytics-mode-menu .text-slate-400 { color: var(--ds-muted) !important; font-family: var(--ds-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
+html[data-theme] .journal-analytics-account-menu { margin-top: 0 !important; padding: 0 !important; }
+html[data-theme] .journal-analytics-account-menu span.text-\[11px\], html[data-theme] .journal-analytics-account-menu span.font-semibold:first-child {
+  font-family: var(--ds-mono); font-size: 10.5px !important; letter-spacing: .1em; color: var(--ds-muted) !important;
+}
+html[data-theme] .journal-analytics-account-menu button[data-account-id] {
+  font-family: var(--ds-sans); font-size: 12px !important; border-radius: 999px !important; min-height: 30px;
+  background: transparent !important; color: var(--ds-muted) !important; border: 1px solid var(--ds-line) !important; box-shadow: none !important;
+}
+html[data-theme] .journal-analytics-account-menu button[data-account-id].text-blue-600 {
+  color: var(--ds-text) !important; border-color: var(--ds-text) !important; background: var(--ds-surface-solid) !important;
+}
+@media (pointer: coarse), (max-width: 1023px) {
+  html[data-theme] .journal-analytics-mode-menu button[data-mode],
+  html[data-theme] .journal-analytics-account-menu button[data-account-id] { min-height: var(--ds-tap); }
+}
+
+/* ── 3. Analytics ──────────────────────────────────────────────────────── */
+/* One flex column; CSS order puts the blocks in reading order:
+   toolbar → sample warning → Overview → Over time → Where → Discipline → Strategies */
+#pageAnalytics.ap-v2 { display: flex !important; flex-direction: column; gap: var(--ds-gap); }
+#pageAnalytics.ap-v2 > * { margin: 0 !important; min-width: 0; }
+#pageAnalytics.ap-v2 > #ob-analytics-extra-section { display: contents !important; }
+#pageAnalytics.ap-v2 > #ob-analytics-subtabs { order: 0; }
+#pageAnalytics.ap-v2 > .journal-analytics-mode-menu { order: 1; }
+#pageAnalytics.ap-v2 > .journal-analytics-account-menu { order: 2; }
+#pageAnalytics.ap-v2 > #ob-analytics-filter-bar { order: 3; }
+#pageAnalytics.ap-v2 > #apSample { order: 4; }
+#pageAnalytics.ap-v2 > #apHeadOverview { order: 10; }
+#pageAnalytics.ap-v2 > .grid.grid-cols-2 { order: 11; }
+#pageAnalytics.ap-v2 > #analyticsInsightCard { order: 12; }
+#pageAnalytics.ap-v2 > #apHeadTime { order: 20; }
+#pageAnalytics.ap-v2 > #ob-analytics-extra-section > div:nth-child(1) { order: 21; }
+#pageAnalytics.ap-v2 > #apRisk { order: 22; }
+#pageAnalytics.ap-v2 > #apHeadWhere { order: 30; }
+#pageAnalytics.ap-v2 > .grid.md\:grid-cols-3 { order: 31; }
+#pageAnalytics.ap-v2 > #ob-analytics-extra-section > div:nth-child(2) { order: 32; }
+#pageAnalytics.ap-v2 > #apHeadDiscipline { order: 40; }
+#pageAnalytics.ap-v2 > #apDiscipline { order: 41; }
+#pageAnalytics.ap-v2 > #apHeadStrategies { order: 50; }
+#pageAnalytics.ap-v2 > #ob-analytics-extra-section > #ob-strategy-compare { order: 51; }
+#pageAnalytics.ap-v2 > #ob-analytics-drivers { order: 52; }
+#pageAnalytics.ap-v2 > #ob-behavior { order: 60; }
+/* section titles sit above the cards with section spacing */
+#pageAnalytics.ap-v2 > .ap-head { margin-top: calc(var(--ds-section-gap) - var(--ds-gap)) !important; }
+#pageAnalytics.ap-v2 > #apHeadOverview { margin-top: var(--ds-s3) !important; }
+/* the grids use the shared gap */
+#pageAnalytics.ap-v2 > .grid, #pageAnalytics.ap-v2 #ob-analytics-extra-section > .grid, #pageAnalytics.ap-v2 > #ob-analytics-drivers { gap: var(--ds-gap) !important; }
+
+/* Sub-tabs (Performance / Behavior): segmented control, left aligned */
+html[data-theme] #ob-analytics-subtabs { justify-content: flex-start !important; }
+html[data-theme] #ob-analytics-subtabs .ob-st {
+  background: var(--ds-surface-2) !important; border: 1px solid var(--ds-line) !important; box-shadow: none !important;
+  border-radius: calc(var(--ds-radius-ctl) + 3px) !important; padding: 3px !important; gap: 2px !important;
+}
+html[data-theme] #ob-analytics-subtabs .ob-st button {
+  font-family: var(--ds-mono) !important; font-size: 10.5px !important; font-weight: 600 !important; letter-spacing: .08em; text-transform: uppercase;
+  border-radius: var(--ds-radius-ctl) !important; color: var(--ds-muted) !important; background: transparent !important; box-shadow: none !important; min-height: 32px;
+}
+html[data-theme] #ob-analytics-subtabs .ob-st button[aria-selected="true"] {
+  background: var(--ds-surface-solid) !important; color: var(--ds-text) !important; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px var(--ds-line) !important;
+}
+
+/* Filter bar: controls on the page, no box */
+html[data-theme] #ob-analytics-filter-bar {
+  background: transparent !important; border: 0 !important; border-top: 1px solid var(--ds-line) !important; border-bottom: 1px solid var(--ds-line) !important;
+  border-radius: 0 !important; padding: 12px 0 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; box-shadow: none !important;
+}
+html[data-theme] #ob-analytics-filter-bar label { font-family: var(--ds-mono) !important; font-size: 10px !important; font-weight: 600 !important; letter-spacing: .1em !important; color: var(--ds-muted) !important; }
+html[data-theme] #ob-analytics-filter-bar select,
+html[data-theme] #ob-analytics-filter-bar input[type="date"] {
+  background: var(--ds-surface-solid) !important; border: 1px solid var(--ds-line-strong) !important; color: var(--ds-text) !important;
+  border-radius: var(--ds-radius-ctl) !important; height: 36px !important; font-size: 12px !important; font-family: var(--ds-sans) !important;
+}
+html[data-theme] #ob-analytics-filter-bar .af-reset {
+  background: transparent !important; border: 1px solid var(--ds-line-strong) !important; color: var(--ds-text) !important; height: 36px !important;
+  border-radius: var(--ds-radius-ctl) !important; font-family: var(--ds-mono) !important; font-size: 10.5px !important; letter-spacing: .08em; text-transform: uppercase;
+}
+html[data-theme] #ob-analytics-filter-bar .af-active-note { color: var(--ds-accent) !important; font-family: var(--ds-mono); letter-spacing: .06em; text-transform: uppercase; }
+@media (max-width: 767px), (pointer: coarse) {
+  html[data-theme] #ob-analytics-filter-bar select,
+  html[data-theme] #ob-analytics-filter-bar input[type="date"],
+  html[data-theme] #ob-analytics-filter-bar .af-reset { height: var(--ds-tap) !important; font-size: 16px !important; }
+}
+@media (max-width: 767px) {
+  /* phones: filters two per row, dates on their own row */
+  html[data-theme] #ob-analytics-filter-bar { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px !important; }
+  html[data-theme] #ob-analytics-filter-bar .af-group { width: auto !important; }
+  html[data-theme] #ob-analytics-filter-bar .af-reset, html[data-theme] #ob-analytics-filter-bar .af-active-note { grid-column: 1 / -1; }
+}
+
+/* Sample-size warning */
+#apSample { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: var(--ds-radius-ctl); background: var(--ds-warn-tint); color: var(--ds-text-2); font-size: 13px; line-height: 1.45; }
+#apSample[hidden] { display: none !important; }
+#apSample .ds-dot { color: var(--ds-warn); margin-top: 6px; }
+#apSample b { color: var(--ds-text); font-weight: 600; }
+html #pageAnalytics.ob-sub-behavior > #apSample:not([hidden]) { display: flex !important; }
+
+/* KPI cards */
+html[data-theme] #pageAnalytics.ap-v2 > .grid.grid-cols-2 > .glass-card { padding: var(--ds-s5) !important; }
+html[data-theme] #pageAnalytics.ap-v2 > .grid.grid-cols-2 > .glass-card > span:first-child { font-family: var(--ds-mono); font-size: 10.5px !important; font-weight: 600 !important; letter-spacing: .1em; color: var(--ds-muted) !important; }
+html[data-theme] #pageAnalytics.ap-v2 > .grid.grid-cols-2 > .glass-card > div { font-family: var(--ds-mono) !important; font-weight: 600 !important; font-size: 26px !important; letter-spacing: -0.03em; margin: 6px 0 2px; }
+html[data-theme] #pageAnalytics.ap-v2 > .grid.grid-cols-2 > .glass-card > div.text-blue-600,
+html[data-theme] #pageAnalytics.ap-v2 > .grid.grid-cols-2 > .glass-card > div.text-slate-900 { color: var(--ds-text) !important; }
+html[data-theme] #pageAnalytics.ap-v2 > .grid.grid-cols-2 > .glass-card > div.text-emerald-600 { color: var(--ds-pos) !important; }
+html[data-theme] #pageAnalytics.ap-v2 > .grid.grid-cols-2 > .glass-card > div.text-rose-600 { color: var(--ds-neg) !important; }
+html[data-theme] #pageAnalytics.ap-v2 > .grid.grid-cols-2 > .glass-card > span:last-child { color: var(--ds-muted) !important; font-size: 12px !important; }
+
+/* Insight text: a plain note, not a dark gradient box */
+html[data-theme] #pageAnalytics.ap-v2 > #analyticsInsightCard {
+  background: transparent !important; border: 0 !important; border-left: 2px solid var(--ds-accent) !important; box-shadow: none !important;
+  border-radius: 0 !important; padding: 4px 0 4px 16px !important; color: var(--ds-text-2) !important;
+}
+html[data-theme] #pageAnalytics.ap-v2 > #analyticsInsightCard h3 { color: var(--ds-text) !important; font-size: 13px !important; font-weight: 600 !important; }
+html[data-theme] #pageAnalytics.ap-v2 > #analyticsInsightCard p { color: var(--ds-text-2) !important; font-size: 13px !important; max-width: 90ch; }
+html[data-theme] #pageAnalytics.ap-v2 > #analyticsInsightCard p * { color: var(--ds-text) !important; }
+html[data-theme] #pageAnalytics.ap-v2 > #analyticsInsightCard .fa-lightbulb { color: var(--ds-warn) !important; font-size: 13px !important; }
+html[data-theme] #pageAnalytics.ap-v2 > #analyticsInsightCard .ob-collapse-toggle { color: var(--ds-muted) !important; background: transparent !important; border-color: var(--ds-line-strong) !important; }
+
+/* chart cards: badges become pills */
+html[data-theme] #pageAnalytics #af-r-total { background: transparent !important; border: 1px solid var(--ds-line-strong) !important; color: var(--ds-text) !important; border-radius: 999px !important; }
+html[data-theme] #pageAnalytics .glass-card .text-slate-400, html[data-theme] #pageAnalytics .glass-card p.text-xs { color: var(--ds-muted) !important; }
+
+/* Strategy comparison table */
+html[data-theme] #ob-strategy-compare thead tr { background: transparent !important; border-bottom: 1px solid var(--ds-line) !important; }
+html[data-theme] #ob-strategy-compare th { font-family: var(--ds-mono); font-size: 10px !important; font-weight: 600 !important; letter-spacing: .1em !important; color: var(--ds-muted) !important; }
+html[data-theme] #ob-strategy-compare td { border-bottom-color: var(--ds-line) !important; color: var(--ds-text) !important; font-size: 12.5px; }
+html[data-theme] #ob-strategy-compare tbody tr:hover { background: var(--ds-surface-2) !important; }
+html[data-theme] #ob-strategy-compare td.text-emerald-600, html[data-theme] #ob-strategy-compare td .text-emerald-600 { color: var(--ds-pos) !important; }
+html[data-theme] #ob-strategy-compare td.text-rose-600, html[data-theme] #ob-strategy-compare td .text-rose-600 { color: var(--ds-neg) !important; }
+html[data-theme] #ob-strategy-compare td.text-blue-600, html[data-theme] #ob-strategy-compare td .text-blue-600 { color: var(--ds-text) !important; }
+html[data-theme] #ob-strategy-compare > div:first-child { border-color: var(--ds-line) !important; padding: var(--ds-s5) var(--ds-s5) var(--ds-s3) !important; }
+
+/* Performance Breakdown + Profit Drivers (old db-card markup) */
+html[data-theme] #ob-analytics-drivers .db-card { background: var(--ds-surface) !important; border: 1px solid var(--ds-line) !important; box-shadow: var(--ds-shadow) !important; border-radius: var(--ds-radius-card) !important; }
+
+/* New cards (analytics-page.js) */
+.ap-card { display: flex; flex-direction: column; gap: var(--ds-s4); }
+.ap-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--ds-s3); flex-wrap: wrap; }
+.ap-title { font-family: var(--ds-sans); font-size: 14px; font-weight: 600; color: var(--ds-text); margin: 0 0 2px; }
+.ap-cmp-row { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(0, 2.2fr); gap: 10px var(--ds-s4); align-items: center; padding: var(--ds-s3) 0; border-top: 1px solid var(--ds-line); }
+.ap-cmp-row .ds-meter { grid-column: 1 / -1; }
+.ap-cmp-name { display: flex; flex-direction: column; gap: 2px; }
+.ap-cmp-name b { font-weight: 600; color: var(--ds-text); font-size: 14px; }
+.ap-cmp-vals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ds-s3); }
+.ap-cmp-vals > div, .ap-kpis > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ap-cmp-vals b, .ap-kpis b { font-size: 18px; font-weight: 600; color: var(--ds-text); white-space: nowrap; }
+.ap-foot { font-size: 12.5px; color: var(--ds-muted); line-height: 1.5; margin: 0; }
+.ap-foot b { font-family: var(--ds-mono); font-weight: 600; }
+.ap-tw { overflow-x: auto; }
+.ap-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ap-table th { font-family: var(--ds-mono); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ds-muted); text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--ds-line); white-space: nowrap; }
+.ap-table td { padding: 11px 10px; text-align: right; font-family: var(--ds-mono); font-variant-numeric: tabular-nums; color: var(--ds-text); border-bottom: 1px solid var(--ds-line); white-space: nowrap; }
+.ap-table th:first-child, .ap-table td:first-child { text-align: left; font-family: var(--ds-sans); }
+.ap-table tr:last-child td { border-bottom: 0; }
+.ap-warn { color: var(--ds-warn); }
+.ap-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ds-s3); }
+.ap-chart { position: relative; height: 200px; }
+.ap-chart-tall { height: 268px; }
+@media (max-width: 640px) {
+  .ap-cmp-row { grid-template-columns: 1fr; }
+  .ap-cmp-vals b, .ap-kpis b { font-size: 16px; }
+  .ap-chart { height: 180px; }
+  .ap-chart-tall { height: 220px; }
+}
