@@ -158,11 +158,75 @@
       tipBorder: cssVar('--chart-tooltip-border', 'transparent')
     };
   }
+  // Design system (BUILD-PLAN-2): softer green/red, thinner bars, gradient fill
+  // under filled lines. Datasets are plain objects (not option proxies), so they
+  // can be edited; the original colour is kept so a theme switch re-maps it and
+  // a colour the app assigns later is picked up as the new original.
+  function parseColor(c) {
+    if (typeof c !== 'string') return null;
+    let m = c.trim().match(/^#([0-9a-f]{3,8})$/i);
+    if (m) {
+      let h = m[1];
+      if (h.length <= 4) h = h.split('').map(x => x + x).join('');
+      const a = h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1;
+      return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a };
+    }
+    m = c.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/i);
+    if (m) { let a = m[4] == null ? 1 : parseFloat(m[4]); if (String(m[4]).endsWith('%')) a /= 100; return { r: +m[1], g: +m[2], b: +m[3], a }; }
+    return null;
+  }
+  function softColor(c, pal) {
+    const p = parseColor(c);
+    if (!p) return c;
+    const kind = (p.g > p.r + 40 && p.g > p.b + 10) ? 'pos' : (p.r > p.g + 60 && p.r > p.b + 40) ? 'neg' : null;
+    if (!kind) return c;
+    const t = parseColor(kind === 'pos' ? pal.pos : pal.neg);
+    if (!t) return c;
+    const a = Math.min(p.a, 1) * (p.a >= 0.5 ? t.a : 1);
+    return `rgba(${t.r},${t.g},${t.b},${+a.toFixed(3)})`;
+  }
+  function mapVal(v, pal) { return Array.isArray(v) ? v.map(x => softColor(x, pal)) : softColor(v, pal); }
+  function styleDatasets(chart, pal) {
+    const type = chart.config && chart.config.type;
+    ((chart.data && chart.data.datasets) || []).forEach(ds => {
+      if (!ds || ds.obNoStyle) return;
+      ['backgroundColor', 'borderColor', 'hoverBackgroundColor', 'pointBackgroundColor'].forEach(k => {
+        const cur = ds[k];
+        if (cur == null || typeof cur === 'function') return;
+        const store = ds.__obColors || (ds.__obColors = {});
+        if (!(k in store) || store[k].mapped !== cur) store[k] = { orig: cur };
+        const next = mapVal(store[k].orig, pal);
+        store[k].mapped = next;
+        ds[k] = next;
+      });
+      const dsType = ds.type || type;
+      if (dsType === 'bar') {
+        if (ds.maxBarThickness == null || ds.maxBarThickness > 18) ds.maxBarThickness = 18;
+        if (ds.borderRadius == null) ds.borderRadius = 3;
+      }
+      if (dsType === 'line' && ds.fill && !ds.__obGradient) {
+        const base = parseColor(typeof ds.borderColor === 'string' ? ds.borderColor : pal.line) || parseColor(pal.line);
+        if (base) {
+          ds.__obGradient = true;
+          ds.backgroundColor = (ctx) => {
+            const area = ctx.chart.chartArea;
+            if (!area) return `rgba(${base.r},${base.g},${base.b},0.12)`;
+            const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+            g.addColorStop(0, `rgba(${base.r},${base.g},${base.b},0.22)`);
+            g.addColorStop(1, `rgba(${base.r},${base.g},${base.b},0)`);
+            return g;
+          };
+        }
+      }
+    });
+  }
+
   const chartPlugin = {
     id: 'obTheme',
     // Chart.js option objects are resolver proxies: only set leaf values on
     // objects that already exist (re-assigning containers can recurse forever).
     beforeUpdate(chart) {
+      try { styleDatasets(chart, { pos: cssVar('--ds-chart-pos', 'rgba(34,160,92,.78)'), neg: cssVar('--ds-chart-neg', 'rgba(226,92,92,.78)'), line: cssVar('--ds-chart-line', '#3b82f6') }); } catch (_) {}
       try {
         const c = chartPalette();
         const o = chart.options;
@@ -183,6 +247,7 @@
           const tt = p.tooltip;
           tt.backgroundColor = c.tipBg; tt.titleColor = c.tipText; tt.bodyColor = c.tipText;
           tt.borderColor = c.tipBorder; tt.borderWidth = c.tipBorder === 'transparent' ? 0 : 1;
+          tt.padding = 10; tt.cornerRadius = 8; tt.boxPadding = 4;
         }
       } catch (_) { /* never break a chart render because of theming */ }
     }
@@ -191,6 +256,13 @@
   function registerChart() {
     if (chartReady || !window.Chart || typeof window.Chart.register !== 'function') return;
     window.Chart.register(chartPlugin);
+    try {
+      const d = window.Chart.defaults;
+      d.font.family = "'Inter', system-ui, sans-serif";
+      d.elements.line.borderWidth = 2;
+      d.elements.point.radius = 0; d.elements.point.hoverRadius = 4;
+      d.plugins.legend.labels.boxWidth = 8; d.plugins.legend.labels.boxHeight = 8; d.plugins.legend.labels.usePointStyle = true;
+    } catch (_) {}
     chartReady = true;
   }
   function refreshCharts() {

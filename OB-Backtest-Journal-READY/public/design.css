@@ -1,0 +1,283 @@
+/*
+ * design.css — MY Journal design system (BUILD-PLAN-2, Part 1).
+ * Loaded after theme.css and mobile.css. Components use only these
+ * variables; colours are never hardcoded in components.
+ *
+ * 1. Tokens (light / dark)
+ * 2. App shell: page background (gradient + dashed grid + dot markers), header, footer
+ * 3. App frame: fluid content width, gutters (Dashboard + Trading in Part 1)
+ * 4. Type: labels, headlines, numbers
+ * 5. Sections, cards, 12-column grid
+ * 6. Buttons: primary (monochrome), secondary, log-trade (green)
+ */
+
+/* ── 1. Tokens ─────────────────────────────────────────────────────────── */
+:root, html[data-theme="light"] {
+  --ds-bg-top: #ffffff;
+  --ds-bg-bottom: #eaf1fd;
+  --ds-grid-line: rgba(16, 23, 41, 0.055);
+  --ds-grid-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cpath d='M0 .5H96M.5 0V96' fill='none' stroke='%23101729' stroke-opacity='.075' stroke-dasharray='4 5'/%3E%3C/svg%3E");
+  --ds-dot: rgba(59, 130, 246, 0.30);
+  --ds-dot-ring: rgba(59, 130, 246, 0.16);
+
+  --ds-text: #101729;
+  --ds-text-2: #334155;
+  --ds-muted: #6b7280;
+  --ds-accent: #3b82f6;
+  --ds-accent-tint: rgba(59, 130, 246, 0.10);
+  --ds-pos: #16a34a;
+  --ds-neg: #ef4444;
+  --ds-warn: #d97706;
+  --ds-pos-tint: rgba(22, 163, 74, 0.09);
+  --ds-neg-tint: rgba(239, 68, 68, 0.08);
+  --ds-warn-tint: rgba(245, 158, 11, 0.12);
+
+  --ds-surface: rgba(255, 255, 255, 0.86);
+  --ds-surface-solid: #ffffff;
+  --ds-surface-2: rgba(16, 23, 41, 0.03);
+  --ds-line: rgba(16, 23, 41, 0.07);
+  --ds-line-strong: rgba(16, 23, 41, 0.13);
+  --ds-track: rgba(16, 23, 41, 0.07);
+  --ds-shadow: 0 1px 2px rgba(16, 23, 41, 0.04), 0 10px 30px -18px rgba(16, 23, 41, 0.18);
+  --ds-header-bg: rgba(255, 255, 255, 0.72);
+
+  --ds-btn-bg: #101729;
+  --ds-btn-text: #ffffff;
+  --ds-btn-hover: #1f2a44;
+  --ds-btn2-hover: rgba(16, 23, 41, 0.05);
+  /* Log trade: the WIN green, slightly softened */
+  --ds-log-bg: #1d8a4c;
+  --ds-log-hover: #197a43;
+  --ds-log-text: #ffffff;
+
+  /* Charts */
+  --ds-chart-pos: rgba(34, 160, 92, 0.78);
+  --ds-chart-neg: rgba(226, 92, 92, 0.78);
+  --ds-chart-line: #3b82f6;
+  --chart-grid: rgba(16, 23, 41, 0.06);
+  --chart-text: #8a93a5;
+}
+
+html[data-theme="dark"] {
+  --ds-bg-top: #0b1220;
+  --ds-bg-bottom: #050608;
+  --ds-grid-line: rgba(148, 163, 184, 0.06);
+  --ds-grid-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cpath d='M0 .5H96M.5 0V96' fill='none' stroke='%23a5b4cf' stroke-opacity='.075' stroke-dasharray='4 5'/%3E%3C/svg%3E");
+  --ds-dot: rgba(96, 165, 250, 0.40);
+  --ds-dot-ring: rgba(96, 165, 250, 0.16);
+
+  --ds-text: #fafafa;
+  --ds-text-2: #d4d4d8;
+  --ds-muted: #8b94a6;
+  --ds-accent: #60a5fa;
+  --ds-accent-tint: rgba(59, 130, 246, 0.16);
+  --ds-pos: #22c55e;
+  --ds-neg: #f05252;
+  --ds-warn: #f59e0b;
+  --ds-pos-tint: rgba(34, 197, 94, 0.11);
+  --ds-neg-tint: rgba(239, 68, 68, 0.12);
+  --ds-warn-tint: rgba(245, 158, 11, 0.13);
+
+  --ds-surface: rgba(15, 17, 22, 0.82);
+  --ds-surface-solid: #0f1115;
+  --ds-surface-2: rgba(255, 255, 255, 0.035);
+  --ds-line: rgba(255, 255, 255, 0.07);
+  --ds-line-strong: rgba(255, 255, 255, 0.12);
+  --ds-track: rgba(255, 255, 255, 0.08);
+  --ds-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 14px 34px -20px rgba(0, 0, 0, 0.8);
+  --ds-header-bg: rgba(8, 12, 20, 0.72);
+
+  --ds-btn-bg: #fafafa;
+  --ds-btn-text: #0a0a0a;
+  --ds-btn-hover: #e4e4e7;
+  --ds-btn2-hover: rgba(255, 255, 255, 0.06);
+  --ds-log-bg: #2fb768;
+  --ds-log-hover: #3cc676;
+  --ds-log-text: #03140a;
+
+  --ds-chart-pos: rgba(52, 199, 112, 0.72);
+  --ds-chart-neg: rgba(240, 98, 98, 0.72);
+  --ds-chart-line: #60a5fa;
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-text: #7c8596;
+}
+
+:root {
+  /* spacing scale */
+  --ds-s1: 4px; --ds-s2: 8px; --ds-s3: 12px; --ds-s4: 16px; --ds-s5: 24px; --ds-s6: 32px; --ds-s7: 48px; --ds-s8: 64px;
+  --ds-gap: 16px;
+  --ds-section-gap: 40px;
+  --ds-gutter: clamp(16px, 3.2vw, 48px);
+  --ds-max: 1600px;
+  --ds-radius-card: 16px;
+  --ds-radius-ctl: 10px;
+  --ds-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --ds-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --ds-tap: 44px;
+}
+@media (max-width: 1023px) { :root { --ds-section-gap: 32px; --ds-gap: 14px; } }
+@media (max-width: 640px)  { :root { --ds-section-gap: 28px; --ds-gap: 12px; } }
+
+/* ── 2. App shell ──────────────────────────────────────────────────────── */
+html { background-color: var(--ds-bg-bottom) !important; }
+html body.min-h-screen { background-color: transparent !important; position: relative; }
+/* The background layer fills the whole viewport, edge to edge, behind everything. */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 14%, var(--ds-dot) 0 2.5px, transparent 3.5px),
+    radial-gradient(circle at 8% 14%, transparent 0 9px, var(--ds-dot-ring) 9.5px 10.5px, transparent 11px),
+    radial-gradient(circle at 91% 22%, var(--ds-dot) 0 2.5px, transparent 3.5px),
+    radial-gradient(circle at 74% 78%, var(--ds-dot) 0 2px, transparent 3px),
+    radial-gradient(circle at 74% 78%, transparent 0 8px, var(--ds-dot-ring) 8.5px 9.5px, transparent 10px),
+    radial-gradient(circle at 22% 88%, var(--ds-dot) 0 2px, transparent 3px),
+    var(--ds-grid-svg) 0 0 / 96px 96px repeat,
+    linear-gradient(180deg, var(--ds-bg-top) 0%, var(--ds-bg-bottom) 100%);
+}
+
+/* Header: translucent over the background, faint bottom line, fluid width */
+html body > header.sticky {
+  background-color: var(--ds-header-bg) !important;
+  border-bottom: 1px solid var(--ds-line) !important;
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  padding-left: max(var(--ds-gutter), env(safe-area-inset-left)) !important;
+  padding-right: max(var(--ds-gutter), env(safe-area-inset-right)) !important;
+}
+html body > header > div.max-w-7xl { max-width: var(--ds-max) !important; }
+html body > header h1 { letter-spacing: -0.02em; }
+html[data-theme] body > header h1 + span[class] {
+  font-family: var(--ds-mono) !important; letter-spacing: .12em !important; font-weight: 600 !important;
+  background: transparent !important; color: var(--ds-muted) !important; border-color: var(--ds-line-strong) !important;
+}
+html body > header p.text-\[11px\] { font-family: var(--ds-mono); font-size: 10px !important; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-muted) !important; }
+/* Nav pills: blue is the active-tab accent only */
+html body > header nav.ob-pill-nav { background: var(--ds-surface) !important; border-color: var(--ds-line) !important; box-shadow: var(--ds-shadow) !important; }
+/* "Get started" (header) is a main button: monochrome */
+html body > header > div > div:last-child > button[onclick="handleGetStarted()"] {
+  background: var(--ds-btn-bg) !important; color: var(--ds-btn-text) !important; box-shadow: none !important;
+  font-family: var(--ds-mono); text-transform: uppercase; letter-spacing: .08em; font-size: 11px !important; border-radius: var(--ds-radius-ctl) !important;
+}
+html body > header > div > div:last-child > button[onclick="handleGetStarted()"]:hover { background: var(--ds-btn-hover) !important; }
+
+html body > footer {
+  background: transparent !important; border-top: 1px solid var(--ds-line) !important;
+  padding-left: var(--ds-gutter) !important; padding-right: var(--ds-gutter) !important;
+  font-family: var(--ds-mono); font-size: 10.5px !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ds-muted) !important;
+}
+html body > footer > div.max-w-7xl { max-width: var(--ds-max) !important; }
+html body > footer span { color: var(--ds-muted) !important; }
+
+/* ── 3. App frame ──────────────────────────────────────────────────────── */
+/* Pages built on the design system (Part 1: Dashboard, Trading) use the
+   fluid frame: full width up to --ds-max, gutters that grow with the screen.
+   The other pages keep their column until Part 2 rolls the frame out. */
+html body > main:has(> #pageDashboard:not(.hidden)),
+html body > main:has(> #pageTrading:not(.hidden)) {
+  max-width: var(--ds-max) !important;
+  padding-left: max(var(--ds-gutter), env(safe-area-inset-left)) !important;
+  padding-right: max(var(--ds-gutter), env(safe-area-inset-right)) !important;
+  padding-top: var(--ds-s6) !important;
+  padding-bottom: var(--ds-s8) !important;
+}
+@media (max-width: 640px) {
+  html body > main:has(> #pageDashboard:not(.hidden)),
+  html body > main:has(> #pageTrading:not(.hidden)) { padding-top: var(--ds-s5) !important; }
+}
+
+/* ── 4. Type ───────────────────────────────────────────────────────────── */
+.ds-label {
+  font-family: var(--ds-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ds-muted); line-height: 1.3;
+}
+.ds-h1 { font-family: var(--ds-sans); font-size: clamp(26px, 2.6vw, 38px); font-weight: 400; letter-spacing: -0.025em; line-height: 1.12; color: var(--ds-text); }
+.ds-h1 b, .ds-h1 strong { font-weight: 600; }
+.ds-h2 { font-family: var(--ds-sans); font-size: 20px; font-weight: 500; letter-spacing: -0.015em; color: var(--ds-text); }
+.ds-num { font-family: var(--ds-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.ds-big { font-family: var(--ds-mono); font-variant-numeric: tabular-nums; font-size: 26px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; color: var(--ds-text); }
+.ds-sub { font-size: 12px; color: var(--ds-muted); line-height: 1.45; }
+.ds-pos { color: var(--ds-pos) !important; }
+.ds-neg { color: var(--ds-neg) !important; }
+.ds-warn { color: var(--ds-warn) !important; }
+.ds-muted { color: var(--ds-muted) !important; }
+.ds-link { color: var(--ds-accent); font-family: var(--ds-mono); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; background: none; border: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.ds-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── 5. Sections, cards, grid ──────────────────────────────────────────── */
+.ds-page { display: flex; flex-direction: column; gap: var(--ds-section-gap); }
+.ds-section { display: flex; flex-direction: column; gap: var(--ds-s3); min-width: 0; }
+.ds-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ds-s3); flex-wrap: wrap; min-height: 20px; }
+.ds-section-head .ds-label { color: var(--ds-text-2); }
+.ds-section-head .ds-period { font-family: var(--ds-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-muted); }
+.ds-card {
+  background: var(--ds-surface); border: 1px solid var(--ds-line); border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow); padding: var(--ds-s5); min-width: 0;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.ds-card.ds-tight { padding: var(--ds-s4) var(--ds-s5); }
+.ds-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--ds-gap); }
+.ds-grid > * { grid-column: span 12; min-width: 0; }
+.ds-span-3 { grid-column: span 3 !important; } .ds-span-4 { grid-column: span 4 !important; }
+.ds-span-5 { grid-column: span 5 !important; } .ds-span-6 { grid-column: span 6 !important; }
+.ds-span-7 { grid-column: span 7 !important; } .ds-span-8 { grid-column: span 8 !important; }
+.ds-span-12 { grid-column: span 12 !important; }
+@media (max-width: 1199px) and (min-width: 1024px) {
+  .ds-l-6 { grid-column: span 6 !important; } .ds-l-12 { grid-column: span 12 !important; }
+}
+@media (max-width: 1023px) {
+  .ds-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .ds-grid > * { grid-column: span 6 !important; }
+  .ds-grid > .ds-t-2 { grid-column: span 2 !important; } .ds-grid > .ds-t-3 { grid-column: span 3 !important; }
+  .ds-grid > .ds-t-4 { grid-column: span 4 !important; }
+}
+@media (max-width: 640px) {
+  .ds-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-grid > * { grid-column: span 2 !important; }
+  .ds-grid > .ds-p-1 { grid-column: span 1 !important; }
+  .ds-card { padding: var(--ds-s4); }
+}
+
+/* meters / progress */
+.ds-meter { height: 6px; border-radius: 999px; background: var(--ds-track); overflow: hidden; }
+.ds-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--ds-accent); transition: width .4s ease; }
+.ds-meter > i.pos { background: var(--ds-pos); } .ds-meter > i.neg { background: var(--ds-neg); } .ds-meter > i.warn { background: var(--ds-warn); }
+.ds-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-family: var(--ds-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--ds-line-strong); color: var(--ds-text-2); white-space: nowrap; }
+.ds-pill.pos { color: var(--ds-pos); border-color: transparent; background: var(--ds-pos-tint); }
+.ds-pill.neg { color: var(--ds-neg); border-color: transparent; background: var(--ds-neg-tint); }
+.ds-pill.warn { color: var(--ds-warn); border-color: transparent; background: var(--ds-warn-tint); }
+.ds-dot { width: 7px; height: 7px; border-radius: 999px; background: currentColor; flex: none; }
+
+/* ── 6. Buttons ────────────────────────────────────────────────────────── */
+.ds-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 38px; padding: 0 16px; border-radius: var(--ds-radius-ctl);
+  font-family: var(--ds-mono); font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+  border: 1px solid transparent; cursor: pointer; white-space: nowrap; text-decoration: none;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+}
+.ds-btn:active { transform: translateY(1px); }
+.ds-btn:focus-visible, .ds-seg button:focus-visible, .ds-select:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 2px; }
+.ds-btn-primary { background: var(--ds-btn-bg); color: var(--ds-btn-text); }
+.ds-btn-primary:hover { background: var(--ds-btn-hover); }
+.ds-btn-secondary { background: transparent; color: var(--ds-text); border-color: var(--ds-line-strong); }
+.ds-btn-secondary:hover { background: var(--ds-btn2-hover); }
+.ds-btn-log { background: var(--ds-log-bg); color: var(--ds-log-text); }
+.ds-btn-log:hover { background: var(--ds-log-hover); }
+.ds-btn-sm { min-height: 30px; padding: 0 11px; font-size: 10.5px; }
+.ds-icon-btn { width: 34px; height: 34px; padding: 0; }
+@media (pointer: coarse), (max-width: 1023px) {
+  .ds-btn, .ds-btn-sm, .ds-icon-btn { min-height: var(--ds-tap); }
+  .ds-icon-btn { width: var(--ds-tap); }
+}
+
+/* segmented control + select (controls share --ds-radius-ctl) */
+.ds-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: calc(var(--ds-radius-ctl) + 3px); background: var(--ds-surface-2); border: 1px solid var(--ds-line); }
+.ds-seg button { border: 0; background: transparent; color: var(--ds-muted); border-radius: var(--ds-radius-ctl); min-height: 32px; padding: 0 12px; font-family: var(--ds-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ds-seg button:hover { color: var(--ds-text); }
+.ds-seg button[aria-checked="true"] { background: var(--ds-surface-solid); color: var(--ds-text); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px var(--ds-line); }
+.ds-select { appearance: auto; background: var(--ds-surface-solid); color: var(--ds-text); border: 1px solid var(--ds-line-strong); border-radius: var(--ds-radius-ctl); min-height: 38px; padding: 0 10px; font: 600 12px/1.2 var(--ds-sans); max-width: 220px; }
+@media (pointer: coarse), (max-width: 1023px) {
+  .ds-seg button, .ds-select { min-height: var(--ds-tap); }
+  .ds-select { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .ds-meter > i, .ds-btn { transition: none; } }
