@@ -36,7 +36,7 @@ main img, main video, main canvas { max-width: 100%; }
 
 /* iOS zooms into any field whose text is under 16px. Phones and touch devices
    get 16px in every text field, select and rich-text editor. */
-@media (max-width: 767px), (pointer: coarse) {
+@media (max-width: 1023px), (pointer: coarse) {
   html body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=button]):not([type=submit]),
   html body select,
   html body textarea,
@@ -157,4 +157,80 @@ body.ob-auth-page {
 }
 @media (max-width: 400px) {
   body.ob-auth-page .card { padding: 28px 20px 24px !important; }
+}
+
+/* ── 2. Dashboard ──────────────────────────────────────────────────────────── */
+@media (max-width: 1023px), (pointer: coarse) {
+  #dbRoot .db-seg button,
+  #dbRoot .db-btn,
+  #dbRoot .db-select,
+  #dbRoot .db-field select { min-height: var(--tap); }
+  #dbRoot .db-seg button { padding-left: 14px; padding-right: 14px; }
+  #dbRoot .db-icon { width: var(--tap); height: var(--tap); font-size: 12px; }
+  #dbRoot .db-link { min-height: var(--tap); padding: 0 6px; }
+  #dbRoot .db-pager .db-icon { width: var(--tap); height: var(--tap); }
+  /* Calendar month buttons on the Trading page (same component) */
+  .ob-jh-nav { width: var(--tap) !important; height: var(--tap) !important; }
+}
+/* Tablets: 5 stat cards as 2 + 3 (no empty slot) */
+@media (min-width: 641px) and (max-width: 1200px) {
+  #dbRoot .db-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  #dbRoot .db-stats > * { grid-column: span 2; }
+  #dbRoot .db-stats > :nth-child(-n+2) { grid-column: span 3; }
+}
+@media (max-width: 767px) {
+  #dbRoot .db-toolbar { gap: 8px; }
+  /* Mode switch scrolls sideways inside itself if it ever runs out of room */
+  #dbRoot .db-seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+  #dbRoot .db-seg::-webkit-scrollbar { display: none; }
+  #dbRoot .db-seg button { flex: 0 0 auto; }
+  #dbRoot .db-select { max-width: none; flex: 1 1 140px; min-width: 0; }
+  /* Filter popover: the button sits at the left on phones, so open to the right */
+  #dbRoot .db-pop { left: 0; right: auto; width: min(300px, calc(100vw - 32px)); }
+  #dbRoot .db-cal-nav { flex-wrap: wrap; }
+  #dbRoot .db-cal-nav span { min-width: 0; flex: 1 1 auto; }
+  #dbRoot .db-chart { height: 240px; }
+  #dbRoot .db-drivers-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+
+  /* Recent trades: stacked cards instead of a sideways-scrolling table */
+  #dbRoot .db-table-wrap { overflow: visible; border: 0; border-radius: 0; }
+  #dbRoot .db-table { min-width: 0; display: block; }
+  #dbRoot .db-table thead { display: none; }
+  #dbRoot .db-table tbody { display: flex; flex-direction: column; gap: 8px; }
+  #dbRoot .db-table tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "side pair  pair pnl"
+      "date strat res  r";
+    align-items: center;
+    gap: 4px 10px;
+    padding: 12px 14px;
+    min-height: var(--tap);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--panel);
+  }
+  #dbRoot .db-table td { display: block; padding: 0; border: 0 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  #dbRoot .db-table .db-c-side { grid-area: side; }
+  #dbRoot .db-table .db-c-pair { grid-area: pair; font-size: 14px; }
+  #dbRoot .db-table .db-c-pnl { grid-area: pnl; font-size: 14px; }
+  #dbRoot .db-table .db-c-date { grid-area: date; font-size: 12px; color: var(--muted); }
+  #dbRoot .db-table .db-c-strat { grid-area: strat; font-size: 12px; color: var(--muted); }
+  #dbRoot .db-table .db-c-r { grid-area: r; font-size: 12px; }
+  #dbRoot .db-table .db-c-res { grid-area: res; }
+  #dbRoot .db-table .db-c-r, #dbRoot .db-table .db-c-pnl { text-align: right; }
+}
+
+/* Calendar (Dashboard + Trading, journal-heatmap.js): on touch the whole day is
+   the tap target (it opens the same panel as "+"), so the "+" is just a hint. */
+@media (hover: none) {
+  .ob-jh-grid .ob-jh-cell[data-date] { cursor: pointer; }
+  .ob-jh-grid .ob-jh-add { pointer-events: none; }
+}
+@media (max-width: 700px) {
+  .ob-jh-grid .ob-jh-head { font-size: 10px !important; }
+  .ob-jh-grid .ob-jh-pnl, .ob-jh-grid .ob-jh-week-pnl { font-size: 9px !important; }
+  .ob-jh-grid .ob-jh-count, .ob-jh-grid .ob-jh-week-count, .ob-jh-grid .ob-jh-week-label { font-size: 8.5px !important; }
+  .ob-jh-grid .ob-jh-day { font-size: 10.5px !important; }
 }

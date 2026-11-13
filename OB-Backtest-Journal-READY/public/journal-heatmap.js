@@ -177,10 +177,14 @@
     if (grid.__obAddWired) return;
     grid.__obAddWired = true;
     grid.addEventListener('click', e => {
+      if (typeof window.obAddTradeOnDate !== 'function') return;
       const b = e.target.closest('[data-add-date]');
-      if (!b || typeof window.obAddTradeOnDate !== 'function') return;
+      // Touch screens: the "+" is too small to hit, so a tap anywhere on the
+      // day opens the same combined panel.
+      const cell = !b && window.matchMedia('(hover: none)').matches ? e.target.closest('.ob-jh-cell[data-date]') : null;
+      if (!b && !cell) return;
       e.stopPropagation();
-      window.obAddTradeOnDate(b.dataset.addDate);
+      window.obAddTradeOnDate(b ? b.dataset.addDate : cell.dataset.date);
     });
   }
 
@@ -192,7 +196,8 @@
     for (let d = 1; d <= days; d++) { const s = all[isoOf(y, m, d)]; if (s) stats[d] = s; }
     const today = todayIso();
     const cls = pnl => pnl > 0 ? 'ob-jh-win' : pnl < 0 ? 'ob-jh-loss' : 'ob-jh-flat';
-    let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => `<div class="ob-jh-head">${day}</div>`).join('') + '<div class="ob-jh-head">Week</div>';
+    // Phones show the short labels (.ob-jh-short), wider screens the full ones.
+    let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => `<div class="ob-jh-head"><span class="ob-jh-full">${day}</span><span class="ob-jh-short" aria-hidden="true">${day.charAt(0)}</span></div>`).join('') + '<div class="ob-jh-head"><span class="ob-jh-full">Week</span><span class="ob-jh-short" aria-hidden="true">Wk</span></div>';
     const rows = Math.ceil((first + days) / 7);
     for (let row = 0; row < rows; row++) {
       let wp = 0, wt = 0;
@@ -203,9 +208,9 @@
         wp += s.pnl; wt += s.count;
         const iso = isoOf(y, m, d);
         const todayCls = iso === today ? ' ob-jh-today' : '';
-        html += `<div class="ob-jh-cell ${s.count ? cls(s.pnl) : 'ob-jh-flat ob-jh-none'}${todayCls}" data-date="${iso}"><button type="button" class="ob-jh-add" data-add-date="${iso}" title="Add Trade" aria-label="Add trade on ${iso}">+</button><div class="ob-jh-day">${d}</div><div class="ob-jh-pnl">${s.count ? pnlHtml(s.pnl) : '$0'}</div><div class="ob-jh-count">${s.count ? `${s.count} trade${s.count === 1 ? '' : 's'}` : 'No trades'}</div></div>`;
+        html += `<div class="ob-jh-cell ${s.count ? cls(s.pnl) : 'ob-jh-flat ob-jh-none'}${todayCls}" data-date="${iso}"><button type="button" class="ob-jh-add" data-add-date="${iso}" title="Add Trade" aria-label="Add trade on ${iso}">+</button><div class="ob-jh-day">${d}</div><div class="ob-jh-pnl">${s.count ? pnlHtml(s.pnl) : '$0'}</div><div class="ob-jh-count"><span class="ob-jh-full">${s.count ? `${s.count} trade${s.count === 1 ? '' : 's'}` : 'No trades'}</span><span class="ob-jh-short">${s.count ? `${s.count}T` : ''}</span></div></div>`;
       }
-      html += `<div class="ob-jh-week ${wt ? cls(wp) : ''}"><div class="ob-jh-week-label">Week ${row + 1}</div><div class="ob-jh-week-pnl">${pnlHtml(wp)}</div><div class="ob-jh-week-count">${wt} trade${wt === 1 ? '' : 's'}</div></div>`;
+      html += `<div class="ob-jh-week ${wt ? cls(wp) : ''}"><div class="ob-jh-week-label"><span class="ob-jh-full">Week ${row + 1}</span><span class="ob-jh-short">W${row + 1}</span></div><div class="ob-jh-week-pnl">${pnlHtml(wp)}</div><div class="ob-jh-week-count"><span class="ob-jh-full">${wt} trade${wt === 1 ? '' : 's'}</span><span class="ob-jh-short">${wt}T</span></div></div>`;
     }
     return html;
   }

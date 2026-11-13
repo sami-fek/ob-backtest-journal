@@ -225,7 +225,7 @@
     const monthVals = Object.entries(daily).filter(([d]) => d.startsWith(prefix)).map(([, v]) => v);
     const total = monthVals.reduce((s, v) => s + v.pnl, 0);
     const n = monthVals.reduce((s, v) => s + v.count, 0);
-    document.getElementById('dbCalSub').textContent = `${n} trade${n === 1 ? '' : 's'} · ${money(total)} in ${label} · hover a day and press + to add a trade`;
+    document.getElementById('dbCalSub').textContent = `${n} trade${n === 1 ? '' : 's'} · ${money(total)} in ${label} · ${window.matchMedia('(hover: none)').matches ? 'tap a day' : 'hover a day and press +'} to add a trade`;
   }
 
   function renderActivity(filtered) {
@@ -257,10 +257,10 @@
     if (!rows.length) { box.innerHTML = '<div class="db-empty">No trades in this range.</div>'; return; }
     box.innerHTML = `<div class="db-table-wrap"><table class="db-table"><thead><tr><th>Side</th><th>Pair</th><th>Date</th><th>Strategy</th><th>Result</th><th class="num">R</th><th class="num">P&amp;L</th></tr></thead><tbody>
       ${rows.map(t => { const p = pnlFor(t); return `<tr data-id="${esc(t.id)}" tabindex="0">
-        <td><span class="db-side ${t.direction === 'SHORT' ? 'short' : 'long'}">${t.direction === 'SHORT' ? 'Short' : 'Long'}</span></td>
-        <td><b>${esc(t.pair || '—')}</b></td><td>${esc(fmtDate(String(t.date).slice(0, 10)))}</td><td>${esc(t.strategy || '—')}</td>
-        <td><span class="db-res ${String(t.result).toLowerCase()}">${esc(t.result || '—')}</span></td>
-        <td class="num ${cls(t.rMultiple)}">${fmtR(t.rMultiple)}</td><td class="num ${cls(p)}">${money(p)}</td></tr>`; }).join('')}
+        <td data-label="Side" class="db-c-side"><span class="db-side ${t.direction === 'SHORT' ? 'short' : 'long'}">${t.direction === 'SHORT' ? 'Short' : 'Long'}</span></td>
+        <td data-label="Pair" class="db-c-pair"><b>${esc(t.pair || '—')}</b></td><td data-label="Date" class="db-c-date">${esc(fmtDate(String(t.date).slice(0, 10)))}</td><td data-label="Strategy" class="db-c-strat">${esc(t.strategy || '—')}</td>
+        <td data-label="Result" class="db-c-res"><span class="db-res ${String(t.result).toLowerCase()}">${esc(t.result || '—')}</span></td>
+        <td data-label="R" class="num db-c-r ${cls(t.rMultiple)}">${fmtR(t.rMultiple)}</td><td data-label="P&amp;L" class="num db-c-pnl ${cls(p)}">${money(p)}</td></tr>`; }).join('')}
       </tbody></table></div>
       <div class="db-pager"><span>${page * PAGE_SIZE + 1}–${page * PAGE_SIZE + rows.length} of ${sorted.length}</span>
         <div><button type="button" class="db-icon" data-pg="-1" ${page === 0 ? 'disabled' : ''} aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
