@@ -107,3 +107,21 @@ test('keeps Demo and Real links isolated', async () => {
   assert.equal(realState.payload.linked, true);
   assert.notEqual(token, real.payload.token);
 });
+
+test('MT5 routes answer 401 (not 500) without a session', async () => {
+  const routes = new Map();
+  const app = { post(p, h) { routes.set('POST ' + p, h); }, get(p, h) { routes.set('GET ' + p, h); } };
+  const storage = {
+    getStoredValue: async () => { throw new Error('No authenticated session'); },
+    setStoredValue: async () => { throw new Error('No authenticated session'); },
+    deleteStoredValue: async () => {},
+    getSessionId: () => ''
+  };
+  registerMt5Routes(app, storage);
+  for (const [route, body, query] of [['GET /api/mt5/status', {}, {}], ['GET /api/mt5/state', {}, { accountId: 'demo-1' }], ['GET /api/mt5/history', {}, { accountId: 'demo-1' }], ['POST /api/mt5/link', { accountId: 'demo-1', mode: 'Demo', login: '1', server: 's' }, {}], ['POST /api/mt5/unlink', { accountId: 'demo-1' }, {}]]) {
+    const res = { statusCode: 200, headers: {}, payload: null, setHeader(n, v) { this.headers[n] = v; }, status(c) { this.statusCode = c; return this; }, json(v) { this.payload = v; return this; } };
+    await routes.get(route)({ body, query, headers: {} }, res);
+    assert.equal(res.statusCode, 401, route);
+    assert.equal(res.payload.code, 'UNAUTHORIZED', route);
+  }
+});

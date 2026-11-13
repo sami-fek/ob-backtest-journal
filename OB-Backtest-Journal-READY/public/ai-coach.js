@@ -119,7 +119,8 @@
   function accountContext() {
     const mode=currentMode(); const accountId=currentAccountId(mode); let name='';
     try { const data=JSON.parse(localStorage.getItem('my_journal_accounts_v1')||'{}'); const a=(data[mode]||[]).find(x=>String(x.id)===String(accountId)); if(a)name=a.name||''; } catch(_){ }
-    return name ? `${mode} · ${name}` : mode;
+    const label = mode === 'Real' ? 'Live' : mode; // the Real mode is shown as "Live" everywhere
+    return name ? `${label} · ${name}` : label;
   }
 
   function compactTrade(t) {

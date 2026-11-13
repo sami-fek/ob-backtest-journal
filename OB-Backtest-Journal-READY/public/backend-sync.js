@@ -51,8 +51,19 @@
 
   window.persistAccountState = value => writeServerState(value, ACCOUNT_STORAGE_KEY);
 
+  // Signed-out visitors only see the homepage (site-shell.js): the app feature
+  // scripts, the app's data load and their polling (daily limit, MT5 status) are
+  // skipped, so the homepage loads lighter and makes no failing API calls.
+  // A sign-in reloads the page, which then loads everything. If the check itself
+  // fails (offline), the app loads as before.
+  const signedIn = fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' })
+    .then(r => !(r.status === 401 || r.status === 403))
+    .catch(() => true);
+  window.obSignedInCheck = signedIn;
+
   const originalLoad = window.onload;
   window.onload = async function(...args) {
+    if (!(await signedIn)) { setPersistenceLabel(); return; }
     await hydrateAccounts();
     if (typeof originalLoad === 'function') originalLoad.apply(this, args);
     setPersistenceLabel();
@@ -105,8 +116,8 @@
     REST.forEach(src => inject(src)); // parallel — do not chain
   }
 
-  // Kick off accounts hydration in parallel with everything else.
-  hydrateAccounts().finally(() => {});
+  // Kick off accounts hydration in parallel with everything else (signed in only).
+  signedIn.then(ok => { if (ok) hydrateAccounts().finally(() => {}); });
 
     // Load the first script alone, then fire the rest all at once.
   // When ALL scripts have loaded, reveal the page.
@@ -127,5 +138,8 @@
     REST.forEach(src => inject(src, onOneDone));
   }
 
-  inject(FIRST, loadRestAndReveal);
+  signedIn.then(ok => {
+    if (ok) { inject(FIRST, loadRestAndReveal); return; }
+    requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove('ob-booting')));
+  });
 })();

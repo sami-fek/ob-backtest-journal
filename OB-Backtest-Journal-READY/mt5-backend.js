@@ -315,6 +315,7 @@ export function registerMt5Routes(app, storage) {
     const id = requestId(); res.setHeader('X-Request-Id', id);
     try {
       const sessionId = getSessionId(req, res);
+      if (!sessionId) return res.status(401).json({ ok: false, error: 'Authentication required', code: 'UNAUTHORIZED' });
       const accountId = requireAccountId(req.body?.accountId);
       const modeValue = requireMode(req.body?.mode);
       const loginValue = requireLogin(req.body?.login);
@@ -409,6 +410,7 @@ export function registerMt5Routes(app, storage) {
     const id = requestId(); res.setHeader('X-Request-Id', id);
     try {
       const sessionId = getSessionId(req, res);
+      if (!sessionId) return res.status(401).json({ ok: false, error: 'Authentication required', code: 'UNAUTHORIZED' });
       const accountId = requireAccountId(req.query?.accountId);
       const link = parseJson(await getStoredValue(sessionId, key(LINK_PREFIX, accountId)));
       if (!link || link.status === 'revoked') return res.json({ ok: true, linked: false, state: null });
@@ -422,6 +424,7 @@ export function registerMt5Routes(app, storage) {
     const id = requestId(); res.setHeader('X-Request-Id', id);
     try {
       const sessionId = getSessionId(req, res);
+      if (!sessionId) return res.status(401).json({ ok: false, error: 'Authentication required', code: 'UNAUTHORIZED' });
       const accountId = requireAccountId(req.query?.accountId);
       const link = parseJson(await getStoredValue(sessionId, key(LINK_PREFIX, accountId)));
       if (!link || link.status === 'revoked') return res.json({ ok: true, linked: false, closedTrades: [] });
@@ -438,6 +441,7 @@ export function registerMt5Routes(app, storage) {
     const id = requestId(); res.setHeader('X-Request-Id', id);
     try {
       const sessionId = getSessionId(req, res);
+      if (!sessionId) return res.status(401).json({ ok: false, error: 'Authentication required', code: 'UNAUTHORIZED' });
       const accountsRaw = await getStoredValue(sessionId, ACCOUNT_STORAGE_KEY);
       const accountsData = parseJson(accountsRaw) || {};
 
@@ -486,6 +490,7 @@ export function registerMt5Routes(app, storage) {
     const id = requestId(); res.setHeader('X-Request-Id', id);
     try {
       const sessionId = getSessionId(req, res);
+      if (!sessionId) return res.status(401).json({ ok: false, error: 'Authentication required', code: 'UNAUTHORIZED' });
       const accountId = requireAccountId(req.body?.accountId);
       const linkKey = key(LINK_PREFIX, accountId);
       const link = parseJson(await getStoredValue(sessionId, linkKey));

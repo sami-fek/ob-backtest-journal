@@ -82,7 +82,20 @@
     const eq = document.getElementById('chartEquityConsole')?.closest('.glass-card');
     if (eq) eq.classList.add('jp-removed');
     const disc = document.getElementById('statCleanTrades')?.closest('.glass-card');
-    if (disc) disc.classList.add('jp-discipline');
+    if (disc) {
+      disc.classList.add('jp-discipline');
+      // Its button used to reopen the Journal itself; it now jumps to the review queue.
+      const btn = disc.querySelector(':scope > button');
+      if (btn && !btn.dataset.jpWired) {
+        btn.dataset.jpWired = '1';
+        btn.removeAttribute('onclick');
+        btn.innerHTML = 'Review open trades <i class="fa-solid fa-arrow-up text-[10px] ml-1" aria-hidden="true"></i>';
+        btn.addEventListener('click', () => {
+          const q = document.getElementById('jpQueue');
+          if (q) { q.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); q.querySelector('[data-open], .jp-q-more')?.focus({ preventScroll: true }); }
+        });
+      }
+    }
     const filters = document.getElementById('journalSearch')?.closest('.glass-card');
     if (filters) filters.classList.add('jp-filters');
     const table = document.getElementById('journalTableBody')?.closest('.glass-card');
