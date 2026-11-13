@@ -82,7 +82,7 @@ html[data-theme] .journal-analytics-account-menu button[data-account-id].text-bl
    toolbar → sample warning → Overview → Over time → Where → Discipline → Strategies */
 #pageAnalytics.ap-v2:not(.hidden) { display: flex !important; flex-direction: column; gap: var(--ds-gap); }
 #pageAnalytics.ap-v2 > * { margin: 0 !important; min-width: 0; }
-#pageAnalytics.ap-v2 > #ob-analytics-extra-section { display: contents !important; }
+#pageAnalytics.ap-v2:not(.ob-sub-behavior) > #ob-analytics-extra-section { display: contents !important; }
 #pageAnalytics.ap-v2 > #ob-analytics-subtabs { order: 0; }
 #pageAnalytics.ap-v2 > .journal-analytics-mode-menu { order: 1; }
 #pageAnalytics.ap-v2 > .journal-analytics-account-menu { order: 2; }
