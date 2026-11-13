@@ -1051,10 +1051,30 @@
 
     window.onload = async function() {
       await loadState();
+      ensureTimezoneSaved(); // not awaited: the page renders meanwhile
       initDateInputs();
       initCharts();
       renderAll();
     };
+
+    // Timezone default: when the signed-in user has no saved timezone, save the
+    // device's zone once, so the server (daily limit) and the browser agree on
+    // "today". Only acts on a definite server answer (200 or 404): a failed or
+    // signed-out request never writes. A saved timezone is never overwritten.
+    async function ensureTimezoneSaved() {
+      try {
+        const core = window.obTimeCore;
+        const device = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        if (!core || !core.validTz(device)) return;
+        const res = await fetch('/api/storage/' + encodeURIComponent(SETTINGS_KEY), { credentials: 'same-origin', cache: 'no-store' });
+        if (!(res.ok || res.status === 404)) return;
+        let saved = {};
+        if (res.ok) { try { saved = JSON.parse((await res.json()).value || '{}') || {}; } catch (_) { return; } }
+        if (core.validTz(saved.timezone)) return;
+        settingsExtra.timezone = device;
+        await saveSettings();
+      } catch (_) {}
+    }
 
     window.addEventListener('pagehide', () => {
       try {
