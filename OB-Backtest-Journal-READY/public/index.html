@@ -536,7 +536,7 @@
           <span class="text-xs text-slate-400">Click any row to open full trade inspection drawer</span>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse text-xs">
+          <table class="w-full text-left border-collapse text-xs ob-card-table ob-card-table-journal">
             <thead>
               <tr class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider">
                 <th class="py-3.5 px-4">Date</th><th class="py-3.5 px-4">Pair</th><th class="py-3.5 px-4">Timeframe</th><th class="py-3.5 px-4">Regime</th><th class="py-3.5 px-4">Session</th><th class="py-3.5 px-4">Strategy Model</th><th class="py-3.5 px-4">Direction</th><th class="py-3.5 px-4">Result</th><th class="py-3.5 px-4 text-right">R-Multiple</th><th class="py-3.5 px-4 text-center">Checklist Confluence</th><th class="py-3.5 px-4 text-center">Inspect</th>
@@ -583,8 +583,10 @@
         </div>
       </div>
 
-      <div class="glass-card p-6 bg-gradient-to-r from-blue-900 to-slate-900 text-white rounded-2xl space-y-3">
-        <div class="flex items-center gap-2"><i class="fa-solid fa-lightbulb text-amber-400 text-lg"></i><h3 class="font-bold text-sm">System Discipline & Model Edge Insights</h3></div>
+      <div id="analyticsInsightCard" class="glass-card p-6 bg-gradient-to-r from-blue-900 to-slate-900 text-white rounded-2xl space-y-3" data-ob-collapse>
+        <div class="flex items-center gap-2"><i class="fa-solid fa-lightbulb text-amber-400 text-lg"></i><h3 class="font-bold text-sm">System Discipline & Model Edge Insights</h3>
+          <!-- Phones: the insights collapse behind this toggle (mobile.js / mobile.css); hidden on wider screens -->
+          <button type="button" class="ob-collapse-toggle" aria-expanded="true" aria-controls="analyticsInsightText" aria-label="Show or hide insights"><i class="fa-solid fa-chevron-down"></i></button></div>
         <p class="text-xs text-blue-100 leading-relaxed max-w-3xl" id="analyticsInsightText">Log trades to generate evidence-based insights by strategy, timeframe, and regime. Small samples are flagged rather than treated as a proven edge.</p>
       </div>
     </section>

@@ -9,6 +9,8 @@
  * 3. On-screen keyboard: track the visual viewport (--vvh / --vvt and
  *    body.ob-kb-open) and keep the focused field in view, so the trade drawer's
  *    sticky bar and the keyboard never hide what you are typing.
+ * 4. Collapsible sections ([data-ob-collapse] with a .ob-collapse-toggle):
+ *    collapsed by default on phones, always open on wider screens.
  */
 (() => {
   'use strict';
@@ -82,9 +84,26 @@
     update();
   }
 
+  // ── 4. Collapsible sections ───────────────────────────────────────────────
+  function wireCollapsibles() {
+    document.querySelectorAll('[data-ob-collapse]').forEach(card => {
+      const btn = card.querySelector('.ob-collapse-toggle');
+      if (!btn || btn.__obWired) return;
+      btn.__obWired = true;
+      const set = open => { card.classList.toggle('ob-collapsed', !open); btn.setAttribute('aria-expanded', String(open)); };
+      set(!phone());
+      // The whole header row toggles (bigger target than the chevron alone).
+      const head = btn.parentElement;
+      head.classList.add('ob-collapse-head');
+      head.addEventListener('click', () => { if (phone()) set(card.classList.contains('ob-collapsed')); });
+      window.matchMedia('(max-width: 767px)').addEventListener('change', e => set(!e.matches));
+    });
+  }
+
   function init() {
     watchNav();
     trackKeyboard();
+    wireCollapsibles();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

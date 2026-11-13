@@ -393,3 +393,79 @@ body.ob-kb-open #tradeDrawer { top: var(--vvt, 0px) !important; bottom: auto !im
   html body #tradeDrawer .ob-feeling { min-width: 64px; }
   html body #tradeDrawer .ob-feeling span:last-child { font-size: 11.5px; }
 }
+
+/* ── 5. Journal + Analytics (Performance and Behavior) ────────────────────── */
+@media (max-width: 1023px), (pointer: coarse) {
+  /* Mode switch + account chips (journal-analytics-ui.js), equity view toggle */
+  #pageJournal button[data-mode], #pageAnalytics button[data-mode],
+  #pageJournal button[data-account-id], #pageAnalytics button[data-account-id],
+  #pageJournal button[data-eq-view],
+  #pageJournal select, #pageJournal #journalSearch,
+  #pageJournal button[onclick^="resetJournalFilters"],
+  #pageJournal button[onclick^="switchTab"] { min-height: var(--tap) !important; }
+  #pageJournal button[data-eq-view] { padding-left: 12px !important; padding-right: 12px !important; }
+  /* Analytics filter bar */
+  #ob-analytics-filter-bar select, #ob-analytics-filter-bar input, #ob-analytics-filter-bar .af-reset { min-height: var(--tap) !important; height: var(--tap) !important; }
+  /* Performance / Behavior sub-tabs and the Behavior date pills */
+  #ob-analytics-subtabs [role=tab] { min-height: var(--tap) !important; }
+  #ob-behavior .pc-pills button { min-height: var(--tap) !important; min-width: var(--tap); }
+}
+@media (max-width: 767px) {
+  /* Analytics filters: two per row instead of seven full-width rows */
+  #ob-analytics-filter-bar { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 10px !important; }
+  #ob-analytics-filter-bar .af-group { width: auto !important; min-width: 0; }
+  #ob-analytics-filter-bar .af-group label { font-size: 10.5px; }
+  #ob-analytics-filter-bar select, #ob-analytics-filter-bar input { width: 100% !important; min-width: 0 !important; padding-left: 10px; padding-right: 6px; }
+  #ob-analytics-filter-bar .af-reset { grid-column: 1 / -1; width: 100% !important; }
+  /* Journal filters: search full width, selects two per row */
+  #pageJournal > .glass-card:first-child .flex-wrap,
+  #pageJournal .glass-card:has(#journalSearch) .flex-wrap { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: 100%; }
+  #pageJournal .glass-card:has(#journalSearch) .flex-wrap > * { width: 100% !important; min-width: 0; }
+  /* Journal table header text stacks */
+  #pageJournal .glass-card:has(#journalTableBody) > .border-b { flex-wrap: wrap; gap: 4px; }
+  /* Charts: a little shorter so the cards stay readable without scrolling forever */
+  #pageAnalytics .h-48 { height: 200px !important; }
+
+  /* Insights card collapses behind its header (mobile.js) */
+  #analyticsInsightCard .ob-collapse-head { cursor: pointer; min-height: var(--tap); margin: -8px 0; }
+  #analyticsInsightCard .ob-collapse-toggle {
+    display: inline-grid; place-items: center; margin-left: auto; width: var(--tap); height: var(--tap); flex-shrink: 0;
+    border: 0; border-radius: 999px; background: rgba(255,255,255,.08); color: inherit; transition: transform .15s;
+  }
+  #analyticsInsightCard:not(.ob-collapsed) .ob-collapse-toggle i { transform: rotate(180deg); }
+  #analyticsInsightCard.ob-collapsed > :not(.ob-collapse-head) { display: none !important; }
+  #analyticsInsightCard { padding: 16px !important; }
+
+  /* Journal table cards: pair · dir · R / date · tf · session · result / strategy · rule · Inspect */
+  table.ob-card-table-journal tbody > tr {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "pair  dir  .      r"
+      "date  tf   ses    res"
+      "strat rule rule   act";
+  }
+  table.ob-card-table-journal td[data-col="regime"] { display: none !important; }
+  table.ob-card-table-journal td[data-col="action"] button { padding: 0 14px !important; font-size: 12px !important; }
+}
+/* Collapse toggle is a phone-only control */
+@media (min-width: 768px) { .ob-collapse-toggle { display: none !important; } }
+
+/* Tables that scroll inside their card (Strategy Comparison, Psychology
+   Status): a soft edge shows there is more to the right. */
+@media (max-width: 1023px) {
+  #ob-strategy-compare .overflow-x-auto, #ob-behavior .pc-tw {
+    background:
+      linear-gradient(to right, var(--panel, #fff) 30%, transparent) left / 24px 100% no-repeat local,
+      linear-gradient(to left, var(--panel, #fff) 30%, transparent) right / 24px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.18), transparent) left / 10px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.18), transparent) right / 10px 100% no-repeat scroll;
+    overscroll-behavior-x: contain;
+  }
+  html[data-theme="dark"] #ob-strategy-compare .overflow-x-auto, html[data-theme="dark"] #ob-behavior .pc-tw {
+    background:
+      linear-gradient(to right, var(--panel, #0f0f0f) 30%, transparent) left / 24px 100% no-repeat local,
+      linear-gradient(to left, var(--panel, #0f0f0f) 30%, transparent) right / 24px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgba(255,255,255,.14), transparent) left / 10px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgba(255,255,255,.14), transparent) right / 10px 100% no-repeat scroll;
+  }
+}
