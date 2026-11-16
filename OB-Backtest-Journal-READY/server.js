@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import './public/time-prefs.js'; // globalThis.obTimeCore (timezone-aware calendar days)
 import { localStore, supabaseStore, extractEmbedded, hasEmbedded, collectGarbage, isShotId, parseDataUrl, refFor, MAX_SHOT_BYTES } from './shots-store.js';
-import { DOC_KEYS } from './relational-core.js';
+import { DOC_KEYS, TRADES_KEY as TRADES_DOC_KEY } from './relational-core.js';
 import { sqliteRelational, supabaseRelational } from './relational-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -142,6 +142,15 @@ async function kvGet(sid, key) {
   return rows?.[0]?.value ?? null;
 }
 
+// Whether a kv row exists, without reading its value.
+async function kvExists(sid, key) {
+  if (!sid) return false;
+  if (!useSupabase) return !!db.prepare('SELECT 1 FROM kv WHERE session_id = ? AND key = ?').get(sid, key);
+  const q = new URLSearchParams({ select: 'key', session_id: `eq.${sid}`, key: `eq.${key}`, limit: '1' });
+  const rows = await supabaseRequest(`kv?${q.toString()}`);
+  return Array.isArray(rows) && rows.length > 0;
+}
+
 async function kvSet(sid, key, value) {
   if (!sid) return;
   if (!useSupabase) {
@@ -198,7 +207,7 @@ async function relationalFor(uid) {
   try {
     if (await relationalTablesReady()) {
       if (await relational.isMigrated(uid)) on = true;
-      else if (await getUserById(uid) && (await Promise.all(DOC_KEYS.map(k => kvGet(uid, k)))).every(v => v === null)) {
+      else if (await getUserById(uid) && (await Promise.all(DOC_KEYS.map(k => kvExists(uid, k)))).every(v => !v)) {
         // a user with no kv data at all has nothing to migrate: start on the tables
         await relational.markMigrated(uid, 'new-user');
         on = true;
@@ -211,10 +220,14 @@ async function relationalFor(uid) {
 
 async function getStoredValue(sid, key) {
   if (DOC_KEYS.includes(key) && await relationalFor(sid)) {
+    // A migrated user is served from the tables only. The kv row is a write-only copy
+    // (for DATA_STORE=kv) and its content is never read here: it can be older than the
+    // tables (e.g. the 37 pre-migration trades with accountId null).
     const doc = await relational.loadDoc(sid, key);
-    // No rows: answer exactly as kv would. "Never saved" stays null (404) and
-    // "saved empty" stays [], because the kv copy written with every save tells them apart.
-    return doc === null || doc === '[]' ? kvGet(sid, key) : doc;
+    // No trade rows: "never saved" stays null (404) and "saved empty" stays [], as before.
+    // Only the copy's existence tells them apart, never its value.
+    if (key === TRADES_DOC_KEY && doc === '[]') return (await kvExists(sid, key)) ? '[]' : null;
+    return doc;
   }
   return kvGet(sid, key);
 }

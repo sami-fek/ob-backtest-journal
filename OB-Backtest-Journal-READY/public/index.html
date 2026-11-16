@@ -1267,7 +1267,7 @@
       } else {
         try { trades = JSON.parse(stored).map(normalizeTrade).filter(Boolean); } catch (e) { trades = []; }
       }
-      try { localStorage.setItem('my_journal_trades_v1', JSON.stringify(trades)); } catch (e) {}
+      try { const v = JSON.stringify(trades); localStorage.setItem('my_journal_trades_v1', v); localStorage.setItem(TRADES_KEY, v); } catch (e) {} // refresh the offline cache too, so a failed load never shows (and saves) an old list
 
       const rawSettings = await storageGet(SETTINGS_KEY);
       if (rawSettings) {

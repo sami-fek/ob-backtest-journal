@@ -148,6 +148,44 @@ test('an existing kv user stays on kv until migrate-kv has copied them; then the
   } finally { await srv.stop(); }
 });
 
+test('a migrated user is never served the kv copy, even when it is stale or the tables are empty', { skip }, async () => {
+  const srv = await startLocalServer({ DATA_RECHECK_MS: '0' });
+  const backups = fs.mkdtempSync(path.join(os.tmpdir(), 'myjournal-backups-'));
+  try {
+    const { c, id } = await register(srv, 'stale@test.local');
+    const { kvTrades, accounts } = writeBackups(backups, id);
+    let db = openTestDb(srv.dataDir);
+    db.prepare('INSERT INTO kv (session_id, key, value) VALUES (?,?,?)').run(id, 'ob-trades', JSON.stringify(kvTrades));
+    db.prepare('INSERT INTO kv (session_id, key, value) VALUES (?,?,?)').run(id, 'my_journal_accounts_v1', JSON.stringify(accounts));
+    db.close();
+    runScript(['--target', 'sqlite', '--db', srv.dataDir, '--backups', backups, '--user', id]);
+    const tables = valueOf(await c.call('GET', '/api/storage/ob-trades'));
+    assert.deepEqual(tables.map(t => t.accountId), ['backtest', 'demo-1', 'real-1']);
+
+    // kv holds an older copy (accountId null / a missing account): the tables answer
+    const stale = JSON.stringify([{ id: 'tr-stale-1', mode: 'Backtest', accountId: null }, { id: 'tr-stale-2', mode: 'Demo', accountId: 'demo-missing' }]);
+    const staleAccounts = JSON.stringify({ Demo: [{ id: 'demo-stale', name: 'Stale', balance: 1, startingBalance: 1 }] });
+    db = openTestDb(srv.dataDir);
+    db.prepare("UPDATE kv SET value = ? WHERE session_id = ? AND key = 'ob-trades'").run(stale, id);
+    db.prepare("UPDATE kv SET value = ? WHERE session_id = ? AND key = 'my_journal_accounts_v1'").run(staleAccounts, id);
+    db.close();
+    assert.deepEqual(valueOf(await c.call('GET', '/api/storage/ob-trades')), tables, 'tables, not the stale kv copy');
+    assert.deepEqual(Object.keys(valueOf(await c.call('GET', '/api/storage/my_journal_accounts_v1'))), ['Demo', 'Real', 'Backtest']);
+
+    // the tables are empty but the stale copy is still in kv: [] or 404, never the stale trades
+    db = openTestDb(srv.dataDir);
+    db.prepare('DELETE FROM trade_attachments WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM trades WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM accounts WHERE user_id = ?').run(id);
+    db.close();
+    assert.deepEqual(valueOf(await c.call('GET', '/api/storage/ob-trades')), [], 'saved empty: [] (kv only says a document exists)');
+    assert.equal((await c.call('GET', '/api/storage/my_journal_accounts_v1')).status, 404, 'no account rows: 404, not the stale kv accounts');
+    db = openTestDb(srv.dataDir);
+    assert.equal(db.prepare("SELECT value FROM kv WHERE session_id = ? AND key = 'ob-trades'").get(id).value, stale, 'the kv row is kept, not deleted');
+    db.close();
+  } finally { await srv.stop(); }
+});
+
 test('migrate-kv --target sql: guarded by the kv fingerprint, insert_missing only, refuses embedded images', { skip }, () => {
   const backups = fs.mkdtempSync(path.join(os.tmpdir(), 'myjournal-backups-'));
   const uid = 'u-sql-test';
