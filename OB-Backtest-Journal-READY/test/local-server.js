@@ -17,8 +17,8 @@ export function sqliteAvailable() {
   try { require('better-sqlite3')(':memory:').close(); return true; } catch { return false; }
 }
 
-export async function startLocalServer(extraEnv = {}) {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'myjournal-test-'));
+export async function startLocalServer(extraEnv = {}, { dataDir: reuseDir } = {}) {
+  const dataDir = reuseDir || fs.mkdtempSync(path.join(os.tmpdir(), 'myjournal-test-'));
   const port = 39000 + Math.floor(Math.random() * 900);
   const env = {
     ...process.env,
@@ -61,11 +61,11 @@ export async function startLocalServer(extraEnv = {}) {
     return { call, get cookie() { return cookie; }, set cookie(v) { cookie = v; } };
   }
 
-  async function stop() {
+  async function stop({ keepData = false } = {}) {
     child.kill();
     await new Promise(r => { if (child.exitCode !== null) r(); else child.on('exit', r); });
     await new Promise(r => setTimeout(r, 200));
-    fs.rmSync(dataDir, { recursive: true, force: true });
+    if (!keepData) fs.rmSync(dataDir, { recursive: true, force: true });
   }
 
   return { base, dataDir, client, stop, output: () => output, health };

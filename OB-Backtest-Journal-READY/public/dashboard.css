@@ -167,3 +167,7 @@ html .ob-jh-grid .ob-jh-today .ob-jh-day::after { content: ""; display: inline-b
   .db2-trade { gap: 10px; padding: 12px 8px; min-height: 60px; }
   .db2-side { width: 48px; padding: 4px 4px; }
 }
+
+/* migration flag on the equity card: unverified starting balance */
+.db2-unverified { margin-top: 10px; font-size: 12px; line-height: 1.45; color: var(--ds-warn); }
+.db2-unverified .ds-link { color: inherit; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: inherit; text-decoration: underline; }

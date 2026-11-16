@@ -113,6 +113,9 @@
 .ac-acc.active-acc { border-color: color-mix(in srgb, var(--blue) 55%, var(--border)); }
 .ac-acc-name { font-size: 13.5px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 7px; flex-wrap: wrap; overflow-wrap: anywhere; }
 .ac-acc-meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
+/* migration flag: starting balance equals the 100,000 default and may be a placeholder */
+.ac-unverified { margin-top: 6px; font-size: 11.5px; line-height: 1.45; color: var(--ds-warn, #b45309); }
+.ac-unverified .ac-link { color: inherit; text-decoration: underline; }
 .ac-acc-bal { font: 800 15px/1.2 'JetBrains Mono', monospace; color: var(--text); text-align: right; }
 .ac-acc-ret { font: 700 11px/1.2 'JetBrains Mono', monospace; text-align: right; margin-top: 2px; }
 .ac-acc-actions { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--border-subtle); }

@@ -7,6 +7,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import './public/time-prefs.js'; // globalThis.obTimeCore (timezone-aware calendar days)
 import { localStore, supabaseStore, extractEmbedded, hasEmbedded, collectGarbage, isShotId, parseDataUrl, refFor, MAX_SHOT_BYTES } from './shots-store.js';
+import { DOC_KEYS } from './relational-core.js';
+import { sqliteRelational, supabaseRelational } from './relational-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -126,8 +128,11 @@ async function supabaseRequest(pathname, options = {}) {
 }
 
 // ─── KV helpers ───────────────────────────────────────────────────────────────
+// The original kv store. Every key still lives here except the two documents that
+// moved to relational tables (see "Document store" below), and those are still
+// written here as a copy.
 
-async function getStoredValue(sid, key) {
+async function kvGet(sid, key) {
   if (!sid) return null;
   if (!useSupabase) {
     return db.prepare('SELECT value FROM kv WHERE session_id = ? AND key = ?').get(sid, key)?.value ?? null;
@@ -137,7 +142,7 @@ async function getStoredValue(sid, key) {
   return rows?.[0]?.value ?? null;
 }
 
-async function setStoredValue(sid, key, value) {
+async function kvSet(sid, key, value) {
   if (!sid) return;
   if (!useSupabase) {
     db.prepare(`INSERT INTO kv(session_id,key,value,updated_at)
@@ -154,7 +159,7 @@ async function setStoredValue(sid, key, value) {
   });
 }
 
-async function deleteStoredValue(sid, key) {
+async function kvDelete(sid, key) {
   if (!sid) return;
   if (!useSupabase) {
     db.prepare('DELETE FROM kv WHERE session_id = ? AND key = ?').run(sid, key);
@@ -162,6 +167,69 @@ async function deleteStoredValue(sid, key) {
   }
   const q = new URLSearchParams({ session_id: `eq.${sid}`, key: `eq.${key}` });
   await supabaseRequest(`kv?${q.toString()}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+}
+
+// ─── Document store: relational tables, kv as the fallback (Part 1) ───────────
+// ob-trades and my_journal_accounts_v1 are read from and written to the relational
+// tables (migrations/001_relational.sql) for every user listed in
+// journal_migrated_users. Everyone else, and everything when DATA_STORE=kv, uses kv
+// exactly as before. Writes also go to kv as a copy (copy, don't move), so setting
+// DATA_STORE=kv is a fallback that loses nothing.
+const DATA_STORE = String(process.env.DATA_STORE || 'relational').toLowerCase() === 'kv' ? 'kv' : 'relational';
+const relational = useSupabase ? supabaseRelational(supabaseRequest) : sqliteRelational(db);
+const DATA_RECHECK_MS = Number(process.env.DATA_RECHECK_MS ?? 60_000); // how soon "not yet" is checked again
+const relState = { tables: null, checkedAt: 0, reason: '' };
+async function relationalTablesReady() {
+  if (relState.tables === true) return true;
+  if (relState.tables === false && Date.now() - relState.checkedAt < DATA_RECHECK_MS) return false;
+  relState.checkedAt = Date.now();
+  try { relState.tables = await relational.probe(); relState.reason = relState.tables ? '' : 'migration 001_relational has not been applied'; }
+  catch (err) { relState.tables = false; relState.reason = String(err && err.message || err).slice(0, 200); }
+  if (!relState.tables) console.warn(`[data] relational tables not available (${relState.reason}); trades and accounts stay in kv.`);
+  return relState.tables;
+}
+if (DATA_STORE === 'relational') relationalTablesReady(); // startup check (non-blocking; logged when not ready)
+const relUsers = new Map(); // uid → { on, at }: "off" is re-checked after a minute
+async function relationalFor(uid) {
+  if (DATA_STORE === 'kv' || !uid || String(uid).startsWith('__')) return false;
+  const cached = relUsers.get(uid);
+  if (cached && (cached.on || Date.now() - cached.at < DATA_RECHECK_MS)) return cached.on;
+  let on = false;
+  try {
+    if (await relationalTablesReady()) {
+      if (await relational.isMigrated(uid)) on = true;
+      else if (await getUserById(uid) && (await Promise.all(DOC_KEYS.map(k => kvGet(uid, k)))).every(v => v === null)) {
+        // a user with no kv data at all has nothing to migrate: start on the tables
+        await relational.markMigrated(uid, 'new-user');
+        on = true;
+      }
+    }
+  } catch (err) { console.warn('[data] could not check the data store for a user:', err.message); on = false; }
+  relUsers.set(uid, { on, at: Date.now() });
+  return on;
+}
+
+async function getStoredValue(sid, key) {
+  if (DOC_KEYS.includes(key) && await relationalFor(sid)) {
+    const doc = await relational.loadDoc(sid, key);
+    // No rows: answer exactly as kv would. "Never saved" stays null (404) and
+    // "saved empty" stays [], because the kv copy written with every save tells them apart.
+    return doc === null || doc === '[]' ? kvGet(sid, key) : doc;
+  }
+  return kvGet(sid, key);
+}
+async function setStoredValue(sid, key, value) {
+  if (DOC_KEYS.includes(key) && await relationalFor(sid)) {
+    await relational.saveDoc(sid, key, value, 'replace');
+    try { await kvSet(sid, key, value); } // the fallback copy
+    catch (err) { console.warn(`[data] kv copy of ${key} was not written (the relational save worked):`, err.message); }
+    return;
+  }
+  return kvSet(sid, key, value);
+}
+async function deleteStoredValue(sid, key) {
+  if (DOC_KEYS.includes(key) && await relationalFor(sid)) await relational.deleteDoc(sid, key);
+  return kvDelete(sid, key);
 }
 
 // ─── User helpers ──────────────────────────────────────────────────────────────
@@ -272,6 +340,8 @@ async function setUserPasswordHash(id, passwordHash) {
 const MT5_TOKEN_SESSION = '__mt5_bridge_tokens_v2';
 async function deleteUserAndData(id) {
   if (!id || id === MT5_TOKEN_SESSION) throw new Error('invalid user id');
+  if (!useSupabase) await relational.deleteUser(id); // Postgres: the rows follow the users row (on delete cascade)
+  relUsers.delete(id);
   try { await shots.removeAll(id); } catch (err) { console.warn('[shots] could not delete screenshots for a deleted account:', err.message); }
   const ownsToken = value => { try { return JSON.parse(value)?.sessionId === id; } catch { return false; } };
   if (!useSupabase) {
@@ -871,6 +941,8 @@ app.get('/api/health', (req, res) => {
     ok: true,
     storage: useSupabase ? 'supabase' : 'sqlite',
     screenshots: shotStoreName(),
+    // where trades and accounts live: 'relational' (tables ready) or 'kv'
+    dataStore: DATA_STORE === 'kv' ? 'kv (DATA_STORE=kv)' : relState.tables === false ? 'kv (relational tables not ready)' : 'relational',
     auth: 'enabled',
     ai: {
       groq:     Boolean(process.env.GROQ_API_KEY),

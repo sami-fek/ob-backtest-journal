@@ -122,9 +122,12 @@
   const activeFilters = () => Object.values(filter).filter(Boolean).length;
 
   // ── sections ───────────────────────────────────────────────────────────────
+  const UNVERIFIED_MSG = 'Unverified starting balance - confirm before trusting the risk numbers';
+  const unverified = acc => !!(acc && acc.needsVerification === true);
   function nowSection(all, eq) {
     const m = mode();
     const acc = activeAccount();
+    const calm = t => (t === 'pos' && unverified(acc) ? '' : t); // no green while the balance is unverified
     const st = S().streak(all);
     const d = disciplineState();
     // Discipline (today): the engine's numbers. Backtest has no limits.
@@ -137,10 +140,10 @@
       const lossesLeft = Math.max(0, d.hardStopThreshold - d.consecutiveLosses);
       const tradesLeft = Math.max(0, d.dailyMax - d.todayCount);
       disc = meterRow('Losses in a row', `${d.consecutiveLosses} / ${d.hardStopThreshold}`, (d.consecutiveLosses / (d.hardStopThreshold || 1)) * 100,
-        lossesLeft === 0 ? 'neg' : lossesLeft === 1 ? 'warn' : 'pos',
+        calm(lossesLeft === 0 ? 'neg' : lossesLeft === 1 ? 'warn' : 'pos'),
         lossesLeft === 0 ? '<span class="ds-neg">Hard stop reached — stop trading.</span>' : `${plural(lossesLeft, 'more loss')} before your hard stop`.replace('more losss', 'more losses'))
         + meterRow('Trades today', `${d.todayCount} / ${d.dailyMax}`, (d.todayCount / (d.dailyMax || 1)) * 100,
-          tradesLeft === 0 ? 'neg' : tradesLeft === 1 ? 'warn' : 'pos',
+          calm(tradesLeft === 0 ? 'neg' : tradesLeft === 1 ? 'warn' : 'pos'),
           tradesLeft === 0 ? '<span class="ds-neg">Daily limit reached.</span>' : `${plural(tradesLeft, 'trade')} left today`);
     }
     const dots = st.recent.map(r => `<i class="db2-dot ${r === 'Win' ? 'w' : r === 'Loss' ? 'l' : 'b'}" title="${r}"></i>`).join('');
@@ -154,6 +157,7 @@
           <div class="ds-big db2-xl">${money(eq.balance, false)}</div>
           <div class="ds-sub"><span class="${cls(eq.pct)}">${eq.pct >= 0 ? '+' : ''}${eq.pct.toFixed(2)}%</span> on ${money(eq.base, false)} · all time${eq.cash ? ` · cash ${money(eq.cash)}` : ''}</div>
           ${sparkline(all)}
+          ${unverified(acc) ? `<div class="db2-unverified" role="note"><i class="fa-solid fa-triangle-exclamation"></i> ${UNVERIFIED_MSG}. <button type="button" class="ds-link" data-db-confirm-acc>Confirm it</button></div>` : ''}
         </div>
         <div class="ds-card db2-disc ds-span-4 ds-t-6" id="dbDiscipline">
           <div class="db2-stat-top"><span class="ds-label">Discipline</span><span class="ds-period">today</span></div>
@@ -192,7 +196,7 @@
       cards.push(`<div class="ds-card db2-target">
         <div class="db2-stat-top"><span class="ds-label">${label}</span><span class="ds-period">${period}</span></div>
         <div class="db2-target-val"><b class="ds-num ${used > 0 ? 'ds-neg' : ''}">${money(used, false)}</b><span class="ds-sub"> of ${money(limit, false)} used</span></div>
-        <div class="ds-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="${esc(label)} used"><i class="${usedTone(pct)}" style="width:${pct}%"></i></div>
+        <div class="ds-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="${esc(label)} used"><i class="${unverified(acc) && usedTone(pct) === 'pos' ? '' : usedTone(pct)}" style="width:${pct}%"></i></div>
         <div class="ds-sub db2-cap">${pct >= 100 ? '<span class="ds-neg">Limit reached</span>' : `${money(limit - used, false)} room left · ${what}`}</div></div>`);
     };
     lim('Max drawdown', 'now', S().currentDrawdown(all, pnlFor), acc.maxDrawdown, 'from peak');
@@ -417,6 +421,7 @@
   }
 
   function bind(root, all) {
+    root.querySelector('[data-db-confirm-acc]')?.addEventListener('click', () => { if (typeof window.openAccountCenter === 'function') window.openAccountCenter('accounts'); });
     root.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
       if (b.dataset.mode !== mode() && typeof window.switchMode === 'function') { page = 0; discipline = null; window.switchMode(b.dataset.mode); }
     }));

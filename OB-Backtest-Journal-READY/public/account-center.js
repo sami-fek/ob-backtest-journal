@@ -451,6 +451,7 @@
               <div class="min-w-0">
                 <div class="ac-acc-name">${esc(a.name)} ${typeBadge(a.type)} <span class="ac-badge status-${a.status}">${a.status === 'archived' ? 'Archived' : 'Active'}</span>${inUse ? '<span class="ac-badge inuse">In use</span>' : ''}</div>
                 <div class="ac-acc-meta">${meta}</div>
+                ${a.needsVerification === true ? `<div class="ac-unverified" role="note"><i class="fa-solid fa-triangle-exclamation"></i> Unverified starting balance - confirm before trusting the risk numbers. <button type="button" class="ac-link" data-act="verify">Confirm balance</button></div>` : ''}
               </div>
               <div>
                 <div class="ac-acc-bal">${money(b.balance)}</div>
@@ -501,6 +502,7 @@
         else if (act === 'delete') openDelete(a);
         else if (act === 'use') { localStorage.setItem(`my_journal_active_account_${a.type}_v1`, a.id); window.dispatchEvent(new CustomEvent('wallet-accounts-updated')); refreshApp(); toast(`${a.name} is now used for ${a.type}.`); rerender(); }
         else if (act === 'cash') { state.settingsAccId = a.id; show('settings'); }
+        else if (act === 'verify') openVerify(a);
       });
     });
     body.querySelectorAll('[data-move]').forEach(btn => btn.addEventListener('click', async () => {
@@ -597,6 +599,18 @@
       m.close();
       refreshApp();
       rerender();
+    });
+  }
+
+  // Clears the "unverified starting balance" flag the migration set on accounts whose
+  // balance equals the 100,000 default. A deliberate step: the risk numbers depend on it.
+  function openVerify(a) {
+    const m = modal(`${dialogHead('Confirm the starting balance')}
+      <div class="ac-dialog-body"><p class="ac-hint" style="margin:0">Is <b>${esc(money(a.startingBalance, false))}</b> the real starting balance of <b>${esc(a.name)}</b>? Drawdown and loss limits are measured from it. Check it against your broker statement. If it is wrong, cancel and use Edit to change it first.</p></div>
+      <div class="ac-dialog-foot"><button type="button" class="ac-btn" data-ac-close>Cancel</button><button type="button" class="ac-btn ac-btn-primary" id="avOk">Yes, it is correct</button></div>`, { sm: true });
+    $('#avOk', m.el).addEventListener('click', () => {
+      patchAccount(a.id, { needsVerification: false });
+      m.close(); refreshApp(); toast('Starting balance confirmed.'); rerender();
     });
   }
 
