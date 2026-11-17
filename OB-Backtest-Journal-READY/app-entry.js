@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import { registerMt5Routes } from './mt5-backend.js';
+import { rawSessionCookie, verifySession } from './session-cookie.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,13 +33,13 @@ const internalBase = 'http://127.0.0.1:' + internalPort;
 app.use(express.json({ limit: '12mb' }));
 
 // ── Auth-aware session ID ──────────────────────────────────────────────────────
-// After the multi-user auth system was added, ob_session now holds a real user
-// UUID set by /api/auth/login or /api/auth/register (in server.js).
-// We NO LONGER mint anonymous UUIDs here — if there is no valid session cookie
-// the caller is unauthenticated and the MT5 route will correctly reject them.
+// ob_session holds a signed session set by server.js at sign-in (session-cookie.js).
+// The MT5 routes get it back only when the signature is valid; it is then passed on as
+// the cookie of their storage calls to server.js. Without a valid one the caller is
+// unauthenticated and the MT5 route rejects them.
 function getSessionId(req, res) {
-  const match = req.headers.cookie?.match(/(?:^|;\s*)ob_session=([^;]+)/);
-  return match?.[1] ? decodeURIComponent(match[1]) : '';
+  const raw = rawSessionCookie(req);
+  return raw && verifySession(raw) ? raw : '';
 }
 
 // ── Internal storage proxy ─────────────────────────────────────────────────────

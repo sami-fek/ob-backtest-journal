@@ -51,7 +51,9 @@ Supabase provides these to every Edge Function itself; do not set them: `SUPABAS
 | `GOOGLE_CLIENT_ID` | the same value Render has | No (a public OAuth client id). Only if Google sign-in is used. |
 | `NODE_VERSION` | `20` | No |
 
-**Render** keeps the variables it already has (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `GOOGLE_CLIENT_ID`). Nothing new.
+**Render** keeps the variables it already has (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `GOOGLE_CLIENT_ID`).
+- **Sign-in cookies:** the cookie is signed with a secret derived from `SUPABASE_SERVICE_ROLE_KEY`, so nothing needs to be added.
+- **Optional, `SESSION_SECRET`:** a random string of 32+ characters, used instead if set. Changing it, or rotating the service role key without it, signs everyone out.
 
 **EA keys** are made in the app (Part 6), one per MT5 account, and pasted into the EA's inputs. Only their SHA-256 hash is stored (table `ea_keys`).
 

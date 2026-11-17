@@ -4,6 +4,7 @@
 // returns false and the calling tests skip themselves.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -33,11 +34,17 @@ function freePort() {
 export async function startLocalServer(extraEnv = {}, { dataDir: reuseDir } = {}) {
   const dataDir = reuseDir || fs.mkdtempSync(path.join(os.tmpdir(), 'myjournal-test-'));
   const port = await freePort();
+  // each data folder has its own session secret (session-cookie.js); a restart on the same
+  // folder keeps it, as production keeps its secret, so sessions survive the restart
+  const secretFile = path.join(dataDir, '.test-session-secret');
+  let sessionSecret = extraEnv.SESSION_SECRET || (fs.existsSync(secretFile) ? fs.readFileSync(secretFile, 'utf8') : '');
+  if (!sessionSecret) { sessionSecret = crypto.randomBytes(32).toString('base64url'); fs.writeFileSync(secretFile, sessionSecret); }
   const env = {
     ...process.env,
     SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '',
     GROQ_API_KEY: '', GEMINI_API_KEY: '', OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '',
     GOOGLE_CLIENT_ID: '',
+    SESSION_SECRET: sessionSecret,
     ...extraEnv,
     DATA_DIR: dataDir, PORT: String(port), NODE_ENV: 'test'
   };
@@ -83,7 +90,10 @@ export async function startLocalServer(extraEnv = {}, { dataDir: reuseDir } = {}
     if (!keepData) fs.rmSync(dataDir, { recursive: true, force: true });
   }
 
-  return { base, dataDir, client, stop, output: () => output, health };
+  /** A valid signed session cookie for a user id (for users written straight into the database). */
+  const cookieFor = userId => `ob_session=${encodeURIComponent(`${userId}.${crypto.createHmac('sha256', sessionSecret).update(`v1:${userId}`).digest('base64url')}`)}`;
+
+  return { base, dataDir, client, stop, output: () => output, health, cookieFor };
 }
 
 export function openTestDb(dataDir) {

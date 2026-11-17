@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import './public/time-prefs.js'; // globalThis.obTimeCore (timezone-aware calendar days)
 import './public/rule-presets.js'; // globalThis.obRules: presets, daily floor, account state (Parts 2-3)
 import { localStore, supabaseStore, extractEmbedded, hasEmbedded, collectGarbage, isShotId, parseDataUrl, refFor, MAX_SHOT_BYTES } from './shots-store.js';
+import { COOKIE_NAME, signSession, sessionUserId } from './session-cookie.js';
 import { DOC_KEYS, TRADES_KEY as TRADES_DOC_KEY, ACCOUNTS_KEY as ACCOUNTS_DOC_KEY, idTimestamp, stripSecrets, findSecrets } from './relational-core.js';
 import { sqliteRelational, supabaseRelational } from './relational-store.js';
 
@@ -18,18 +19,18 @@ app.use(express.json({ limit: '12mb' }));
 
 // ─── Cookie helpers ────────────────────────────────────────────────────────────
 
-const COOKIE_NAME = 'ob_session';
+// The cookie is signed (session-cookie.js): a bare or forged user id is not a session.
 const COOKIE_OPTS = `; Path=/; HttpOnly; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}; Max-Age=31536000`;
 
 function setSessionCookie(res, userId) {
-  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${encodeURIComponent(userId)}${COOKIE_OPTS}`);
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${encodeURIComponent(signSession(userId))}${COOKIE_OPTS}`);
 }
 function clearSessionCookie(res) {
   res.setHeader('Set-Cookie', `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 }
+/** The signed-in user id, or null for no cookie, an unsigned (old) cookie, or a forged one. */
 function readCookieUserId(req) {
-  const match = req.headers.cookie?.match(/(?:^|;\s*)ob_session=([^;]+)/);
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
+  return sessionUserId(req);
 }
 
 // Kept for compatibility: MT5 gateway (app-entry.js) and other callers

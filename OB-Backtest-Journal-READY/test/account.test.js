@@ -62,7 +62,7 @@ test('change-password: session required, current password checked, Google-only c
       .run('11111111-1111-4111-8111-111111111111', 'g@test.local', null, 'sub-g', new Date().toISOString());
     db.close();
     const g = srv.client();
-    g.cookie = 'ob_session=11111111-1111-4111-8111-111111111111';
+    g.cookie = srv.cookieFor('11111111-1111-4111-8111-111111111111'); // a signed session for a user written straight into the database
     r = await g.call('GET', '/api/auth/me');
     assert.equal(r.body.user.hasPassword, false);
     assert.equal(r.body.user.hasGoogle, true);
@@ -145,7 +145,7 @@ test('delete account: confirm + password required, deletes only that user\'s dat
 
     // The old cookie no longer works; the email can register again (fresh, empty)
     const stale = srv.client();
-    stale.cookie = `ob_session=${aId}`;
+    stale.cookie = srv.cookieFor(aId); // a valid signature for the deleted user: still refused
     r = await stale.call('GET', '/api/auth/me');
     assert.equal(r.status, 401);
     r = await srv.client().call('POST', '/api/auth/login', { email: 'a@test.local', password: 'password123' });
@@ -162,7 +162,7 @@ test('delete account: confirm + password required, deletes only that user\'s dat
       .run('22222222-2222-4222-8222-222222222222', 'g2@test.local', null, 'sub-g2', new Date().toISOString());
     db3.close();
     const g = srv.client();
-    g.cookie = 'ob_session=22222222-2222-4222-8222-222222222222';
+    g.cookie = srv.cookieFor('22222222-2222-4222-8222-222222222222');
     r = await g.call('DELETE', '/api/auth/account', { confirm: 'DELETE' });
     assert.equal(r.status, 200, r.text);
     assert.ok(!/password123|wrongpass1/.test(srv.output()), 'no password in logs');
