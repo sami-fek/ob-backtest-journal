@@ -297,6 +297,32 @@
     };
   }
 
+  /** Trades of an account as the app scopes them: every Backtest trade belongs to the Backtest account. */
+  function accountTrades(type, account, trades) {
+    return (Array.isArray(trades) ? trades : []).filter(t => t && t.mode === type
+      && (type === 'Backtest' || (account && String(t.accountId) === String(account.id))));
+  }
+
+  /**
+   * Accounts whose current run is breached but not yet recorded as BLOWN.
+   * accountsDoc: { Real: [...], Funded: [...], ... }; ctx: { riskPct, initialCapital }.
+   * Returns [{ type, id, blown }], blown being the record to store on the account.
+   * The server (server.js checkRules) and the risk-check Edge Function both use this.
+   */
+  function newBreaches(accountsDoc, trades, ctx, atIso) {
+    const out = [];
+    const c = ctx || {};
+    for (const [type, list] of Object.entries(accountsDoc || {})) {
+      if (!Array.isArray(list)) continue;
+      for (const acc of list) {
+        if (!acc || typeof acc !== 'object' || acc.blown || !rulesFor(acc)) continue;
+        const s = accountState(acc, accountTrades(type, acc, trades), { pnlFor: t => pnlOf(t, acc, c) });
+        if (s.state === 'blown' && s.breach) out.push({ type, id: String(acc.id), blown: { ...s.breach, runNumber: s.runNumber, at: atIso || new Date().toISOString() } });
+      }
+    }
+    return out;
+  }
+
   /** "Max drawdown reached: down $1,000 … (10%), on 2026-11-16". money(v) / date(iso) format. */
   function blownReason(blown, money, date) {
     if (!blown) return '';
@@ -361,7 +387,7 @@
     PRESETS, PRESET_IDS, BASES, FORMULAS, EA_BLOCKED_MSG, EQUITY_MSG,
     presetById, validResetTz, checkCustom, rulesFor, dailyFloor, drawdownLevels,
     dayOf, tradeDay, dailyStatus, formulaText, eaAllowed, timezoneChoices, tzLabel,
-    pnlOf, inRun, accountState, blownReason, blocksManualEntry,
+    pnlOf, inRun, accountState, blownReason, blocksManualEntry, accountTrades, newBreaches,
     BLOWN_WORD: 'BLOWN',
   };
 })(typeof window !== 'undefined' ? window : globalThis);

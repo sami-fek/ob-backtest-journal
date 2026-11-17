@@ -16,6 +16,15 @@ Run after 001. Creates `rule_overrides`: one row each time you type BLOWN to log
 - **Until it has run:** an override is refused with a message saying so, because nothing is let through without its record. Runs ("Start new run") use `account_runs` from 001 and work without it.
 - **Safe to run twice.** The undo is at the top of the file.
 
+## 004_edge_functions.sql: tables for the Edge Functions (Part 4)
+
+Run after 001 (and 003). Creates three tables the Supabase Edge Functions use (DEPLOY.md):
+- **`ea_keys`:** one row per MT5 EA key. Only the key's SHA-256 hash is stored. `mt5-ingest` finds the account from it.
+- **`news_fetches`:** one row per `fetch-news` attempt. It limits feed calls to one per 25 minutes, and it is how the dashboard knows the news is stale.
+- **`function_errors`:** errors the functions hit. Supabase Free keeps function logs for one day only.
+- **Row level security:** on, with no policies, like 001.
+- **Safe to run twice.** The undo is at the top of the file.
+
 ## Copy your journal: scripts/migrate-kv.mjs
 
 Copies one user's trades and accounts from kv into the tables. kv is not changed, and nothing is deleted.

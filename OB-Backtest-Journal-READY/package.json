@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node app-entry.js",
-    "test": "node --test test/"
+    "test": "node --test test/",
+    "build:static": "node scripts/build-static.mjs",
+    "sync:edge": "node scripts/sync-edge-shared.mjs"
   },
   "engines": {
     "node": ">=20"

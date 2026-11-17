@@ -1,0 +1,15 @@
+# Supabase CLI settings for MY Journal's Edge Functions (Part 4). See DEPLOY.md.
+# The project ref is given on the command line (supabase link --project-ref ...).
+project_id = "ob-journal"
+
+# None of the callers can send a Supabase JWT: the EA sends its EA key (x-ea-key) and the
+# cron sends CRON_SECRET (x-cron-secret). Each function checks its own header and refuses
+# anything else, so the gateway's JWT check is turned off for them.
+[functions.fetch-news]
+verify_jwt = false
+
+[functions.mt5-ingest]
+verify_jwt = false
+
+[functions.risk-check]
+verify_jwt = false

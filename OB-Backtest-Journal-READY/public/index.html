@@ -1123,20 +1123,24 @@
       } catch (e) { console.warn('Server storage unavailable; using localStorage fallback', e); }
       try { return localStorage.getItem(key); } catch (e) { return null; }
     }
+    const deletedTradeIds = new Set(); // trades deleted here: the server keeps any other MT5 trade it has
     async function storageSet(key, value) {
       try {
+        const deleted = key === TRADES_KEY ? [...deletedTradeIds] : [];
         const res = await fetch('/api/storage/' + encodeURIComponent(key), {
           method: 'PUT', credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ value })
+          body: JSON.stringify(deleted.length ? { value, deleted } : { value })
         });
         if (res.ok) {
           hasServerStorage = true;
+          deleted.forEach(id => deletedTradeIds.delete(id));
           // Trades: the server moves embedded screenshots to file storage and answers
           // with the slim record; keep its references so images are not sent again.
           if (key === TRADES_KEY) {
             const body = await res.json().catch(() => null);
             if (body && typeof body.value === 'string') { window.obShots.adoptRefs(trades, body.value); value = body.value; }
+            if (body && Array.isArray(body.kept) && body.kept.length) { trades = [...body.kept.filter(k => !trades.some(t => t.id === k.id)), ...trades]; setTimeout(renderAll, 0); } // MT5 trades the EA added since this page loaded
             if (body && body.shotStorage === 'embedded-fallback' && typeof value === 'string' && value.includes('data:image/')) window.obShots.fallbackNotice();
           }
           try { localStorage.setItem(key, value); } catch (e) {}
@@ -2905,6 +2909,7 @@
 
     function deleteTrade(id) {
       if (confirm('Delete this trade record permanently?')) {
+        deletedTradeIds.add(String(id));
         trades = trades.filter(t => t.id !== id);
         saveState();
         renderAll();

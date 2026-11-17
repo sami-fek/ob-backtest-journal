@@ -754,12 +754,16 @@ app.put('/api/storage/:key', async (req, res) => {
         if (out.failed) shotStorageFailed(new Error(`${out.failed} embedded screenshot(s) could not be moved`)); else if (out.moved) shotStorageWorked();
       } catch (err) { console.warn('[shots] extract on write failed:', err.message); }
     }
+    // The EA may have added MT5 trades (mt5-ingest) after this page loaded its list: a
+    // whole-list save keeps them unless the app says it deleted them (body.deleted).
+    const kept = keepMt5Trades(before, value, req.body.deleted);
+    value = kept.json;
     await setStoredValue(user.id, SHOT_TRADES_KEY, value);
     try { await shotCleanup(user.id, before, value); } catch (err) { console.warn('[shots] cleanup failed:', err.message); }
     // Every trade write (the app, imports, MT5 sync through the gateway) re-checks the rules.
     // Trades are never refused here: MT5 trades are always accepted.
     await checkRulesSafe(user.id);
-    res.json({ ok: true, ...(value !== req.body.value ? { value } : {}), ...(shotState.available ? {} : { shotStorage: 'embedded-fallback' }) });
+    res.json({ ok: true, ...(value !== req.body.value ? { value } : {}), ...(kept.kept.length ? { kept: kept.kept } : {}), ...(shotState.available ? {} : { shotStorage: 'embedded-fallback' }) });
   } catch (err) { console.error('Storage PUT failed:', err); res.status(500).json({ error: 'Storage write failed' }); }
 });
 
@@ -1044,6 +1048,47 @@ function keepRuleFields(prevJson, nextJson) {
   return changed ? JSON.stringify(next) : nextJson;
 }
 
+/**
+ * MT5 trades on a whole-list save of ob-trades (the app, an import, a stale page):
+ *  1. one trade per MT5 deal (account + ticket): a second copy is dropped and the stored id
+ *     wins, so a save never trips the tables' one-row-per-ticket rule (that error would make
+ *     every later save fail);
+ *  2. stored MT5 trades the list leaves out without the app having deleted them (deletedIds)
+ *     are put back at the top. The EA may have added them (mt5-ingest) after the page loaded,
+ *     and losing a real trade is worse than keeping one the app meant to drop.
+ * Returns { json, kept: [trades put back] }.
+ */
+function keepMt5Trades(prevJson, nextJson, deletedIds) {
+  const prev = parseJsonSafe(prevJson);
+  let next;
+  try { next = JSON.parse(nextJson); } catch { return { json: nextJson, kept: [] }; }
+  if (!Array.isArray(next)) return { json: nextJson, kept: [] };
+  const stored = Array.isArray(prev) ? prev : [];
+  const deal = t => (t && t.mt5Ticket != null && t.mt5Ticket !== '' ? `${t.accountId ?? ''}|${t.mt5Ticket}` : null);
+  const storedByDeal = new Map(stored.filter(deal).map(t => [deal(t), t]));
+  const nextIds = new Set(next.map(t => t && String(t.id)));
+  let changed = false;
+  const seen = new Set();
+  const list = [];
+  for (const t0 of next) {
+    let t = t0;
+    const d = deal(t);
+    if (d) {
+      if (seen.has(d)) { changed = true; continue; }
+      seen.add(d);
+      const s = storedByDeal.get(d);
+      if (s && String(s.id) !== String(t.id) && !nextIds.has(String(s.id))) { t = { ...t, id: s.id }; changed = true; }
+    }
+    list.push(t);
+  }
+  const deleted = new Set((Array.isArray(deletedIds) ? deletedIds : []).map(String));
+  const ids = new Set(list.map(t => t && String(t.id)));
+  const kept = stored.filter(t => t && t.source === 'mt5' && t.id != null && !ids.has(String(t.id)) && !deleted.has(String(t.id))
+    && !(deal(t) && seen.has(deal(t))));
+  if (!kept.length && !changed) return { json: nextJson, kept: [] };
+  return { json: JSON.stringify([...kept, ...list]), kept };
+}
+
 async function ruleContext(uid) {
   const accountsDoc = parseJsonSafe(await getStoredValue(uid, ACCOUNTS_DOC_KEY));
   const s = parseJsonSafe(await getStoredValue(uid, SETTINGS_KEY)) || {};
@@ -1065,24 +1110,19 @@ function findRuleAccount(doc, id) {
 // Same scope as the app: Backtest trades all belong to the Backtest account.
 function stateOf(ctx, type, acc) {
   const R = globalThis.obRules;
-  const trades = ctx.trades.filter(t => t && t.mode === type && (type === 'Backtest' || String(t.accountId) === String(acc.id)));
-  return R.accountState(acc, trades, { pnlFor: t => R.pnlOf(t, acc, ctx) });
+  return R.accountState(acc, R.accountTrades(type, acc, ctx.trades), { pnlFor: t => R.pnlOf(t, acc, ctx) });
 }
 
 /** Records BLOWN on every account whose current run is breached. Returns the newly blown ids. */
 async function checkRules(uid) {
   const ctx = await ruleContext(uid);
-  const newly = [];
-  for (const [type, list] of Object.entries(ctx.accountsDoc)) {
-    if (!Array.isArray(list)) continue;
-    for (const acc of list) {
-      if (!acc || typeof acc !== 'object' || acc.blown || !globalThis.obRules.rulesFor(acc)) continue;
-      const s = stateOf(ctx, type, acc);
-      if (s.state === 'blown' && s.breach) { acc.blown = { ...s.breach, runNumber: s.runNumber, at: new Date().toISOString() }; newly.push(String(acc.id)); }
-    }
+  const found = globalThis.obRules.newBreaches(ctx.accountsDoc, ctx.trades, ctx);
+  for (const b of found) {
+    const acc = ctx.accountsDoc[b.type].find(a => a && String(a.id) === b.id);
+    acc.blown = b.blown;
   }
-  if (newly.length) await setStoredValue(uid, ACCOUNTS_DOC_KEY, JSON.stringify(ctx.accountsDoc));
-  return newly;
+  if (found.length) await setStoredValue(uid, ACCOUNTS_DOC_KEY, JSON.stringify(ctx.accountsDoc));
+  return found.map(b => b.id);
 }
 async function checkRulesSafe(uid) {
   try { return await checkRules(uid); } catch (err) { console.warn('[rules] check failed:', err.message); return []; }
