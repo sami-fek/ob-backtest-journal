@@ -226,3 +226,17 @@ html .ob-jh-grid .ob-jh-today .ob-jh-day::after { content: ""; display: inline-b
 .ob-news-warn.window b { color: var(--ds-warn); }
 .ob-news-warn.stale { border-color: color-mix(in srgb, var(--ds-neg) 55%, transparent); background: var(--ds-neg-tint); }
 .ob-news-warn.stale b { color: var(--ds-neg); }
+
+/* Open MT5 positions (Part 7, mt5-live.js) */
+#dbPositions:empty, #dbNews:empty { display: none; }
+.ob-pos-card { display: grid; gap: 10px; }
+.ob-pos-sum { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; }
+.ob-pos-sum b { font-size: 16px; margin-left: 4px; }
+.ob-pos-table { overflow-x: auto; }
+.ob-pos-table table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ob-pos-table th { text-align: left; font-family: var(--ds-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-text-2); padding: 6px 8px; border-bottom: 1px solid var(--ds-line); white-space: nowrap; }
+.ob-pos-table td { padding: 8px; border-bottom: 1px solid var(--ds-line); white-space: nowrap; }
+.ob-pos-table tr:last-child td { border-bottom: 0; }
+.ob-pos-note { font-size: 12px; }
+.ob-pos-stale { padding: 8px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--ds-neg) 55%, transparent); background: var(--ds-neg-tint); font-size: 12.5px; }
+.ob-pos-stale b { color: var(--ds-neg); font-family: var(--ds-mono); letter-spacing: .06em; text-transform: uppercase; margin-right: 6px; }

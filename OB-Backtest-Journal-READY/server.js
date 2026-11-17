@@ -1361,6 +1361,48 @@ app.get('/api/mt5/ea-keys', async (req, res) => {
   } catch (err) { console.error('EA keys read failed:', err); res.status(500).json({ error: 'EA keys read failed' }); }
 });
 
+// GET /api/mt5/live → per account: the newest equity snapshot (stale after 5 minutes), the
+// broker offset the EA reported, and the open positions (Parts 7–8). Open positions are not
+// trades: they never enter the journal, expectancy or win rate until they close.
+const EQUITY_STALE_MS = 5 * 60_000;
+app.get('/api/mt5/live', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    const now = Date.now();
+    if (!(await relationalFor(user.id))) return res.json({ ok: true, available: false, accounts: {}, staleAfterSeconds: EQUITY_STALE_MS / 1000 });
+    const doc = parseJsonSafe(await getStoredValue(user.id, ACCOUNTS_DOC_KEY)) || {};
+    const ids = Object.entries(doc).filter(([type, list]) => type !== 'Backtest' && Array.isArray(list)).flatMap(([, list]) => list.filter(a => a && a.id != null).map(a => String(a.id)));
+    let positions = [], positionsAvailable = true;
+    try { positions = await relational.listOpenPositions(user.id); } catch { positionsAvailable = false; }
+    let keys = [];
+    try { keys = await relational.listEaKeys(user.id); } catch { keys = []; }
+    const iso = v => (v ? new Date(v).toISOString() : null);
+    const num = v => (v === null || v === undefined || v === '' ? null : Number(v));
+    const accounts = {};
+    for (const id of ids) {
+      let eq = null;
+      try { eq = await relational.latestEquity(user.id, id); } catch { eq = null; }
+      const key = keys.find(k => String(k.account_id) === id);
+      const mine = positions.filter(p => String(p.account_id) === id);
+      if (!eq && !key && !mine.length) continue; // no EA has ever reported for this account
+      const takenAt = iso(eq && eq.taken_at);
+      const offset = eq && eq.server_offset_minutes != null ? Number(eq.server_offset_minutes) : key && key.last_server_offset_minutes != null ? Number(key.last_server_offset_minutes) : null;
+      accounts[id] = {
+        equity: eq ? num(eq.equity) : null, balance: eq ? num(eq.balance) : null, takenAt,
+        stale: !takenAt || now - Date.parse(takenAt) > EQUITY_STALE_MS,
+        serverOffsetMinutes: offset, linked: !!key, lastSeenAt: iso(key && key.last_used_at),
+        positions: mine.map(p => ({
+          ticket: String(p.ticket), symbol: p.symbol, direction: p.direction, volume: num(p.volume),
+          openTime: iso(p.open_time), openPrice: num(p.open_price), currentPrice: num(p.current_price),
+          sl: num(p.sl), tp: num(p.tp), profit: num(p.profit), swap: num(p.swap), updatedAt: iso(p.updated_at),
+        })),
+      };
+    }
+    res.json({ ok: true, available: true, positionsAvailable, staleAfterSeconds: EQUITY_STALE_MS / 1000, serverTime: new Date(now).toISOString(), accounts });
+  } catch (err) { console.error('MT5 live read failed:', err); res.status(500).json({ ok: false, error: 'MT5 live read failed' }); }
+});
+
 // GET /api/trades/daily-count?mode=Real&date=YYYY-MM-DD
 app.get('/api/trades/daily-count', async (req, res) => {
   try {

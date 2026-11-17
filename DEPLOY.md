@@ -118,9 +118,9 @@ Supabase provides these to every Edge Function itself; do not set them: `SUPABAS
 
 Do these in order. Each step says how to check it worked.
 
-1. **Supabase › SQL Editor:** run `OB-Backtest-Journal-READY/migrations/003_rule_overrides.sql`, then `OB-Backtest-Journal-READY/migrations/004_edge_functions.sql`. Paste each whole file and click Run. (001 is already done.)
-   - **Check:** `select version from schema_migrations order by 1;` lists `001_relational`, `003_rule_overrides` and `004_edge_functions`.
-   - Both files are safe to run twice. Each stops with a clear message if 001 is missing.
+1. **Supabase › SQL Editor:** run these files from `OB-Backtest-Journal-READY/migrations/`, in this order: `003_rule_overrides.sql`, `004_edge_functions.sql`, `005_open_positions.sql`. Paste each whole file and click Run. (001 is already done.)
+   - **Check:** `select version from schema_migrations order by 1;` lists `001_relational`, `003_rule_overrides`, `004_edge_functions` and `005_open_positions`.
+   - Every file is safe to run twice. Each stops with a clear message if the one before it is missing.
 2. **Supabase › Edge Functions › Secrets:** add `CRON_SECRET` with a value you generated (section 3). Keep the value in a password manager; you need it again in step 6.
 3. **On the computer with the repo:** deploy the functions (section 5).
    - **Check:** Dashboard › Edge Functions lists `fetch-news`, `mt5-ingest` and `risk-check`.

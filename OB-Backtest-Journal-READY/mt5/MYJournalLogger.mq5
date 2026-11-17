@@ -332,7 +332,49 @@ void QueueRecentHistory()
   }
 
 //+------------------------------------------------------------------+
-//| One request: equity, balance and up to BATCH_SIZE closed trades. |
+//| The positions open right now (read only), as a JSON array.       |
+//| The journal shows them apart from closed trades; they never      |
+//| become journal entries until they close.                         |
+//+------------------------------------------------------------------+
+string OpenPositionsJson()
+  {
+   string json = "[";
+   int n = 0;
+   int total = PositionsTotal();
+   for(int i = 0; i < total && n < 200; i++)
+     {
+      ulong ticket = PositionGetTicket(i);   // selects the position for reading
+      if(ticket == 0)
+         continue;
+      string symbol = PositionGetString(POSITION_SYMBOL);
+      int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+      if(digits <= 0)
+         digits = 5;
+      long type = PositionGetInteger(POSITION_TYPE);
+      string p = "{";
+      p += "\"ticket\":\"" + IntegerToString((long)PositionGetInteger(POSITION_IDENTIFIER)) + "\"";
+      p += ",\"symbol\":\"" + JsonEscape(symbol) + "\"";
+      p += ",\"direction\":\"" + (type == POSITION_TYPE_BUY ? "buy" : "sell") + "\"";
+      p += ",\"volume\":" + Num(PositionGetDouble(POSITION_VOLUME), 2);
+      p += ",\"openTime\":" + IntegerToString(ToUtc((datetime)PositionGetInteger(POSITION_TIME)));
+      p += ",\"openPrice\":" + Num(PositionGetDouble(POSITION_PRICE_OPEN), digits);
+      p += ",\"currentPrice\":" + Num(PositionGetDouble(POSITION_PRICE_CURRENT), digits);
+      p += ",\"sl\":" + Num(PositionGetDouble(POSITION_SL), digits);
+      p += ",\"tp\":" + Num(PositionGetDouble(POSITION_TP), digits);
+      p += ",\"profit\":" + Num(PositionGetDouble(POSITION_PROFIT), 2);
+      p += ",\"swap\":" + Num(PositionGetDouble(POSITION_SWAP), 2);
+      p += ",\"magic\":\"" + IntegerToString(PositionGetInteger(POSITION_MAGIC)) + "\"";
+      p += ",\"comment\":\"" + JsonEscape(PositionGetString(POSITION_COMMENT)) + "\"";
+      p += "}";
+      json += (n > 0 ? "," : "") + p;
+      n++;
+     }
+   return json + "]";
+  }
+
+//+------------------------------------------------------------------+
+//| One request: equity, balance, the open positions and up to       |
+//| BATCH_SIZE closed trades.                                         |
 //+------------------------------------------------------------------+
 void Send()
   {
@@ -348,6 +390,7 @@ void Send()
    body += ",\"serverTime\":\"" + TimeToString(TimeTradeServer(), TIME_DATE | TIME_SECONDS) + "\"";
    body += ",\"equity\":" + Num(AccountInfoDouble(ACCOUNT_EQUITY), 2);
    body += ",\"balance\":" + Num(AccountInfoDouble(ACCOUNT_BALANCE), 2);
+   body += ",\"positions\":" + OpenPositionsJson();
    body += ",\"deals\":[";
    for(int i = 0; i < count; i++)
       body += (i > 0 ? "," : "") + g_queue[i];

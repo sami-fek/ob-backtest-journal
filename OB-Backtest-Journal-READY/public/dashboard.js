@@ -315,6 +315,7 @@
       ${empty ? `<div class="ds-card db2-empty"><i class="fa-solid fa-chart-line"></i><div><b>No trades yet${m === 'Backtest' ? ' in Backtest' : acc ? ` on ${esc(acc.name)}` : ''}.</b><span class="ds-sub">Log your first trade and this dashboard fills in: P&amp;L, win rate, equity curve, calendar and more.</span></div><button type="button" class="ds-btn ds-btn-log" data-go="trading"><i class="fa-solid fa-plus"></i> Log a trade</button></div>` : ''}
 
       ${nowSection(all, eq)}
+      <section class="ds-section ob-pos" id="dbPositions">${window.obMt5Live ? window.obMt5Live.positionsHtml() : ''}</section>
       <section class="ds-section ob-news" id="dbNews">${window.obNewsPanel ? window.obNewsPanel.html() : ''}</section>
       ${targetsSection(all)}
 

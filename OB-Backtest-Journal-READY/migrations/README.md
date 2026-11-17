@@ -25,6 +25,13 @@ Run after 001 (and 003). Creates three tables the Supabase Edge Functions use (D
 - **Row level security:** on, with no policies, like 001.
 - **Safe to run twice.** The undo is at the top of the file.
 
+## 005_open_positions.sql: open MT5 positions (Part 7)
+
+Run after 004. Creates `mt5_positions`: the positions open right now on each MT5 account, as MYJournalLogger last reported them.
+- **Not trades:** they never enter the journal, expectancy or win rate. When a position closes, it becomes one trade row and leaves this table.
+- **Until it has run:** closed trades are still accepted, and the positions are not shown.
+- **Safe to run twice.** The undo is at the top of the file.
+
 ## Copy your journal: scripts/migrate-kv.mjs
 
 Copies one user's trades and accounts from kv into the tables. kv is not changed, and nothing is deleted.

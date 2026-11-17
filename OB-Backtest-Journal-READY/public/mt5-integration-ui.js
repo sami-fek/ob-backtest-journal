@@ -605,7 +605,12 @@
     }
 
     const acc = activeAcc();
-    const state = acc?.mt5State;
+    // MYJournalLogger reports through mt5-ingest (window.obMt5Live, in memory); the old
+    // bridge state (acc.mt5State) is only used when that is not loaded.
+    const live = acc && window.obMt5Live ? window.obMt5Live.forAccount(acc.id) : null;
+    const state = live
+      ? { balance: live.balance, equity: live.equity, positions: live.positions || [], syncedAt: live.takenAt, currency: '', stale: window.obMt5Live.isStale(live) }
+      : acc?.mt5State;
     const positions = state?.positions || [];
 
     if (!acc?.mt5?.linked && !positions.length) {
@@ -641,7 +646,7 @@
             Balance: <strong>${fmtMoney(state?.balance, currency)}</strong> ·
             Equity: <strong>${fmtMoney(state?.equity, currency)}</strong> ·
             Floating P/L: <strong style="${pnlClass}">${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}</strong>
-            ${state?.syncedAt ? ` · Synced: ${fmtDate(state.syncedAt)}` : ''}
+            ${state?.syncedAt ? ` · ${state.stale ? '<b style="color:var(--ds-neg)">Not live</b>, last report' : 'Synced'}: ${fmtDate(state.syncedAt)}` : ''}
           </div>
         </div>
       </div>
@@ -676,6 +681,9 @@
     if (mode() === 'Backtest') return;
     const acc = activeAcc();
     if (!acc?.mt5?.linked) return;
+    // MYJournalLogger: window.obMt5Live polls GET /api/mt5/live; nothing is written into the
+    // account here (the old bridge saved its state into the accounts every few seconds).
+    if (window.obMt5Live) { renderPositions(); refreshStatusPanel(); return; }
 
     try {
       const r = await fetch(`/api/mt5/state?accountId=${encodeURIComponent(acc.id)}`, {

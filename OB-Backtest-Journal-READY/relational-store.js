@@ -53,6 +53,12 @@ function documentStore(backend) {
     /** Active keys: [{ account_id, key_hint, mt5_login, mt5_server, created_at, last_used_at, last_server_offset_minutes }]. */
     listEaKeys: backend.listEaKeys,
 
+    // ── Parts 7–8: live MT5 data written by mt5-ingest ──
+    /** Open positions of every account: [{ account_id, ticket, symbol, direction, volume, open_time, open_price, current_price, sl, tp, profit, swap, updated_at }]. */
+    listOpenPositions: backend.listOpenPositions,
+    /** Newest equity snapshot of an account: { equity, balance, server_offset_minutes, taken_at } or null. */
+    latestEquity: backend.latestEquity,
+
     /** The stored document as the app expects it (string), or null when there is none. */
     async loadDoc(uid, key) {
       if (key === TRADES_KEY) {
@@ -135,6 +141,10 @@ export function sqliteRelational(db) {
     CREATE TABLE IF NOT EXISTS news_fetches (
       id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT,
       status TEXT NOT NULL DEFAULT 'running', http_status INTEGER, events_seen INTEGER, events_kept INTEGER, error TEXT);
+    CREATE TABLE IF NOT EXISTS mt5_positions (
+      user_id TEXT NOT NULL, account_id TEXT NOT NULL, ticket TEXT NOT NULL, symbol TEXT, direction TEXT, volume REAL,
+      open_time TEXT, open_price REAL, current_price REAL, sl REAL, tp REAL, profit REAL, swap REAL, magic TEXT, comment TEXT,
+      updated_at TEXT NOT NULL, PRIMARY KEY (user_id, account_id, ticket));
     CREATE TABLE IF NOT EXISTS ea_keys (
       key_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT NOT NULL, key_hint TEXT, mt5_login TEXT, mt5_server TEXT,
       created_at TEXT NOT NULL, revoked_at TEXT, last_used_at TEXT, last_server_offset_minutes INTEGER);
@@ -210,8 +220,10 @@ export function sqliteRelational(db) {
     revokeEaKeys: async (uid, accountId) => db.prepare('UPDATE ea_keys SET revoked_at = ? WHERE user_id = ? AND account_id = ? AND revoked_at IS NULL')
       .run(new Date().toISOString(), uid, accountId).changes,
     listEaKeys: async uid => db.prepare('SELECT account_id, key_hint, mt5_login, mt5_server, created_at, last_used_at, last_server_offset_minutes FROM ea_keys WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at').all(uid),
+    listOpenPositions: async uid => db.prepare('SELECT * FROM mt5_positions WHERE user_id = ? ORDER BY account_id, open_time').all(uid),
+    latestEquity: async (uid, accountId) => db.prepare('SELECT equity, balance, server_offset_minutes, taken_at FROM equity_snapshots WHERE user_id = ? AND account_id = ? ORDER BY taken_at DESC LIMIT 1').get(uid, accountId) ?? null,
     deleteUser: async uid => db.transaction(() => {
-      for (const t of ['ea_keys', 'trade_attachments', 'trades', 'equity_snapshots', 'account_runs', 'rule_overrides', 'accounts', 'journal_migrated_users']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(uid);
+      for (const t of ['mt5_positions', 'ea_keys', 'trade_attachments', 'trades', 'equity_snapshots', 'account_runs', 'rule_overrides', 'accounts', 'journal_migrated_users']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(uid);
     })(),
   });
 }
@@ -270,6 +282,12 @@ export function supabaseRelational(request) {
       return Array.isArray(rows) ? rows.length : 0;
     },
     listEaKeys: uid => all(`ea_keys?select=account_id,key_hint,mt5_login,mt5_server,created_at,last_used_at,last_server_offset_minutes&user_id=eq.${enc(uid)}&revoked_at=is.null&order=created_at.asc`),
+    // live MT5 data: migrations 001 (equity_snapshots) and 005 (mt5_positions)
+    listOpenPositions: uid => all(`mt5_positions?select=*&user_id=eq.${enc(uid)}&order=account_id.asc,open_time.asc`),
+    latestEquity: async (uid, accountId) => {
+      const [row] = (await request(`equity_snapshots?select=equity,balance,server_offset_minutes,taken_at&user_id=eq.${enc(uid)}&account_id=eq.${enc(accountId)}&order=taken_at.desc&limit=1`)) || [];
+      return row ?? null;
+    },
     // Postgres: rows follow the users row (on delete cascade)
   });
 }
