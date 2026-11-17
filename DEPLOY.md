@@ -139,6 +139,7 @@ Do these in order. Each step says how to check it worked.
    - **Check:** the journal shows the same accounts and trades as on Render.
    - **Check:** Account center opens, and saving a trade works.
 9. **Keep Render running.** Do not delete or suspend it: `/api` goes there.
+10. **Run POST-DEPLOY-CHECK.md** (repo root): a news fetch, Link MT5 and one EA report against the real project.
 
 ## 8. Troubleshooting
 

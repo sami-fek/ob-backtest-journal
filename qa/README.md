@@ -36,6 +36,13 @@ For example, the full sweep: `node qsweep.mjs final 360,390,412,430,768,1440,192
 
 ## Focused checks
 - `check-timezone.mjs`: the device timezone is saved once, and the server's daily-limit day matches the browser's.
-- `check-dialogs.mjs`: daily limit, hard stop, add and edit account, MT5 link and guide (the link response is mocked; see the fixes report).
+- `check-dialogs.mjs`: daily limit, hard stop, add and edit account, MT5 link and guide. The link goes through the real gateway and server; nothing is faked.
+- `check-mt5-link.mjs`: Link MT5 end to end. Start the app with `MT5_INGEST_URL=https://ynloihdiiahlegpkzhae.supabase.co/functions/v1/mt5-ingest`.
+- `check-mt5-keep.mjs`: a stale page's save keeps MT5 trades the EA added.
+- `check-news.mjs`: the news panel and the trade-form warning.
+  - **Faked:** `/api/news`, in every case but the first. The real endpoint is covered by `test/news-server.test.js`.
+- `check-positions.mjs` and `check-equity.mjs`: open positions and live equity.
+  - **Faked:** `/api/mt5/live`. The fake is built with `liveAccount()` from `OB-Backtest-Journal-READY/test/fixtures/mt5-live-contract.js`.
+  - **Drift guard:** `test/mt5-live-contract.test.js` checks that the real endpoint returns exactly those fields, so the fake and the real answer cannot drift apart.
 - `check-analytics-scope.mjs` and `check-analytics-filters.mjs`: period and filter labels, and the widgets following the filters.
 - `check-settings.mjs`: every setting kept, saved and enforced, plus the phone order.

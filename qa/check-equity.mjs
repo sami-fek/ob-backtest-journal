@@ -2,6 +2,9 @@
 // offset next to the reset zone. /api/mt5/live is answered with fixed data.
 import { launch, wait, api, BASE } from './h2.mjs';
 import { newUser } from './seed.mjs';
+// the fake /api/mt5/live is built from the same contract the real endpoint is tested against
+import { liveAnswer, liveAccount } from '../OB-Backtest-Journal-READY/test/fixtures/mt5-live-contract.js';
+const staleOf = at => !at || Date.now() - Date.parse(at) > 300_000; // as the server sets it
 let pass = 0, fail = 0; const errors = [];
 const ok = (c, m) => { if (c) { pass++; console.log('  ok  ', m); } else { fail++; console.log('  FAIL', m); } };
 const b = await launch();
@@ -33,7 +36,7 @@ for (const [theme, width] of [['light', 1440], ['dark', 390]]) {
   const praguOffset = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Prague', timeZoneName: 'shortOffset' }).formatToParts(new Date()).find(x => x.type === 'timeZoneName').value === 'GMT+2' ? 120 : 60;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Prague' }).format(new Date());
   let L = {};
-  const live = () => ({ ok: true, available: true, staleAfterSeconds: 300, accounts: { 'funded-1': { balance: 10000, stale: false, linked: true, positions: [], day: today, dayStartEquity: 10000, serverOffsetMinutes: praguOffset, ...L } } });
+  const live = () => liveAnswer({ 'funded-1': liveAccount({ balance: 10000, linked: true, positions: [], day: today, dayStartEquity: 10000, serverOffsetMinutes: praguOffset, ...L, stale: staleOf(L.takenAt) }) });
 
   // live equity, 400 of floating loss: measured on equity, no "equity unavailable"
   L = { equity: 9600, dayMinEquity: 9600, takenAt: iso(Date.now() - 20_000) };

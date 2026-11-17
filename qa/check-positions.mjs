@@ -3,6 +3,9 @@
 // trade through the real server, as mt5-ingest would.
 import { launch, wait, api, BASE, audit } from './h2.mjs';
 import { newUser, makeTrades } from './seed.mjs';
+// the fake /api/mt5/live is built from the same contract the real endpoint is tested against
+import { liveAnswer, liveAccount } from '../OB-Backtest-Journal-READY/test/fixtures/mt5-live-contract.js';
+const staleOf = at => !at || Date.now() - Date.parse(at) > 300_000; // as the server sets it
 let pass = 0, fail = 0; const errors = [];
 const ok = (c, m) => { if (c) { pass++; console.log('  ok  ', m); } else { fail++; console.log('  FAIL', m); } };
 const b = await launch();
@@ -32,7 +35,7 @@ for (const [theme, width] of [['light', 1440], ['dark', 390]]) {
   const now = Date.now();
   const position = { ticket: '5001', symbol: 'EURUSD', direction: 'Sell', volume: 0.5, openTime: iso(now - 3_600_000), openPrice: 1.085, currentPrice: 1.0875, sl: 1.09, tp: 1.075, profit: -12.5, swap: -0.4, updatedAt: iso(now - 20_000) };
   let state = { positions: [position], takenAt: iso(now - 20_000) };
-  const live = () => ({ ok: true, available: true, staleAfterSeconds: 300, accounts: { 'real-1': { equity: 9987.1, balance: 10000, takenAt: state.takenAt, stale: false, serverOffsetMinutes: 120, linked: true, positions: state.positions } } });
+  const live = () => liveAnswer({ 'real-1': liveAccount({ equity: 9987.1, balance: 10000, takenAt: state.takenAt, stale: staleOf(state.takenAt), serverOffsetMinutes: 120, linked: true, positions: state.positions }) });
 
   // Analytics without open positions first
   state = { positions: [], takenAt: iso(now - 20_000) };

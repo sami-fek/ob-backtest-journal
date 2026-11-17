@@ -17,14 +17,15 @@ for (const theme of ['light', 'dark']) {
   await p.click('#tpStrip [data-mt5="link"]'); await wait(600);
   ok(await p.$('#mt5IntegrationModal .mt5-modal-box') !== null, 'MT5 link dialog opens (design-system box)');
   ok(!/37, 99, 235|59, 130, 246/.test(await bg(p, '#m5save')), 'Link account button is not blue: ' + await bg(p, '#m5save'));
-  // The real POST /api/mt5/link currently fails on the server (pre-existing, see report), so the
-  // server answer is mocked here to test the dialog's token step itself.
-  await p.setRequestInterception(true);
-  p.on('request', r => { if (r.url().endsWith('/api/mt5/link') && r.method() === 'POST') r.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, token: 'obmt5_TESTTOKEN_0123456789abcdefghijklmnop' }) }); else r.continue(); });
+  // The real POST /api/mt5/link (gateway → server), no faked answer. Until Part 6 the server
+  // answered 500 for every user and this check faked the answer; now it has to really work.
   await p.type('#m5login', '12345678'); await p.type('#m5server', 'Broker-Demo'); await p.type('#m5label', 'QA');
   await p.click('#m5save'); await wait(1500);
   const tok = await p.evaluate(() => document.getElementById('m5tokenInput')?.value || '');
   const err = await p.evaluate(() => { const e = document.getElementById('m5error'); return e && !e.classList.contains('hidden') ? e.textContent : ''; });
+  ok(/^myj_[A-Za-z0-9_-]{40,}$/.test(tok), `the key shown is a real EA key from the server (${tok.slice(0, 8)}…)`);
+  const stored = (await api(c, 'GET', '/api/mt5/ea-keys')).body;
+  ok(stored && Array.isArray(stored.keys) && stored.keys.length === 1 && stored.keys[0].keyHint === tok.slice(-4), 'and the server really stored it (listed by its last 4 characters)');
   ok(tok.length > 20 && !err, `after linking, the bridge token is shown (${tok.slice(0, 8)}…)${err ? ' ERROR: ' + err : ''}`);
   ok(await p.$('#m5done') !== null && !/37, 99, 235/.test(await bg(p, '#m5done')), 'Done button monochrome');
   await p.click('#m5done'); await wait(500);
