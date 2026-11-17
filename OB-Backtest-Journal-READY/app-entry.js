@@ -63,10 +63,21 @@ async function storageRequest(sid, method, key, value) {
   return body.value ?? null;
 }
 
+// The EA key for MYJournalLogger is made by server.js (only its hash is stored there).
+async function serverPost(sid, pathname, body) {
+  if (!sid) throw new Error('No authenticated session');
+  const response = await fetch(internalBase + pathname, {
+    method: 'POST', headers: { cookie: storageCookie(sid), 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  return { status: response.status, body: await response.json().catch(() => ({})) };
+}
+
 const storage = {
   getStoredValue:    (sid, key)        => storageRequest(sid, 'GET', key),
   setStoredValue:    async (sid, key, value) => { await storageRequest(sid, 'PUT', key, value); },
-  deleteStoredValue: async (sid, key)  => { await storageRequest(sid, 'DELETE', key); }
+  deleteStoredValue: async (sid, key)  => { await storageRequest(sid, 'DELETE', key); },
+  issueEaKey:        (sid, body)       => serverPost(sid, '/api/mt5/ea-key', body),
+  revokeEaKey:       (sid, accountId)  => serverPost(sid, '/api/mt5/ea-key/revoke', { accountId })
 };
 
 registerMt5Routes(app, { getSessionId, ...storage });

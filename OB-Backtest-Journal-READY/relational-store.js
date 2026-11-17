@@ -45,6 +45,14 @@ function documentStore(backend) {
     /** { lastAttemptAt, lastStatus, lastError, lastSuccessAt } of the fetch log. */
     newsFetchState: backend.newsFetchState,
 
+    // ── Part 6: EA keys (ea_keys; only the SHA-256 hash of a key is ever stored) ──
+    /** k: { key_hash, account_id, key_hint, mt5_login, mt5_server }. Revokes the account's other keys. */
+    addEaKey: backend.addEaKey,
+    /** Revokes every active key of an account. */
+    revokeEaKeys: backend.revokeEaKeys,
+    /** Active keys: [{ account_id, key_hint, mt5_login, mt5_server, created_at, last_used_at, last_server_offset_minutes }]. */
+    listEaKeys: backend.listEaKeys,
+
     /** The stored document as the app expects it (string), or null when there is none. */
     async loadDoc(uid, key) {
       if (key === TRADES_KEY) {
@@ -127,6 +135,9 @@ export function sqliteRelational(db) {
     CREATE TABLE IF NOT EXISTS news_fetches (
       id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT,
       status TEXT NOT NULL DEFAULT 'running', http_status INTEGER, events_seen INTEGER, events_kept INTEGER, error TEXT);
+    CREATE TABLE IF NOT EXISTS ea_keys (
+      key_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT NOT NULL, key_hint TEXT, mt5_login TEXT, mt5_server TEXT,
+      created_at TEXT NOT NULL, revoked_at TEXT, last_used_at TEXT, last_server_offset_minutes INTEGER);
   `);
   const json = v => (v === null || v === undefined ? null : JSON.stringify(v));
   const bool = v => (v ? 1 : 0);
@@ -190,8 +201,17 @@ export function sqliteRelational(db) {
       const ok = db.prepare("SELECT finished_at FROM news_fetches WHERE status = 'ok' ORDER BY finished_at DESC LIMIT 1").get();
       return { lastAttemptAt: last?.started_at ?? null, lastStatus: last?.status ?? null, lastError: last?.error ?? null, lastSuccessAt: ok?.finished_at ?? null };
     },
+    addEaKey: async (uid, k) => db.transaction(() => {
+      const now = new Date().toISOString();
+      db.prepare('UPDATE ea_keys SET revoked_at = ? WHERE user_id = ? AND account_id = ? AND revoked_at IS NULL').run(now, uid, k.account_id);
+      db.prepare('INSERT INTO ea_keys (key_hash, user_id, account_id, key_hint, mt5_login, mt5_server, created_at) VALUES (?,?,?,?,?,?,?)')
+        .run(k.key_hash, uid, k.account_id, k.key_hint ?? null, k.mt5_login ?? null, k.mt5_server ?? null, now);
+    })(),
+    revokeEaKeys: async (uid, accountId) => db.prepare('UPDATE ea_keys SET revoked_at = ? WHERE user_id = ? AND account_id = ? AND revoked_at IS NULL')
+      .run(new Date().toISOString(), uid, accountId).changes,
+    listEaKeys: async uid => db.prepare('SELECT account_id, key_hint, mt5_login, mt5_server, created_at, last_used_at, last_server_offset_minutes FROM ea_keys WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at').all(uid),
     deleteUser: async uid => db.transaction(() => {
-      for (const t of ['trade_attachments', 'trades', 'equity_snapshots', 'account_runs', 'rule_overrides', 'accounts', 'journal_migrated_users']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(uid);
+      for (const t of ['ea_keys', 'trade_attachments', 'trades', 'equity_snapshots', 'account_runs', 'rule_overrides', 'accounts', 'journal_migrated_users']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(uid);
     })(),
   });
 }
@@ -240,6 +260,16 @@ export function supabaseRelational(request) {
       const [ok] = (await request('news_fetches?select=finished_at&status=eq.ok&order=finished_at.desc&limit=1')) || [];
       return { lastAttemptAt: last?.started_at ?? null, lastStatus: last?.status ?? null, lastError: last?.error ?? null, lastSuccessAt: ok?.finished_at ?? null };
     },
+    // EA keys: migrations/004_edge_functions.sql
+    addEaKey: async (uid, k) => {
+      await request(`ea_keys?user_id=eq.${enc(uid)}&account_id=eq.${enc(k.account_id)}&revoked_at=is.null`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ revoked_at: new Date().toISOString() }) });
+      await request('ea_keys', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ key_hash: k.key_hash, user_id: uid, account_id: k.account_id, key_hint: k.key_hint ?? null, mt5_login: k.mt5_login ?? null, mt5_server: k.mt5_server ?? null }) });
+    },
+    revokeEaKeys: async (uid, accountId) => {
+      const rows = await request(`ea_keys?user_id=eq.${enc(uid)}&account_id=eq.${enc(accountId)}&revoked_at=is.null`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ revoked_at: new Date().toISOString() }) });
+      return Array.isArray(rows) ? rows.length : 0;
+    },
+    listEaKeys: uid => all(`ea_keys?select=account_id,key_hint,mt5_login,mt5_server,created_at,last_used_at,last_server_offset_minutes&user_id=eq.${enc(uid)}&revoked_at=is.null&order=created_at.asc`),
     // Postgres: rows follow the users row (on delete cascade)
   });
 }

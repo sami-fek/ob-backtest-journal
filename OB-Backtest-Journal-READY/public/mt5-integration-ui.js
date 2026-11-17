@@ -5,8 +5,8 @@
  *
  * Uses:
  *   GET  /api/mt5/status          — all accounts + link state for this session
- *   POST /api/mt5/link            — create a bridge token for an account
- *   POST /api/mt5/unlink          — revoke a bridge token
+ *   POST /api/mt5/link            — link an account; its EA key (MYJournalLogger) is shown once
+ *   POST /api/mt5/unlink          — unlink; the EA key stops working
  *   GET  /api/mt5/state?accountId — live account state + open positions
  *   GET  /api/mt5/history?accountId — closed trade history
  */
@@ -263,9 +263,9 @@
         <div class="ds-note mt-5 space-y-1">
           <div class="font-bold">How it works:</div>
           <div>1. Enter your MT5 login and broker server, then click Link account.</div>
-          <div>2. Copy the token that appears.</div>
-          <div>3. Paste the token into the OB_Journal_Bridge EA in MetaTrader 5.</div>
-          <div>4. Trades will sync automatically every 5 seconds.</div>
+          <div>2. Copy the EA key that appears. It is shown once; only its fingerprint is stored.</div>
+          <div>3. Paste it into the MYJournalLogger EA in MetaTrader 5 (input InpEaKey).</div>
+          <div>4. Closed trades arrive as "Not reviewed"; equity is sent every 30 seconds. The EA only reads: it never places, changes or closes a trade.</div>
         </div>
         <div id="m5error" class="hidden mt-3 ds-note mt5-error"></div>
         <div class="mt-6 flex justify-end gap-2">
@@ -311,13 +311,14 @@
             return;
           }
 
-          if (!j.token) throw new Error('Server did not return a bridge token.');
+          if (!j.token) throw new Error('Server did not return an EA key.');
 
-          // Store token in accounts
+          // The account records the link, never the key (a key is a password for this account).
           const all = list();
           const target = all.find(a => a.id === acc.id);
-          if (target) { target.mt5 = { linked: true, login, server, label, token: j.token, lastSync: null }; }
+          if (target) { target.mt5 = { linked: true, login, server, label, lastSync: null }; }
           save(all);
+          const allowUrl = j.eaKey && j.eaKey.allowUrl;
 
           // Show token
           o.querySelector('.mt5-modal-box').innerHTML = `
@@ -330,7 +331,7 @@
                 </div>
               </div>
               <div class="ds-note space-y-2">
-                <div class="ds-label">Bridge token — paste this into the EA's InpBridgeToken field:</div>
+                <div class="ds-label">EA key — paste this into the EA's InpEaKey input:</div>
                 <div class="flex gap-2">
                   <input id="m5tokenInput" readonly value="${esc(j.token)}"
                     class="ds-input ds-num ob-token min-w-0 flex-1 select-all">
@@ -338,14 +339,15 @@
                     <i class="fa-solid fa-copy text-[10px]"></i> Copy
                   </button>
                 </div>
-                <p class="text-[10px] text-slate-500">Keep this token private. It grants the EA permission to sync data to this account.</p>
+                <p class="text-[10px] text-slate-500">Keep this key private: it lets an EA write trades to this account. It is shown only now. Linking again makes a new key and the old one stops working.</p>
               </div>
+              ${j.eaKeyError ? `<div class="ds-note mt5-error">Direct logging is not available yet: ${esc(j.eaKeyError)}</div>` : ''}
               <div class="ds-note space-y-1">
-                <div class="font-bold">Next steps:</div>
-                <div>1. Open MetaTrader 5 → Tools → Options → Expert Advisors → Allow WebRequest</div>
-                <div>2. Add: <span class="font-mono">https://ob-backtest-journal.onrender.com</span></div>
-                <div>3. Attach OB_Journal_Bridge.mq5 to any chart and set InpBridgeToken to the token above.</div>
-                <div>4. Trades will appear in your journal automatically.</div>
+                <div class="font-bold">Next steps (mt5/README.md has the details):</div>
+                <div>1. MetaTrader 5 → Tools → Options → Expert Advisors → tick Allow WebRequest for listed URL.</div>
+                <div>2. Add: <span class="font-mono ob-token">${esc(allowUrl || 'the Supabase project URL from DEPLOY.md')}</span></div>
+                <div>3. Compile MYJournalLogger.mq5, attach it to one chart of this account, and paste the key into InpEaKey.</div>
+                <div>4. The Experts tab shows "MYJournalLogger: connected"; closed trades then appear here as Not reviewed.</div>
               </div>
               <div class="flex justify-end">
                 <button type="button" id="m5done" class="ds-btn ds-btn-primary">Done</button>
@@ -772,22 +774,29 @@
           </div>
           <div class="ds-note">
             <div class="font-bold text-slate-800 mb-1">Step 2 — Install the EA</div>
-            Copy the bridge token. Open MetaTrader 5, compile OB_Journal_Bridge.mq5, attach it to any chart, and paste the token into InpBridgeToken.
+            Copy the EA key (shown once). In MetaTrader 5, compile MYJournalLogger.mq5 (mt5/README.md), attach it to one chart of that account, and paste the key into InpEaKey. The EA only reads: it never places, changes or closes a trade.
           </div>
           <div class="ds-note">
             <div class="font-bold text-slate-800 mb-1">Step 3 — Allow WebRequest</div>
-            In MT5: Tools → Options → Expert Advisors → Allow WebRequest → add <span class="font-mono ob-token">https://ob-backtest-journal.onrender.com</span>
+            In MT5: Tools → Options → Expert Advisors → Allow WebRequest for listed URL → add <span class="font-mono ob-token" data-mt5-allow-url>the Supabase project URL (DEPLOY.md)</span>
           </div>
           <div class="ds-note">
             <div class="font-bold text-slate-800 mb-1">Step 4 — Trades appear automatically</div>
-            Open positions sync every 5 seconds. Closed trades appear in your journal with P/L and auto-calculated R-multiple (if SL was set).
+            Closed trades appear in your journal as "Not reviewed", with P/L and an R-multiple when a stop loss was set. Equity is sent every 30 seconds. A trade that cannot be sent is kept by the EA and sent again.
           </div>
         </div>
         <div class="flex justify-end">
           <button type="button" data-x class="ds-btn ds-btn-primary">Got it</button>
         </div>
       </div>
-    `, o => o.querySelectorAll('[data-x]').forEach(b => b.onclick = () => o.remove()));
+    `, o => {
+      o.querySelectorAll('[data-x]').forEach(b => b.onclick = () => o.remove());
+      // the address MT5 must allow (the mt5-ingest Edge Function), from the server
+      fetch('/api/mt5/ea-keys', { credentials: 'same-origin', cache: 'no-store' }).then(r => r.json()).then(j => {
+        const el = o.querySelector('[data-mt5-allow-url]');
+        if (el && j && j.ingestUrl) el.textContent = new URL(j.ingestUrl).origin;
+      }).catch(() => {});
+    });
   });
 
   // ─── boot ─────────────────────────────────────────────────────────────────────

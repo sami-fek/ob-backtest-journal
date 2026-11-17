@@ -163,11 +163,32 @@ export function registerMt5Routes(app, storage) {
       const label = safeLabel(req.body?.label, loginValue + ' - ' + serverValue);
       const linkKey = key(LINK_PREFIX, accountId);
       const old = parseJson(await getStoredValue(sessionId, linkKey));
-      const token = 'obmt5_' + crypto.randomBytes(32).toString('base64url');
+      // One key for both paths: the EA key server.js issues (hash in ea_keys, for the
+      // mt5-ingest Edge Function) is also this bridge's token. When it cannot be issued
+      // (journal not on the tables yet, migration 004 missing) the bridge still links,
+      // and the answer says why direct logging is not available.
+      let eaKey = null, eaKeyError = null;
+      if (typeof storage.issueEaKey === 'function') {
+        try {
+          const issued = await storage.issueEaKey(sessionId, { accountId, login: loginValue, server: serverValue });
+          if (issued.status === 201 && issued.body?.key) eaKey = issued.body;
+          else eaKeyError = issued.body?.error || ('EA key not issued (HTTP ' + issued.status + ')');
+        } catch (error) { eaKeyError = 'EA key not issued: ' + (error?.message || error); }
+      }
+      const token = eaKey ? eaKey.key : 'obmt5_' + crypto.randomBytes(32).toString('base64url');
       const hash = tokenHash(token);
       const linkedAt = now();
       const link = { version: 2, accountId, mode: modeValue, login: loginValue, server: serverValue, label, tokenHash: hash, linkedAt, lastSyncAt: null, status: 'linked' };
-      await setStoredValue(TOKEN_SESSION, key(TOKEN_PREFIX, hash), JSON.stringify({ version: 2, sessionId, accountId, mode: modeValue, login: loginValue, server: serverValue, createdAt: linkedAt, status: 'active' }));
+      // The old bridge's token record (for /api/mt5/sync). Through the gateway's storage proxy it
+      // is refused (it is not a signed-in user's record), which made every Link MT5 fail with a 500.
+      // With an EA key the record is not needed (MYJournalLogger uses mt5-ingest), so it is best
+      // effort; without one, the reason the EA key was not issued is returned instead.
+      try {
+        await setStoredValue(TOKEN_SESSION, key(TOKEN_PREFIX, hash), JSON.stringify({ version: 2, sessionId, accountId, mode: modeValue, login: loginValue, server: serverValue, createdAt: linkedAt, status: 'active' }));
+      } catch (error) {
+        if (!eaKey) throw new Mt5Error(409, 'MT5_LINK_UNAVAILABLE', eaKeyError || 'MT5 linking is not available');
+        console.warn('[MT5 ' + id + '] old bridge token not stored (not needed with an EA key):', error?.message || error);
+      }
       try {
         await setStoredValue(sessionId, linkKey, JSON.stringify(link));
         await deleteStoredValue(sessionId, key(STATE_PREFIX, accountId));
@@ -176,10 +197,14 @@ export function registerMt5Routes(app, storage) {
         await deleteStoredValue(TOKEN_SESSION, key(TOKEN_PREFIX, hash)).catch(() => {});
         throw error;
       }
-      if (old?.tokenHash) await deleteStoredValue(TOKEN_SESSION, key(TOKEN_PREFIX, old.tokenHash));
-      if (old?.token) await deleteStoredValue(TOKEN_SESSION, key('mt5_token:', old.token));
+      if (old?.tokenHash) await deleteStoredValue(TOKEN_SESSION, key(TOKEN_PREFIX, old.tokenHash)).catch(() => {});
+      if (old?.token) await deleteStoredValue(TOKEN_SESSION, key('mt5_token:', old.token)).catch(() => {});
       const safeLink = publicLink(link);
-      return res.status(201).json({ ok: true, token, link: safeLink, accountId, mode: modeValue, server: serverValue, label, linkedAt });
+      return res.status(201).json({
+        ok: true, token, link: safeLink, accountId, mode: modeValue, server: serverValue, label, linkedAt,
+        eaKey: eaKey ? { keyHint: eaKey.keyHint, ingestUrl: eaKey.ingestUrl, allowUrl: eaKey.allowUrl } : null,
+        ...(eaKeyError ? { eaKeyError } : {})
+      });
     } catch (error) {
       return fail(res, id, error, 500, 'MT5_LINK_FAILED', 'MT5 link failed');
     }
@@ -337,8 +362,10 @@ export function registerMt5Routes(app, storage) {
       await deleteStoredValue(sessionId, linkKey);
       await deleteStoredValue(sessionId, key(STATE_PREFIX, accountId));
       await deleteStoredValue(sessionId, key(HISTORY_PREFIX, accountId));
-      if (link.tokenHash) await deleteStoredValue(TOKEN_SESSION, key(TOKEN_PREFIX, link.tokenHash));
-      if (link.token) await deleteStoredValue(TOKEN_SESSION, key('mt5_token:', link.token));
+      if (link.tokenHash) await deleteStoredValue(TOKEN_SESSION, key(TOKEN_PREFIX, link.tokenHash)).catch(() => {});
+      if (link.token) await deleteStoredValue(TOKEN_SESSION, key('mt5_token:', link.token)).catch(() => {});
+      // the same key stops working for mt5-ingest too
+      if (typeof storage.revokeEaKey === 'function') await storage.revokeEaKey(sessionId, accountId).catch(error => console.warn('[MT5 ' + id + '] EA key revoke failed:', error?.message || error));
       return res.json({ ok: true, linked: false, accountId });
     } catch (error) {
       return fail(res, id, error, 500, 'MT5_UNLINK_FAILED', 'MT5 unlink failed');

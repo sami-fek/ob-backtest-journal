@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import './public/time-prefs.js'; // globalThis.obTimeCore (timezone-aware calendar days)
 import './public/rule-presets.js'; // globalThis.obRules: presets, daily floor, account state (Parts 2-3)
 import { localStore, supabaseStore, extractEmbedded, hasEmbedded, collectGarbage, isShotId, parseDataUrl, refFor, MAX_SHOT_BYTES } from './shots-store.js';
-import { DOC_KEYS, TRADES_KEY as TRADES_DOC_KEY, ACCOUNTS_KEY as ACCOUNTS_DOC_KEY, idTimestamp } from './relational-core.js';
+import { DOC_KEYS, TRADES_KEY as TRADES_DOC_KEY, ACCOUNTS_KEY as ACCOUNTS_DOC_KEY, idTimestamp, stripSecrets, findSecrets } from './relational-core.js';
 import { sqliteRelational, supabaseRelational } from './relational-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -734,6 +734,9 @@ app.put('/api/storage/:key', async (req, res) => {
     if (SERVER_MANAGED_KEYS.has(req.params.key)) return res.status(403).json({ error: 'This record is managed by the server', code: 'READ_ONLY' });
     let value = req.body.value;
     if (req.params.key === ACCOUNTS_DOC_KEY) {
+      // No secret is stored with an account (an older page kept the MT5 key in account.mt5.token):
+      // not in the tables, not in the kv copy.
+      try { const doc = JSON.parse(value); if (findSecrets(doc).length) value = JSON.stringify(stripSecrets(doc)); } catch { /* not JSON: saved as before */ }
       // BLOWN, the run number and the run start are decided by the server: an app save keeps them.
       value = keepRuleFields(await getStoredValue(user.id, ACCOUNTS_DOC_KEY), value);
       await setStoredValue(user.id, ACCOUNTS_DOC_KEY, value);
@@ -1286,6 +1289,76 @@ app.get('/api/news', async (req, res) => {
       serverTime: new Date(now).toISOString(),
     });
   } catch (err) { console.error('News read failed:', err); res.status(500).json({ ok: false, error: 'News read failed' }); }
+});
+
+// ─── MT5 EA keys (Part 6) ───────────────────────────────────────────────────────
+// MYJournalLogger sends closed trades and equity straight to the mt5-ingest Edge Function
+// with a per-account EA key. The key is made here, shown once, and only its SHA-256 hash is
+// stored (ea_keys). Issuing a new key revokes the account's previous one.
+const MT5_INGEST_URL = process.env.MT5_INGEST_URL
+  || (process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.replace(/\/+$/, '')}/functions/v1/mt5-ingest` : null);
+const mt5AllowUrl = () => (MT5_INGEST_URL ? new URL(MT5_INGEST_URL).origin : null);
+async function eaKeyAccount(uid, accountId) {
+  const doc = parseJsonSafe(await getStoredValue(uid, ACCOUNTS_DOC_KEY)) || {};
+  return findRuleAccount(doc, accountId);
+}
+
+// POST /api/mt5/ea-key { accountId, login?, server? } → { key (shown once), keyHint, ingestUrl, allowUrl }
+app.post('/api/mt5/ea-key', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    const accountId = String(req.body?.accountId ?? '');
+    if (!/^[A-Za-z0-9._:-]{1,128}$/.test(accountId)) return res.status(400).json({ error: 'accountId is invalid', code: 'MT5_ACCOUNT_ID_INVALID' });
+    const login = req.body?.login == null || req.body.login === '' ? null : String(req.body.login);
+    if (login !== null && !/^\d{3,32}$/.test(login)) return res.status(400).json({ error: 'login must contain 3 to 32 digits', code: 'MT5_LOGIN_INVALID' });
+    const server = req.body?.server == null ? null : String(req.body.server).slice(0, 128) || null;
+    if (!(await relationalFor(user.id))) {
+      return res.status(409).json({ error: 'Direct MT5 logging needs the journal on the database tables (migration 001 and scripts/migrate-kv.mjs).', code: 'EA_KEYS_UNAVAILABLE' });
+    }
+    const found = await eaKeyAccount(user.id, accountId);
+    if (!found) return res.status(404).json({ error: 'Account not found', code: 'ACCOUNT_NOT_FOUND' });
+    if (found.type === 'Backtest') return res.status(409).json({ error: 'MT5 is not used for Backtest accounts.', code: 'MT5_BACKTEST' });
+    if (!globalThis.obRules.eaAllowed(found.acc)) return res.status(403).json({ error: globalThis.obRules.EA_BLOCKED_MSG, code: 'MT5_EA_NOT_PERMITTED' });
+    const key = 'myj_' + crypto.randomBytes(32).toString('base64url');
+    try {
+      await relational.addEaKey(user.id, { key_hash: crypto.createHash('sha256').update(key).digest('hex'), account_id: accountId, key_hint: key.slice(-4), mt5_login: login, mt5_server: server });
+    } catch (err) {
+      console.warn('[mt5] EA key not stored:', err.message);
+      return res.status(503).json({ error: 'The EA key could not be stored. If this is Supabase, run migrations/004_edge_functions.sql.', code: 'EA_KEYS_UNAVAILABLE' });
+    }
+    res.status(201).json({ ok: true, key, keyHint: key.slice(-4), accountId, ingestUrl: MT5_INGEST_URL, allowUrl: mt5AllowUrl() });
+  } catch (err) { console.error('EA key failed:', err); res.status(500).json({ error: 'EA key failed' }); }
+});
+
+// POST /api/mt5/ea-key/revoke { accountId }
+app.post('/api/mt5/ea-key/revoke', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    const accountId = String(req.body?.accountId ?? '');
+    if (!(await relationalFor(user.id))) return res.json({ ok: true, revoked: 0 });
+    let revoked = 0;
+    try { revoked = await relational.revokeEaKeys(user.id, accountId); } catch (err) { console.warn('[mt5] EA key revoke failed:', err.message); return res.status(503).json({ error: 'EA keys are not available', code: 'EA_KEYS_UNAVAILABLE' }); }
+    res.json({ ok: true, revoked });
+  } catch (err) { console.error('EA key revoke failed:', err); res.status(500).json({ error: 'EA key revoke failed' }); }
+});
+
+// GET /api/mt5/ea-keys → active keys (hint, last use, the broker offset the EA reported). Never the key.
+app.get('/api/mt5/ea-keys', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    if (!(await relationalFor(user.id))) return res.json({ ok: true, available: false, keys: [], ingestUrl: MT5_INGEST_URL });
+    let rows;
+    try { rows = await relational.listEaKeys(user.id); } catch { return res.json({ ok: true, available: false, keys: [], ingestUrl: MT5_INGEST_URL }); }
+    const iso = v => (v ? new Date(v).toISOString() : null);
+    res.json({ ok: true, available: true, ingestUrl: MT5_INGEST_URL, keys: rows.map(r => ({
+      accountId: r.account_id, keyHint: r.key_hint, login: r.mt5_login, server: r.mt5_server,
+      createdAt: iso(r.created_at), lastUsedAt: iso(r.last_used_at),
+      serverOffsetMinutes: r.last_server_offset_minutes == null ? null : Number(r.last_server_offset_minutes),
+    })) });
+  } catch (err) { console.error('EA keys read failed:', err); res.status(500).json({ error: 'EA keys read failed' }); }
 });
 
 // GET /api/trades/daily-count?mode=Real&date=YYYY-MM-DD

@@ -201,10 +201,22 @@
 
   // ── Part 3: account state for the current run ──────────────────────────────
   /**
-   * Money of a trade as the app computes it everywhere (calendar, dashboard):
-   * R × base × risk %, base = the account's starting balance (Backtest: initial capital).
+   * The broker's own P/L of an MT5 trade (profit + swap + commission, in account money), or
+   * null. The rules use it instead of R: an MT5 trade without a stop loss has R = 0, and
+   * counting a real loss as nothing would be a false "safe".
+   */
+  function brokerPnl(t) {
+    return t && t.source === 'mt5' && typeof t.pnl === 'number' && Number.isFinite(t.pnl) ? t.pnl : null;
+  }
+
+  /**
+   * Money of a trade for the rules: the broker's P/L for MT5 trades (brokerPnl), otherwise as
+   * the app computes it everywhere (calendar, dashboard): R × base × risk %, base = the
+   * account's starting balance (Backtest: initial capital).
    */
   function pnlOf(t, account, opts) {
+    const broker = brokerPnl(t);
+    if (broker !== null) return broker;
     const o = opts || {};
     const base = t && t.mode === 'Backtest' ? (num(o.initialCapital) || 100000)
       : (num(account && (account.startingBalance ?? account.balance)) || 100000);
@@ -387,7 +399,7 @@
     PRESETS, PRESET_IDS, BASES, FORMULAS, EA_BLOCKED_MSG, EQUITY_MSG,
     presetById, validResetTz, checkCustom, rulesFor, dailyFloor, drawdownLevels,
     dayOf, tradeDay, dailyStatus, formulaText, eaAllowed, timezoneChoices, tzLabel,
-    pnlOf, inRun, accountState, blownReason, blocksManualEntry, accountTrades, newBreaches,
+    pnlOf, brokerPnl, inRun, accountState, blownReason, blocksManualEntry, accountTrades, newBreaches,
     BLOWN_WORD: 'BLOWN',
   };
 })(typeof window !== 'undefined' ? window : globalThis);

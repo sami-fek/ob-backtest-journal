@@ -53,7 +53,8 @@
   }
   function pnlFor(acc) {
     const kit = window.obCalendarKit;
-    if (kit && typeof kit.pnlFor === 'function') return t => kit.pnlFor(t);
+    // MT5 trades count with the broker's own P/L, as on the server (obRules.brokerPnl)
+    if (kit && typeof kit.pnlFor === 'function') return t => { const b = R().brokerPnl(t); return b !== null ? b : kit.pnlFor(t); };
     const s = settings();
     return t => R().pnlOf(t, acc, { riskPct: s.riskPercent, initialCapital: s.initialCapital });
   }
