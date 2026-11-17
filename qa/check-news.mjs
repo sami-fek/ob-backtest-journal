@@ -1,8 +1,12 @@
 // Part 5: the high-impact news panel and the no-trade warning on the trade form.
 // The first case uses the real server (nothing fetched yet = stale); the others answer
 // /api/news with fixed data so every state can be seen: empty feed, inside a window, stale.
+// That data is built with test/fixtures/news-contract.js, which test/news-contract.test.js
+// holds to the real endpoint's fields.
 import { launch, wait, api, BASE, audit } from './h2.mjs';
 import { newUser } from './seed.mjs';
+// the fake /api/news is built from the same contract the real endpoint is tested against
+import { newsAnswer, newsEvent, newsUnavailable } from '../OB-Backtest-Journal-READY/test/fixtures/news-contract.js';
 let pass = 0, fail = 0; const errors = [];
 const ok = (c, m) => { if (c) { pass++; console.log('  ok  ', m); } else { fail++; console.log('  FAIL', m); } };
 const b = await launch();
@@ -55,7 +59,7 @@ for (const [theme, width] of [['light', 1440], ['dark', 390]]) {
 
   // 2. fresh feed, nothing today
   const now = Date.now();
-  ({ p } = await openPage(c, { width, theme, mock: { body: { ok: true, events: [], lastSuccessAt: iso(now - 2 * H) } } }));
+  ({ p } = await openPage(c, { width, theme, mock: { body: newsAnswer({ lastSuccessAt: iso(now - 2 * H) }) } }));
   n = await news(p);
   ok(n.level === 'clear' && /No high-impact USD, GBP or EUR news today/.test(n.text) && !/stale/.test(n.text), 'empty feed: "No high-impact … news today", not stale');
   await openNewTrade(p); await wait(500);
@@ -63,9 +67,9 @@ for (const [theme, width] of [['light', 1440], ['dark', 390]]) {
   await p.close();
 
   // 3. inside a window: an event 5 minutes from now (+ one later in the week)
-  const ev = { title: 'CPI m/m', currency: 'USD', impact: 'High', time: iso(now + 5 * MIN) };
-  const later = { title: 'GDP m/m', currency: 'GBP', impact: 'High', time: iso(now + 26 * H) };
-  ({ p } = await openPage(c, { width, theme, mock: { body: { ok: true, events: [ev, later], lastSuccessAt: iso(now - H) } } }));
+  const ev = newsEvent({ title: 'CPI m/m', currency: 'USD', impact: 'High', time: iso(now + 5 * MIN) });
+  const later = newsEvent({ title: 'GDP m/m', currency: 'GBP', impact: 'High', time: iso(now + 26 * H) });
+  ({ p } = await openPage(c, { width, theme, mock: { body: newsAnswer({ events: [ev, later], lastSuccessAt: iso(now - H) }) } }));
   n = await news(p);
   const addis = new Date(now + 5 * MIN).toLocaleTimeString('en-GB', { timeZone: 'Africa/Addis_Ababa', hour: '2-digit', minute: '2-digit' });
   ok(n.level === 'window' && /No-trade window now/.test(n.text) && n.text.includes('CPI m/m (USD)'), 'inside a window: "No-trade window now" with the event and currency');
@@ -85,13 +89,13 @@ for (const [theme, width] of [['light', 1440], ['dark', 390]]) {
   await p.close();
 
   // 4. Backtest: no form warning (a backtest trade is not placed now)
-  ({ p } = await openPage(c, { width, theme, mode: 'Backtest', mock: { body: { ok: true, events: [ev], lastSuccessAt: iso(now - H) } } }));
+  ({ p } = await openPage(c, { width, theme, mode: 'Backtest', mock: { body: newsAnswer({ events: [ev], lastSuccessAt: iso(now - H) }) } }));
   await openNewTrade(p); await wait(500);
   ok(!(await formWarn(p)), 'Backtest: no news warning on the form');
   await p.close();
 
   // 5. the server cannot read the news tables (503): stale, with the reason
-  ({ p } = await openPage(c, { width, theme, mock: { status: 503, body: { ok: false, code: 'NEWS_UNAVAILABLE', error: 'The news data could not be read.' } } }));
+  ({ p } = await openPage(c, { width, theme, mock: { status: 503, body: newsUnavailable() } }));
   n = await news(p);
   ok(n.level === 'stale' && /could not be read/.test(n.text), 'unreadable news tables: stale with the reason');
   await p.close();

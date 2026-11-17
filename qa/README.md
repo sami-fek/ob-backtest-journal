@@ -40,7 +40,8 @@ For example, the full sweep: `node qsweep.mjs final 360,390,412,430,768,1440,192
 - `check-mt5-link.mjs`: Link MT5 end to end. Start the app with `MT5_INGEST_URL=https://ynloihdiiahlegpkzhae.supabase.co/functions/v1/mt5-ingest`.
 - `check-mt5-keep.mjs`: a stale page's save keeps MT5 trades the EA added.
 - `check-news.mjs`: the news panel and the trade-form warning.
-  - **Faked:** `/api/news`, in every case but the first. The real endpoint is covered by `test/news-server.test.js`.
+  - **Faked:** `/api/news`, in every case but the first. The fake is built with `newsAnswer()` / `newsUnavailable()` from `OB-Backtest-Journal-READY/test/fixtures/news-contract.js`.
+  - **Drift guard:** `test/news-contract.test.js` checks that the real endpoint returns exactly those fields.
 - `check-positions.mjs` and `check-equity.mjs`: open positions and live equity.
   - **Faked:** `/api/mt5/live`. The fake is built with `liveAccount()` from `OB-Backtest-Journal-READY/test/fixtures/mt5-live-contract.js`.
   - **Drift guard:** `test/mt5-live-contract.test.js` checks that the real endpoint returns exactly those fields, so the fake and the real answer cannot drift apart.
