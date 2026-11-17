@@ -39,6 +39,12 @@ function documentStore(backend) {
     /** Marks an unused override as used by a trade. true only for the call that used it. */
     useOverride: backend.useOverride,
 
+    // ── Part 5: news (news_events, news_fetches; filled by the fetch-news Edge Function) ──
+    /** [{ title, currency, impact, event_time_utc }] with fromIso <= time < toIso, oldest first. */
+    listNews: backend.listNews,
+    /** { lastAttemptAt, lastStatus, lastError, lastSuccessAt } of the fetch log. */
+    newsFetchState: backend.newsFetchState,
+
     /** The stored document as the app expects it (string), or null when there is none. */
     async loadDoc(uid, key) {
       if (key === TRADES_KEY) {
@@ -118,6 +124,9 @@ export function sqliteRelational(db) {
       user_id TEXT NOT NULL, id TEXT NOT NULL, account_id TEXT NOT NULL, run_number INTEGER NOT NULL,
       created_at TEXT NOT NULL, used_by_trade TEXT, used_at TEXT, PRIMARY KEY (user_id, id));
     CREATE INDEX IF NOT EXISTS rule_overrides_account_idx ON rule_overrides (user_id, account_id);
+    CREATE TABLE IF NOT EXISTS news_fetches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT,
+      status TEXT NOT NULL DEFAULT 'running', http_status INTEGER, events_seen INTEGER, events_kept INTEGER, error TEXT);
   `);
   const json = v => (v === null || v === undefined ? null : JSON.stringify(v));
   const bool = v => (v ? 1 : 0);
@@ -173,6 +182,14 @@ export function sqliteRelational(db) {
     useOverride: async (uid, id, tradeId) => db.prepare(
       'UPDATE rule_overrides SET used_by_trade = ?, used_at = ? WHERE user_id = ? AND id = ? AND used_by_trade IS NULL',
     ).run(tradeId, new Date().toISOString(), uid, id).changes === 1,
+    listNews: async (fromIso, toIso) => db.prepare(
+      'SELECT title, currency, impact, event_time_utc FROM news_events WHERE event_time_utc >= ? AND event_time_utc < ? ORDER BY event_time_utc',
+    ).all(fromIso, toIso),
+    newsFetchState: async () => {
+      const last = db.prepare('SELECT started_at, status, error FROM news_fetches ORDER BY started_at DESC LIMIT 1').get();
+      const ok = db.prepare("SELECT finished_at FROM news_fetches WHERE status = 'ok' ORDER BY finished_at DESC LIMIT 1").get();
+      return { lastAttemptAt: last?.started_at ?? null, lastStatus: last?.status ?? null, lastError: last?.error ?? null, lastSuccessAt: ok?.finished_at ?? null };
+    },
     deleteUser: async uid => db.transaction(() => {
       for (const t of ['trade_attachments', 'trades', 'equity_snapshots', 'account_runs', 'rule_overrides', 'accounts', 'journal_migrated_users']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(uid);
     })(),
@@ -215,6 +232,13 @@ export function supabaseRelational(request) {
       const rows = await request(`rule_overrides?user_id=eq.${enc(uid)}&id=eq.${enc(id)}&used_by_trade=is.null`, {
         method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ used_by_trade: tradeId, used_at: new Date().toISOString() }) });
       return Array.isArray(rows) && rows.length === 1;
+    },
+    // news: migrations/004_edge_functions.sql (news_fetches); an error here means "unknown"
+    listNews: (fromIso, toIso) => all(`news_events?select=title,currency,impact,event_time_utc&event_time_utc=gte.${enc(fromIso)}&event_time_utc=lt.${enc(toIso)}&order=event_time_utc.asc`),
+    newsFetchState: async () => {
+      const [last] = (await request('news_fetches?select=started_at,status,error&order=started_at.desc&limit=1')) || [];
+      const [ok] = (await request('news_fetches?select=finished_at&status=eq.ok&order=finished_at.desc&limit=1')) || [];
+      return { lastAttemptAt: last?.started_at ?? null, lastStatus: last?.status ?? null, lastError: last?.error ?? null, lastSuccessAt: ok?.finished_at ?? null };
     },
     // Postgres: rows follow the users row (on delete cascade)
   });

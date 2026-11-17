@@ -5,6 +5,7 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,9 +18,21 @@ export function sqliteAvailable() {
   try { require('better-sqlite3')(':memory:').close(); return true; } catch { return false; }
 }
 
+// A port the OS says is free. (A random port from a fixed range collided when several
+// test files started servers in parallel: the second server could not bind, and its tests
+// then talked to the other file's server.)
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const s = net.createServer();
+    s.unref();
+    s.on('error', reject);
+    s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
+  });
+}
+
 export async function startLocalServer(extraEnv = {}, { dataDir: reuseDir } = {}) {
   const dataDir = reuseDir || fs.mkdtempSync(path.join(os.tmpdir(), 'myjournal-test-'));
-  const port = 39000 + Math.floor(Math.random() * 900);
+  const port = await freePort();
   const env = {
     ...process.env,
     SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '',
@@ -34,7 +47,9 @@ export async function startLocalServer(extraEnv = {}, { dataDir: reuseDir } = {}
   child.stderr.on('data', d => { output += d; });
   const base = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100; i++) {
-    try { const r = await fetch(base + '/api/health'); if (r.ok) break; } catch {}
+    if (child.exitCode !== null) throw new Error('server exited before it was ready:\n' + output);
+    // ready = our own process says it is listening (not another server on the same port)
+    try { const r = await fetch(base + '/api/health'); if (r.ok && child.exitCode === null && /running on/.test(output)) break; } catch {}
     await new Promise(r => setTimeout(r, 100));
     if (i === 99) { child.kill(); throw new Error('server did not start:\n' + output); }
   }

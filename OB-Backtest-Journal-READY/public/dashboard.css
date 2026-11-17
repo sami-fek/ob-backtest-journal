@@ -184,3 +184,45 @@ html .ob-jh-grid .ob-jh-today .ob-jh-day::after { content: ""; display: inline-b
 .ob-rules-table th { text-align: left; font-family: var(--ds-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-text-2); padding: 6px 8px; border-bottom: 1px solid var(--ds-line); white-space: nowrap; }
 .ob-rules-table td { padding: 8px; border-bottom: 1px solid var(--ds-line); white-space: nowrap; }
 .ob-rule-dialog .ds-dialog-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+
+/* High-impact news (Part 5, news-panel.js) */
+.ob-news-banner { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 10px 14px; margin-bottom: var(--ds-gap, 12px); border-radius: var(--ds-radius-card); border: 1px solid var(--ds-line); background: var(--ds-surface); font-size: 13px; line-height: 1.45; }
+.ob-news-banner b { font-family: var(--ds-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.ob-news-banner span { color: var(--ds-text-2); }
+.ob-news-banner.stale { border-color: color-mix(in srgb, var(--ds-neg) 55%, transparent); background: linear-gradient(0deg, var(--ds-neg-tint), var(--ds-neg-tint)), var(--ds-surface-solid); }
+.ob-news-banner.stale b { color: var(--ds-neg); }
+.ob-news-banner.window { border-color: color-mix(in srgb, var(--ds-warn) 60%, transparent); background: linear-gradient(0deg, var(--ds-warn-tint), var(--ds-warn-tint)), var(--ds-surface-solid); }
+.ob-news-banner.window b { color: var(--ds-warn); }
+.ob-news-banner.muted { color: var(--ds-text-2); }
+.ob-news-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.ob-news-row { display: grid; grid-template-columns: auto auto 1fr; grid-template-areas: "time cur title" ". . win"; align-items: baseline; gap: 2px 10px; padding: 9px 0; border-bottom: 1px solid var(--ds-line); font-size: 13px; }
+.ob-news-row:last-child { border-bottom: 0; }
+.ob-news-row.past { opacity: .55; }
+.ob-news-row.live .ob-news-win b { color: var(--ds-warn); }
+.ob-news-time { grid-area: time; font-family: var(--ds-mono); font-weight: 600; }
+.ob-news-row .ob-news-cur { grid-area: cur; }
+.ob-news-title { grid-area: title; min-width: 0; overflow-wrap: anywhere; }
+.ob-news-win { grid-area: win; font-size: 12px; }
+.ob-news-cur { display: inline-block; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--ds-line-strong); font-family: var(--ds-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .06em; color: var(--ds-text-2); }
+.ob-news-none { margin-top: 10px; }
+.ob-news-week { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.ob-news-day { min-width: 0; padding: 8px; border-radius: var(--ds-radius-ctl); border: 1px solid var(--ds-line); background: var(--ds-surface-2); font-size: 12px; }
+.ob-news-day.today { border-color: var(--ds-line-strong); }
+.ob-news-day.danger { border-color: color-mix(in srgb, var(--ds-warn) 50%, transparent); background: var(--ds-warn-tint); }
+.ob-news-day-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin-bottom: 4px; }
+.ob-news-count { margin-left: auto; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--ds-warn); color: var(--ds-surface-solid); font-family: var(--ds-mono); font-size: 11px; font-weight: 700; text-align: center; }
+.ob-news-day-list { display: grid; gap: 4px; }
+.ob-news-day-list span { overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .ob-news-week { grid-template-columns: 1fr; }
+  .ob-news-day { display: grid; grid-template-columns: 110px 1fr; gap: 6px; align-items: baseline; }
+  .ob-news-day-head { margin: 0; }
+  .ob-news-count { display: none; }
+}
+/* the warning at the top of the new-trade form: a warning only, never a block */
+.ob-news-warn { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; border: 1px solid; font-size: 13px; line-height: 1.45; }
+.ob-news-warn b { font-family: var(--ds-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.ob-news-warn.window { border-color: color-mix(in srgb, var(--ds-warn) 60%, transparent); background: var(--ds-warn-tint); }
+.ob-news-warn.window b { color: var(--ds-warn); }
+.ob-news-warn.stale { border-color: color-mix(in srgb, var(--ds-neg) 55%, transparent); background: var(--ds-neg-tint); }
+.ob-news-warn.stale b { color: var(--ds-neg); }

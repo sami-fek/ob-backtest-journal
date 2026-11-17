@@ -1256,6 +1256,38 @@ app.get('/api/rules/log', async (req, res) => {
   } catch (err) { console.error('Rules log failed:', err); res.status(500).json({ error: 'Rules log failed' }); }
 });
 
+// GET /api/news?from=ISO&to=ISO → high-impact events from news_events plus the fetch log
+// (Part 5). Read from the database only: the browser never calls the news source. When the
+// tables cannot be read the answer is 503, which the app shows as "news data stale - do not
+// trade" (an unknown is never shown as "no news").
+const NEWS_MAX_SPAN_MS = 16 * 86_400_000;
+app.get('/api/news', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    const now = Date.now();
+    let from = Date.parse(String(req.query.from || '')), to = Date.parse(String(req.query.to || ''));
+    if (!Number.isFinite(from)) from = now - 86_400_000;
+    if (!Number.isFinite(to)) to = now + 7 * 86_400_000;
+    if (to <= from || to - from > NEWS_MAX_SPAN_MS) return res.status(400).json({ ok: false, error: 'from/to must span at most 16 days', code: 'BAD_RANGE' });
+    if (!(await relationalTablesReady())) return res.status(503).json({ ok: false, code: 'NEWS_UNAVAILABLE', error: 'The news tables are not available (migrations 001 and 004).' });
+    let events, state;
+    try {
+      [events, state] = await Promise.all([relational.listNews(new Date(from).toISOString(), new Date(to).toISOString()), relational.newsFetchState()]);
+    } catch (err) {
+      console.warn('[news] read failed:', err.message);
+      return res.status(503).json({ ok: false, code: 'NEWS_UNAVAILABLE', error: 'The news data could not be read (has migration 004_edge_functions.sql run?).' });
+    }
+    const iso = v => (v ? new Date(v).toISOString() : null);
+    res.json({
+      ok: true,
+      events: (events || []).map(e => ({ title: e.title, currency: e.currency, impact: e.impact, time: iso(e.event_time_utc) })),
+      lastSuccessAt: iso(state.lastSuccessAt), lastAttemptAt: iso(state.lastAttemptAt), lastStatus: state.lastStatus, lastError: state.lastError,
+      serverTime: new Date(now).toISOString(),
+    });
+  } catch (err) { console.error('News read failed:', err); res.status(500).json({ ok: false, error: 'News read failed' }); }
+});
+
 // GET /api/trades/daily-count?mode=Real&date=YYYY-MM-DD
 app.get('/api/trades/daily-count', async (req, res) => {
   try {
