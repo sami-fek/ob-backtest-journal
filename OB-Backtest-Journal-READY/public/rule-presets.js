@@ -163,12 +163,33 @@
    * Rule day of a trade: its close (or open) time in the reset zone when that time carries a
    * zone; otherwise the trade's own date (a manual trade has a date and no time).
    */
-  function tradeDay(t, tz) {
+  function tradeDay(t, tz, displayTz) {
     for (const k of ['closeTime', 'openTime']) {
       const v = t && t[k];
       if (typeof v === 'string' && ZONED.test(v)) { const d = dayOf(v, tz); if (d) return d; }
     }
-    return String((t && t.date) || '').slice(0, 10);
+    const date = String((t && t.date) || '').slice(0, 10);
+    // A manual trade has a date (picked in the display zone) and no time. When it was logged on
+    // that same date (its id 'tr-<ms>' says when), it happened when it was logged: it counts on
+    // the rule day of that moment. So an account whose reset zone is not the display zone agrees
+    // with itself about when today ends (daily trade limit and daily loss alike). A trade logged
+    // for another date keeps its date.
+    if (date && displayTz && core() && core().validTz(displayTz)) {
+      const m = /^tr-(\d{12,14})$/.exec(String((t && t.id) || ''));
+      const ts = m ? Number(m[1]) : null;
+      if (ts != null && dayOf(ts, displayTz) === date) return dayOf(ts, tz);
+    }
+    return date;
+  }
+
+  /**
+   * The zone that decides "today" for an account: its reset zone when it has a rule preset (the
+   * zone the daily-loss floor uses), otherwise the display zone (as before).
+   */
+  function accountDayZone(account, displayTz) {
+    const r = rulesFor(account);
+    if (r) return r.resetTimezone;
+    return displayTz && core() && core().validTz(displayTz) ? displayTz : 'UTC';
   }
 
   /** Minutes `tz` is ahead of UTC at instant ms (Europe/Prague in July: 120). */
@@ -223,7 +244,8 @@
 
   /**
    * Today's daily-loss position for an account with a preset (null without one).
-   * opts: { pnlFor(trade) → money, now (Date|ms), dayStartEquity, equity (live equity, Part 8) }.
+   * opts: { pnlFor(trade) → money, now (Date|ms), dayStartEquity, equity (live equity, Part 8),
+   *        displayTz (the zone manual trade dates were picked in; see tradeDay) }.
    * trades: this account's trades. Cash movements count toward the balance, never as a loss.
    * With an equity base and live equity, the loss is measured on equity (floating P/L
    * included): used = anchor − equity now, worst = anchor − the day's lowest equity.
@@ -239,7 +261,7 @@
     const list = Array.isArray(trades) ? trades : [];
     let before = 0, todayPnl = 0, todayCount = 0;
     for (const t of list) {
-      const d = tradeDay(t, tz);
+      const d = tradeDay(t, tz, o.displayTz);
       if (!d) continue;
       if (d < today) before += pnlFor(t);
       else if (d === today) { todayPnl += pnlFor(t); todayCount++; }
@@ -317,11 +339,11 @@
     const ts = idTs(t && t.id);
     return ts == null ? true : ts >= start;
   }
-  function runTrades(account, trades, tz) {
+  function runTrades(account, trades, tz, displayTz) {
     const sortKey = t => { const at = tradeInstant(t); return at != null ? at : (idTs(t.id) ?? 0); };
     return (Array.isArray(trades) ? trades : [])
       .filter(t => t && inRun(t, account, tz))
-      .map(t => ({ t, day: tradeDay(t, tz), k: sortKey(t) }))
+      .map(t => ({ t, day: tradeDay(t, tz, displayTz), k: sortKey(t) }))
       .filter(x => x.day)
       .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.k - b.k));
   }
@@ -351,7 +373,7 @@
     if (!(start > 0)) return { ...base, rules, state: saved ? 'blown' : 'unknown', blown: saved, problems: ['No starting balance.'] };
     const tz = rules.resetTimezone;
     const lv = drawdownLevels(rules, start);
-    const list = runTrades(account, trades, tz);
+    const list = runTrades(account, trades, tz, o.displayTz);
     let bal = start, peak = start, breach = null, day = null, dayStart = start, dayPnl = 0, allowance = 0;
     for (const { t, day: d } of list) {
       if (d !== day) {
@@ -368,7 +390,7 @@
         breach = { kind: 'daily_loss', day: d, tradeId: t.id, loss: round2(-dayPnl), limit: allowance, pct: rules.dailyLossPct, formula: rules.dailyLossFormula };
       }
     }
-    const daily = dailyStatus(account, list.map(x => x.t), { pnlFor, now: o.now, equity: o.equity });
+    const daily = dailyStatus(account, list.map(x => x.t), { pnlFor, now: o.now, equity: o.equity, displayTz: o.displayTz });
     // Part 8: firm presets (equity base) with live equity: floating P/L counts. The day's lowest
     // equity reaching the daily floor, or equity reaching the max drawdown level, is a breach
     // even when closed balance alone is fine.
@@ -418,7 +440,7 @@
       for (const acc of list) {
         if (!acc || typeof acc !== 'object' || acc.blown || !rulesFor(acc)) continue;
         const equity = typeof c.equityFor === 'function' ? c.equityFor(String(acc.id)) : undefined;
-        const s = accountState(acc, accountTrades(type, acc, trades), { pnlFor: t => pnlOf(t, acc, c), equity, now: c.now });
+        const s = accountState(acc, accountTrades(type, acc, trades), { pnlFor: t => pnlOf(t, acc, c), equity, now: c.now, displayTz: c.displayTz });
         if (s.state === 'blown' && s.breach) out.push({ type, id: String(acc.id), blown: { ...s.breach, runNumber: s.runNumber, at: atIso || new Date().toISOString() } });
       }
     }
@@ -544,7 +566,7 @@
     PRESETS, PRESET_IDS, BASES, FORMULAS, EA_BLOCKED_MSG, EQUITY_MSG,
     presetById, validResetTz, checkCustom, rulesFor, dailyFloor, drawdownLevels,
     dayOf, tradeDay, dailyStatus, formulaText, eaAllowed, timezoneChoices, tzLabel,
-    pnlOf, brokerPnl, inRun, accountState, blownReason, blocksManualEntry, accountTrades, newBreaches,
+    pnlOf, brokerPnl, accountDayZone, inRun, accountState, blownReason, blocksManualEntry, accountTrades, newBreaches,
     zoneOffsetMinutes, dayStartUtc, liveEquity, pickDayStartEquity, offsetCheck, offsetLabel, equityText, EQUITY_STALE_MS,
     BLOWN_WORD: 'BLOWN',
   };

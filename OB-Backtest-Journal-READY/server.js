@@ -1141,6 +1141,7 @@ async function ruleContext(uid) {
   return {
     accountsDoc: doc,
     trades: await getTradeList(uid),
+    displayTz: globalThis.obTimeCore.validTz(s.timezone) ? s.timezone : undefined,
     riskPct: Number(s.riskPercent) || 1,
     initialCapital: Number(s.initialCapital) || 100000,
     now, equityFor: id => equity.get(String(id)),
@@ -1157,7 +1158,7 @@ function findRuleAccount(doc, id) {
 // Same scope as the app: Backtest trades all belong to the Backtest account.
 function stateOf(ctx, type, acc) {
   const R = globalThis.obRules;
-  return R.accountState(acc, R.accountTrades(type, acc, ctx.trades), { pnlFor: t => R.pnlOf(t, acc, ctx), equity: ctx.equityFor && ctx.equityFor(acc.id), now: ctx.now });
+  return R.accountState(acc, R.accountTrades(type, acc, ctx.trades), { pnlFor: t => R.pnlOf(t, acc, ctx), equity: ctx.equityFor && ctx.equityFor(acc.id), now: ctx.now, displayTz: ctx.displayTz });
 }
 
 /** Records BLOWN on every account whose current run is breached. Returns the newly blown ids. */
@@ -1448,28 +1449,49 @@ app.get('/api/mt5/live', async (req, res) => {
   } catch (err) { console.error('MT5 live read failed:', err); res.status(500).json({ ok: false, error: 'MT5 live read failed' }); }
 });
 
-// GET /api/trades/daily-count?mode=Real&date=YYYY-MM-DD
+/**
+ * The daily trade limit's count for an account (still counted over every account of the
+ * mode, as before). "Today" is the account's rule day: in its reset zone when it has a rule
+ * preset (the zone its daily-loss floor uses), else in the display zone. Each trade is put on
+ * its rule day the same way the floor does (obRules.tradeDay), so the two never disagree.
+ *  - trade: the trade being saved: its own day is counted
+ *  - dateParam: a date the app asks about; the display zone's today means the account's today
+ * The account: accountId, else the mode's only open account, else none (display zone).
+ */
+async function dailyTradeCount(uid, mode, { accountId, trade, dateParam } = {}) {
+  const R = globalThis.obRules;
+  const core = globalThis.obTimeCore;
+  const settings = parseJsonSafe(await getStoredValue(uid, SETTINGS_KEY)) || {};
+  const displayTz = core.validTz(settings.timezone) ? settings.timezone : 'UTC';
+  const doc = parseJsonSafe(await getStoredValue(uid, ACCOUNTS_DOC_KEY)) || {};
+  const open = (Array.isArray(doc[mode]) ? doc[mode] : []).filter(a => a && a.status !== 'archived');
+  const acc = open.find(a => accountId != null && accountId !== '' && String(a.id) === String(accountId)) || (open.length === 1 ? open[0] : null);
+  const tz = R.accountDayZone(acc, displayTz);
+  const now = Date.now();
+  let day;
+  if (trade) day = R.tradeDay(trade, tz, displayTz) || R.dayOf(now, tz);
+  else if (/^\d{4}-\d{2}-\d{2}/.test(dateParam || '') && dateParam.slice(0, 10) !== core.todayIso(displayTz)) day = dateParam.slice(0, 10);
+  else day = R.dayOf(now, tz);
+  const trades = await getTradeList(uid);
+  const count = trades.filter(t => t && String(t.mode || '') === mode && !t._deleted && R.tradeDay(t, tz, displayTz) === day).length;
+  return { count, limit: await getDailyLimit(uid), date: day, timezone: tz, accountId: acc ? String(acc.id) : null };
+}
+
+// GET /api/trades/daily-count?mode=Real&accountId=...&date=YYYY-MM-DD
 app.get('/api/trades/daily-count', async (req, res) => {
   try {
     const user = await requireAuth(req, res);
     if (!user) return unauthorized(res);
 
     const mode  = String(req.query.mode || 'Real');
-    const date  = String(req.query.date || await todayFor(user.id));
-    const limit = await getDailyLimit(user.id);
 
     if (mode === 'Backtest') {
-      return res.json({ ok: true, count: 0, limit, date, mode, limitReached: false });
+      const limit = await getDailyLimit(user.id);
+      return res.json({ ok: true, count: 0, limit, date: String(req.query.date || await todayFor(user.id)), mode, limitReached: false });
     }
 
-    const trades  = await getTradeList(user.id);
-    const count   = trades.filter(t =>
-      String(t.mode || '') === mode &&
-      String(t.date || '').slice(0, 10) === date.slice(0, 10) &&
-      !t._deleted
-    ).length;
-
-    return res.json({ ok: true, count, limit, date, mode, limitReached: count >= limit });
+    const d = await dailyTradeCount(user.id, mode, { accountId: req.query.accountId, dateParam: req.query.date ? String(req.query.date) : '' });
+    return res.json({ ok: true, count: d.count, limit: d.limit, date: d.date, timezone: d.timezone, accountId: d.accountId, mode, limitReached: d.count >= d.limit });
   } catch (err) {
     console.error('daily-count failed:', err);
     return res.status(500).json({ error: 'daily-count failed' });
@@ -1494,22 +1516,16 @@ app.post('/api/trades', async (req, res) => {
     if (blocked) return res.status(blocked.status).json(blocked.body);
 
     if (mode !== 'Backtest') {
-      const limit      = await getDailyLimit(user.id);
-      const date       = String(trade.date || await todayFor(user.id)).slice(0, 10);
-      const tradeList  = await getTradeList(user.id);
-      const todayCount = tradeList.filter(t =>
-        String(t.mode || '') === mode &&
-        String(t.date || '').slice(0, 10) === date &&
-        !t._deleted
-      ).length;
-
-      if (todayCount >= limit) {
+      // the trade's day in its account's reset zone (the day the daily-loss floor uses)
+      const d = await dailyTradeCount(user.id, mode, { accountId: trade.accountId, trade });
+      if (d.count >= d.limit) {
         return res.status(429).json({
-          error: `Daily trade limit reached. You have already logged ${todayCount} trade${todayCount === 1 ? '' : 's'} today (limit: ${limit}). No more trades can be logged for this day.`,
+          error: `Daily trade limit reached. You have already logged ${d.count} trade${d.count === 1 ? '' : 's'} today (limit: ${d.limit}; the day runs 00:00 to 00:00 ${d.timezone}). No more trades can be logged for this day.`,
           code: 'DAILY_LIMIT_REACHED',
-          count: todayCount,
-          limit,
-          date,
+          count: d.count,
+          limit: d.limit,
+          date: d.date,
+          timezone: d.timezone,
           mode
         });
       }

@@ -83,7 +83,8 @@ export async function checkUserRules(db, userId, atIso = new Date().toISOString(
     if (type === 'Backtest' || !Array.isArray(list)) continue;
     for (const acc of list) if (acc && !acc.blown) { const e = await equityFor(db, userId, acc, atMs); if (e) equity.set(String(acc.id), e); }
   }
-  const ctx = { riskPct: Number(s.riskPercent) || 1, initialCapital: Number(s.initialCapital) || 100000, now: atMs, equityFor: id => equity.get(id) };
+  const displayTz = globalThis.obTimeCore.validTz(s.timezone) ? s.timezone : undefined; // the zone manual trade dates were picked in
+  const ctx = { riskPct: Number(s.riskPercent) || 1, initialCapital: Number(s.initialCapital) || 100000, now: atMs, displayTz, equityFor: id => equity.get(id) };
   const found = R().newBreaches(accountsDoc, trades, ctx, atIso);
   const recorded = [];
   for (const b of found) if (await recordBlown(db, userId, b.id, b.blown)) recorded.push(b);

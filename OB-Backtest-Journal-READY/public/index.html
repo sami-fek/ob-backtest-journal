@@ -1454,7 +1454,7 @@
       // The authoritative check happens on Save (POST /api/trades → 429).
       if (activeMode !== 'Backtest') {
         try {
-          const r = await fetch(`/api/trades/daily-count?mode=${encodeURIComponent(activeMode)}&date=${encodeURIComponent(tradeDate)}`,
+          const r = await fetch(`/api/trades/daily-count?mode=${encodeURIComponent(activeMode)}&accountId=${encodeURIComponent(accId || '')}&date=${encodeURIComponent(tradeDate)}`,
             { credentials: 'same-origin', cache: 'no-store' });
           if (r.ok) {
             const body = await r.json().catch(() => ({}));

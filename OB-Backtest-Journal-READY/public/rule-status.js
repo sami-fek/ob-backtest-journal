@@ -65,7 +65,7 @@
     const type = (f && f.type) || acc.type;
     // Part 8: live equity from MYJournalLogger (mt5-live.js); the rules use it only when fresh
     const equity = window.obMt5Live ? window.obMt5Live.forAccount(acc.id) : null;
-    return R().accountState(f ? f.acc : acc, tradesOf(type, f ? f.acc : acc), { pnlFor: pnlFor(acc), equity: equity || undefined });
+    return R().accountState(f ? f.acc : acc, tradesOf(type, f ? f.acc : acc), { pnlFor: pnlFor(acc), equity: equity || undefined, displayTz: window.obTime ? window.obTime.tz() : undefined });
   }
   window.obRuleState = stateFor;
   /**

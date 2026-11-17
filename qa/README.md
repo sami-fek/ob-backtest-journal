@@ -47,3 +47,4 @@ For example, the full sweep: `node qsweep.mjs final 360,390,412,430,768,1440,192
   - **Drift guard:** `test/mt5-live-contract.test.js` checks that the real endpoint returns exactly those fields, so the fake and the real answer cannot drift apart.
 - `check-analytics-scope.mjs` and `check-analytics-filters.mjs`: period and filter labels, and the widgets following the filters.
 - `check-settings.mjs`: every setting kept, saved and enforced, plus the phone order.
+- `check-daily-zone.mjs`: the daily trade limit counts on the account's rule day (its reset zone), from the server and offline.

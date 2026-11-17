@@ -54,36 +54,60 @@
   const fmtDate = d => (d && window.obTime ? window.obTime.date(d) : d); // saved date format
   function todayKey() { return window.obTime ? window.obTime.today() : new Date().toISOString().slice(0, 10); }
 
+  // The daily limit's "today" is the account's rule day: its reset zone when it has a rule
+  // preset (the zone of its daily-loss floor), else the saved display zone. The server decides
+  // it (GET /api/trades/daily-count with the account); offline, the same rule runs here.
+  function activeAccountRecord(mode) {
+    const aid = accountId(mode);
+    let doc = {};
+    try { doc = JSON.parse(localStorage.getItem('my_journal_accounts_v1') || '{}') || {}; } catch (_) {}
+    const open = (Array.isArray(doc[mode]) ? doc[mode] : []).filter(a => a && a.status !== 'archived');
+    return open.find(a => a.id === aid) || (open.length === 1 ? open[0] : null);
+  }
+  function offlineDailyCount(mode) {
+    const R = window.obRules;
+    const displayTz = window.obTime ? window.obTime.tz() : undefined;
+    const acc = activeAccountRecord(mode);
+    const all = (Array.isArray(window.trades) ? window.trades : []).filter(t => t && t.mode === mode);
+    if (!R) {
+      const date = todayKey();
+      return { count: all.filter(t => String(t.date || '').slice(0, 10) === date).length, date };
+    }
+    const tz = R.accountDayZone(acc, displayTz);
+    const date = R.dayOf(Date.now(), tz);
+    return { count: all.filter(t => R.tradeDay(t, tz, displayTz) === date).length, date, timezone: tz };
+  }
+
   // ─── server-backed daily count ────────────────────────────────────────────────
 
-  // Cache: { mode, date, count, limit, limitReached, fetchedAt }
+  // Cache: { key, mode, date, timezone, count, limit, limitReached, fetchedAt }
   let _dailyCountCache = null;
 
   async function fetchDailyCount() {
     const mode = getMode();
     if (mode === 'Backtest') return { count: 0, limit: getDailyMax(), limitReached: false };
-    const date = todayKey();
+    const aid = accountId(mode) || '';
+    const key = `${mode}|${aid}|${todayKey()}`;
 
     // Use cache if fresh (< 3 seconds)
-    if (_dailyCountCache && _dailyCountCache.mode === mode && _dailyCountCache.date === date
-        && (Date.now() - _dailyCountCache.fetchedAt) < 3000) {
+    if (_dailyCountCache && _dailyCountCache.key === key && (Date.now() - _dailyCountCache.fetchedAt) < 3000) {
       return _dailyCountCache;
     }
 
     try {
       const r = await fetch(
-        `/api/trades/daily-count?mode=${encodeURIComponent(mode)}&date=${date}`,
+        `/api/trades/daily-count?mode=${encodeURIComponent(mode)}&accountId=${encodeURIComponent(aid)}`,
         { credentials: 'same-origin', cache: 'no-store' }
       );
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
-      _dailyCountCache = { ...j, fetchedAt: Date.now() };
+      _dailyCountCache = { ...j, key, fetchedAt: Date.now() };
       return _dailyCountCache;
     } catch (_) {
-      // Server unreachable — fall back to client-side count
-      const count = scopedTrades().filter(t => String(t.date || '').slice(0, 10) === date).length;
+      // Server unreachable — the same count here
+      const d = offlineDailyCount(mode);
       const limit = getDailyMax();
-      return { count, limit, limitReached: count >= limit };
+      return { ...d, limit, limitReached: d.count >= limit };
     }
   }
 
@@ -146,7 +170,8 @@
       todayCount:         daily.count,
       dailyMax:           daily.limit,
       dailyLimitReached:  daily.limitReached,
-      todayDate:          todayKey(),
+      todayDate:          daily.date || todayKey(),   // the account's rule day
+      todayTimezone:      daily.timezone || null,
     };
   }
 
