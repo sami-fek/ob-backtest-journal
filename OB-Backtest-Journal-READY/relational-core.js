@@ -10,6 +10,8 @@
 // unchanged; anything else stays as-is in `extra` (with `extra._keys` keeping the
 // original key order). Secrets never reach a row (stripSecrets).
 
+import './public/rule-presets.js'; // globalThis.obRules: preset ids and the reset-zone check
+
 export const TRADES_KEY = 'ob-trades';
 export const ACCOUNTS_KEY = 'my_journal_accounts_v1';
 export const DOC_KEYS = [TRADES_KEY, ACCOUNTS_KEY];
@@ -195,9 +197,18 @@ export function accountsDocToRows(json, userId, previous = []) {
       const starting = take('startingBalance', asNum);
       const balance = take('balance', asNum);
       const name = take('name', asStr);
-      for (const [k, v] of Object.entries(a)) if (!['id', 'name', 'startingBalance', 'balance', 'status', 'needsVerification'].includes(k)) extra[k] = v;
+      for (const [k, v] of Object.entries(a)) if (!['id', 'name', 'startingBalance', 'balance', 'status', 'needsVerification', 'preset', 'resetTimezone', 'runNumber'].includes(k)) extra[k] = v;
       if ('status' in a) extra.status = a.status; // the app's own value, kept exactly
       if ('needsVerification' in a) extra._nv = true;
+      // Part 2/3 fields with their own columns. A value the column cannot hold (unknown
+      // preset, an offset instead of a zone name) stays in extra and the column stays null.
+      const R = globalThis.obRules;
+      const preset = !('preset' in a) ? (p?.preset ?? null)
+        : a.preset === null || R.PRESET_IDS.includes(a.preset) ? a.preset : ((extra.preset = a.preset), null);
+      const resetTz = !('resetTimezone' in a) ? (p?.reset_timezone ?? null)
+        : a.resetTimezone === null || R.validResetTz(a.resetTimezone) ? a.resetTimezone : ((extra.resetTimezone = a.resetTimezone), null);
+      const runNumber = !('runNumber' in a) ? (p?.run_number ?? 1)
+        : Number.isInteger(a.runNumber) && a.runNumber >= 1 ? a.runNumber : ((extra.runNumber = a.runNumber), (p?.run_number ?? 1));
       const needs = a.needsVerification === false ? false
         : a.needsVerification === true ? true
         : p ? Boolean(p.needs_verification)
@@ -205,12 +216,14 @@ export function accountsDocToRows(json, userId, previous = []) {
       rows.push({
         user_id: String(userId), id: String(a.id), name,
         type: typeKey.toLowerCase(),
-        preset: p?.preset ?? null,
+        preset,
         starting_balance: starting,
         current_balance: balance,
-        reset_timezone: p?.reset_timezone ?? null,
-        status: a.status === 'archived' ? 'archived' : (p && p.status === 'blown' ? 'blown' : 'active'),
-        run_number: p?.run_number ?? 1,
+        reset_timezone: resetTz,
+        // blown is decided by the server (rule-presets.js accountState) and kept by its
+        // merge of every app save (server.js keepRuleFields), so the app cannot clear it.
+        status: a.status === 'archived' ? 'archived' : (a.blown && typeof a.blown === 'object' ? 'blown' : 'active'),
+        run_number: runNumber,
         needs_verification: needs,
         mt5_login: a.mt5 && a.mt5.login ? String(a.mt5.login) : null,
         mt5_server: a.mt5 && a.mt5.server ? String(a.mt5.server) : null,
@@ -239,6 +252,12 @@ export function rowsToAccountsDoc(rows) {
     if (keys.includes('balance')) values.balance = 'balance' in extra ? extra.balance : (r.current_balance === null ? null : Number(r.current_balance));
     if (keys.includes('startingBalance')) values.startingBalance = 'startingBalance' in extra ? extra.startingBalance : (r.starting_balance === null ? null : Number(r.starting_balance));
     for (const [k, v] of Object.entries(extra)) if (!k.startsWith('_') && !['name', 'balance', 'startingBalance'].includes(k)) values[k] = v;
+    // column fields (a value in extra means the column could not hold it)
+    for (const [k, col] of [['preset', 'preset'], ['resetTimezone', 'reset_timezone']]) {
+      if (k in extra) continue;
+      if (keys.includes(k) || r[col] != null) values[k] = r[col] ?? null;
+    }
+    if (!('runNumber' in extra) && keys.includes('runNumber')) values.runNumber = Number(r.run_number);
     if (r.needs_verification) values.needsVerification = true;
     else if (extra._nv) values.needsVerification = false;
     const out = {};

@@ -125,3 +125,27 @@ test('MT5 routes answer 401 (not 500) without a session', async () => {
     assert.equal(res.payload.code, 'UNAUTHORIZED', route);
   }
 });
+
+test('Maven (EAs banned): the MT5 link is refused on the server too', async () => {
+  const harness = makeHarness();
+  const maven = { ...accounts, Funded: [{ ...accounts.Funded[0], preset: 'maven' }] };
+  await harness.storage.setStoredValue('browser-session', 'my_journal_accounts_v1', JSON.stringify(maven));
+  const r = await harness.call('POST', '/api/mt5/link', { accountId: 'funded-1', mode: 'Funded', login: '123456', server: 'Broker-Demo' });
+  assert.equal(r.statusCode, 403);
+  assert.equal(r.payload.code, 'MT5_EA_NOT_PERMITTED');
+  assert.equal(r.payload.error, 'EAs not permitted by this firm');
+  const ok = await harness.call('POST', '/api/mt5/link', { accountId: 'demo-1', mode: 'Demo', login: '123456', server: 'Broker-Demo' });
+  assert.equal(ok.statusCode, 201, 'other presets link as before');
+});
+
+test('a blown account still receives every MT5 trade, marked post-breach', async () => {
+  const { storage, call, token } = await linkedHarness();
+  const blown = { ...accounts, Demo: [{ ...accounts.Demo[0], preset: 'my-rules', blown: { kind: 'daily_loss', day: '2026-11-10', loss: 3000, limit: 3000, pct: 3 } }] };
+  await storage.setStoredValue('browser-session', 'my_journal_accounts_v1', JSON.stringify(blown));
+  const r = await call('POST', '/api/mt5/sync', { token, login: '123456', server: 'Broker-Demo', positions: [], closedTrades: [
+    { ticket: 7001, symbol: 'XAUUSD', direction: 'Buy', volume: 0.1, openTime: 1763280000, closeTime: 1763280600, profit: -50 }] });
+  assert.equal(r.statusCode, 200);
+  assert.equal(r.payload.journalAdded, 1, 'accepted, never blocked');
+  const journal = JSON.parse(await storage.getStoredValue('browser-session', 'ob-trades'));
+  assert.equal(journal[0].id, 'mt5-7001'); assert.equal(journal[0].postBreach, true);
+});

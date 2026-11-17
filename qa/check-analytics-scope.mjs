@@ -4,7 +4,7 @@ const b = await launch(); const errors = []; const cookie = await richUser(); aw
 const p = await open(b, cookie, { tab: 'analytics', errors }); await wait(900);
 const info = () => p.evaluate(() => {
   const page = document.getElementById('pageAnalytics');
-  const cards = [...page.querySelectorAll('.glass-card, .ds-card, .db-card, .pc-card')].filter(c => c.offsetParent && !c.closest('#ob-analytics-filter-bar, #ob-analytics-subtabs, .journal-analytics-mode-menu, .journal-analytics-account-menu, #apSample') && !(c.parentElement.closest('.glass-card, .ds-card, .db-card, .pc-card')));
+  const cards = [...page.querySelectorAll('.glass-card, .ds-card, .db-card, .pc-card')].filter(c => c.offsetParent && !c.closest('#ob-analytics-filter-bar, #ob-analytics-subtabs, .journal-analytics-mode-menu, .journal-analytics-account-menu, #apSample, [data-ap-noscope]') && !(c.parentElement.closest('.glass-card, .ds-card, .db-card, .pc-card')));
   return { n: cards.length, missing: cards.filter(c => !c.querySelector('[data-ap-scope]')).map(c => (c.querySelector('h3,.ds-label,.pc-title')?.textContent || c.className).trim().slice(0, 40)), texts: [...new Set(cards.map(c => c.querySelector('[data-ap-scope]')?.textContent))] };
 });
 let r = await info();

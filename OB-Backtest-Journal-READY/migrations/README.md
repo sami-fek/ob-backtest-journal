@@ -10,6 +10,12 @@ Creates `accounts`, `trades`, `trade_attachments`, `news_events`, `equity_snapsh
 - **Safe to run twice.**
 - **Guard:** if a table with one of these names already exists from something else, it stops with an error.
 
+## 003_rule_overrides.sql: BLOWN overrides (Part 3)
+
+Run after 001. Creates `rule_overrides`: one row each time you type BLOWN to log a manual trade on a blown account, with its time and the trade it let through.
+- **Until it has run:** an override is refused with a message saying so, because nothing is let through without its record. Runs ("Start new run") use `account_runs` from 001 and work without it.
+- **Safe to run twice.** The undo is at the top of the file.
+
 ## Copy your journal: scripts/migrate-kv.mjs
 
 Copies one user's trades and accounts from kv into the tables. kv is not changed, and nothing is deleted.

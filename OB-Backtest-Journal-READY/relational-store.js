@@ -29,6 +29,16 @@ function documentStore(backend) {
     markMigrated: backend.markMigrated,
     deleteUser: backend.deleteUser || (async () => {}),
 
+    // ── Part 3: archived runs (account_runs) and BLOWN overrides (rule_overrides) ──
+    /** run: { account_id, run_number, starting_balance, started_at, ended_at, end_reason, peak_balance } */
+    addRun: backend.addRun,
+    listRuns: backend.listRuns,
+    /** override: { id, account_id, run_number, created_at } */
+    addOverride: backend.addOverride,
+    listOverrides: backend.listOverrides,
+    /** Marks an unused override as used by a trade. true only for the call that used it. */
+    useOverride: backend.useOverride,
+
     /** The stored document as the app expects it (string), or null when there is none. */
     async loadDoc(uid, key) {
       if (key === TRADES_KEY) {
@@ -104,6 +114,10 @@ export function sqliteRelational(db) {
       UNIQUE (user_id, account_id, run_number));
     CREATE TABLE IF NOT EXISTS journal_migrated_users (
       user_id TEXT PRIMARY KEY, source TEXT NOT NULL, migrated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+    CREATE TABLE IF NOT EXISTS rule_overrides (
+      user_id TEXT NOT NULL, id TEXT NOT NULL, account_id TEXT NOT NULL, run_number INTEGER NOT NULL,
+      created_at TEXT NOT NULL, used_by_trade TEXT, used_at TEXT, PRIMARY KEY (user_id, id));
+    CREATE INDEX IF NOT EXISTS rule_overrides_account_idx ON rule_overrides (user_id, account_id);
   `);
   const json = v => (v === null || v === undefined ? null : JSON.stringify(v));
   const bool = v => (v ? 1 : 0);
@@ -147,8 +161,20 @@ export function sqliteRelational(db) {
     loadAccountRows: async uid => db.prepare('SELECT * FROM accounts WHERE user_id = ? ORDER BY position').all(uid),
     saveTradeRows: async (uid, rows, atts, mode) => saveTrades(uid, rows, atts, mode),
     saveAccountRows: async (uid, rows, mode) => saveAccounts(uid, rows, mode),
+    addRun: async (uid, r) => {
+      db.prepare(`INSERT INTO account_runs (user_id, account_id, run_number, starting_balance, started_at, ended_at, end_reason, peak_balance)
+        VALUES (?,?,?,?,?,?,?,?)`).run(uid, r.account_id, r.run_number, r.starting_balance, r.started_at, r.ended_at, r.end_reason, r.peak_balance);
+    },
+    listRuns: async uid => db.prepare('SELECT * FROM account_runs WHERE user_id = ? ORDER BY account_id, run_number').all(uid),
+    addOverride: async (uid, o) => {
+      db.prepare('INSERT INTO rule_overrides (user_id, id, account_id, run_number, created_at) VALUES (?,?,?,?,?)').run(uid, o.id, o.account_id, o.run_number, o.created_at);
+    },
+    listOverrides: async uid => db.prepare('SELECT * FROM rule_overrides WHERE user_id = ? ORDER BY created_at').all(uid),
+    useOverride: async (uid, id, tradeId) => db.prepare(
+      'UPDATE rule_overrides SET used_by_trade = ?, used_at = ? WHERE user_id = ? AND id = ? AND used_by_trade IS NULL',
+    ).run(tradeId, new Date().toISOString(), uid, id).changes === 1,
     deleteUser: async uid => db.transaction(() => {
-      for (const t of ['trade_attachments', 'trades', 'equity_snapshots', 'account_runs', 'accounts', 'journal_migrated_users']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(uid);
+      for (const t of ['trade_attachments', 'trades', 'equity_snapshots', 'account_runs', 'rule_overrides', 'accounts', 'journal_migrated_users']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(uid);
     })(),
   });
 }
@@ -180,6 +206,16 @@ export function supabaseRelational(request) {
     loadAccountRows: uid => all(`accounts?select=*&user_id=eq.${enc(uid)}&order=position.asc`),
     saveTradeRows: (uid, rows, atts, mode) => rpc('journal_save_trades', { p_user: uid, p_rows: rows, p_attachments: atts, p_mode: mode }),
     saveAccountRows: (uid, rows, mode) => rpc('journal_save_accounts', { p_user: uid, p_rows: rows, p_mode: mode }),
+    addRun: async (uid, r) => { await request('account_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ user_id: uid, ...r }) }); },
+    listRuns: uid => all(`account_runs?select=*&user_id=eq.${enc(uid)}&order=account_id.asc,run_number.asc`),
+    // rule_overrides: migrations/003_rule_overrides.sql
+    addOverride: async (uid, o) => { await request('rule_overrides', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ user_id: uid, ...o }) }); },
+    listOverrides: uid => all(`rule_overrides?select=*&user_id=eq.${enc(uid)}&order=created_at.asc`),
+    useOverride: async (uid, id, tradeId) => {
+      const rows = await request(`rule_overrides?user_id=eq.${enc(uid)}&id=eq.${enc(id)}&used_by_trade=is.null`, {
+        method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ used_by_trade: tradeId, used_at: new Date().toISOString() }) });
+      return Array.isArray(rows) && rows.length === 1;
+    },
     // Postgres: rows follow the users row (on delete cascade)
   });
 }

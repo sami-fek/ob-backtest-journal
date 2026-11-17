@@ -171,7 +171,8 @@
     return parts.join(' · ');
   }
   const CARD_SEL = '.glass-card, .ds-card, .db-card, .pc-card';
-  const SKIP_SEL = '#ob-analytics-filter-bar, #ob-analytics-subtabs, .journal-analytics-mode-menu, .journal-analytics-account-menu, #apSample';
+  // [data-ap-noscope]: cards that do not follow the period filter (e.g. runs and overrides, all runs)
+  const SKIP_SEL = '#ob-analytics-filter-bar, #ob-analytics-subtabs, .journal-analytics-mode-menu, .journal-analytics-account-menu, #apSample, [data-ap-noscope]';
   const HEAD_SEL = ':scope > .ap-card-head, :scope > .db-card-head, :scope > .pc-head, :scope > .pc-h, :scope > div > h3, :scope > h3, :scope > h4, :scope > .pc-title, :scope > p:first-child, :scope > .ob-collapse-head';
   function stampScope() {
     const page = document.getElementById('pageAnalytics');

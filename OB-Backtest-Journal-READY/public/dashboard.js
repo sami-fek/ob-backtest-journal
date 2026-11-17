@@ -54,6 +54,9 @@
     let id = null; try { id = localStorage.getItem(`my_journal_active_account_${m}_v1`); } catch (_) {}
     return list.find(a => a.id === id) || list[0] || null;
   }
+  // The account whose risk rules apply (Part 3): Backtest has no active account above, so its
+  // rules belong to the Backtest account (the same one rule-status.js and the server use).
+  const ruleAccount = () => (mode() === 'Backtest' ? liveAccounts('Backtest')[0] || null : activeAccount());
   function scopedTrades() {
     const m = mode();
     const acc = activeAccount();
@@ -124,10 +127,26 @@
   // ── sections ───────────────────────────────────────────────────────────────
   const UNVERIFIED_MSG = 'Unverified starting balance - confirm before trusting the risk numbers';
   const unverified = acc => !!(acc && acc.needsVerification === true);
+  // Part 3: BLOWN (red, with the reason and the date), warning level, or rules not checked.
+  function ruleNote(rs, m) {
+    if (!rs) return '';
+    if (rs.state === 'blown') {
+      const at = rs.blown && rs.blown.at ? ` · recorded ${esc(window.obTime ? window.obTime.instant(rs.blown.at) : rs.blown.at)}` : '';
+      const what = window.obRules && !window.obRules.blocksManualEntry(m)
+        ? 'The backtest is not locked: keep logging, trades after the breach are marked post-breach.'
+        : 'Manual trades are blocked; MT5 trades are still logged.';
+      return `<div class="db2-blown" role="alert"><b>BLOWN</b> <span>${esc(window.obBlownReason ? window.obBlownReason(rs.blown) : '')}${at}. ${what}</span> <button type="button" class="ds-link" data-db-new-run>Start new run</button></div>`;
+    }
+    if (rs.state === 'warn') return `<div class="db2-unverified" role="note"><i class="fa-solid fa-triangle-exclamation"></i> Warning level: down ${rs.drawdownPct}% from the starting balance (warning at ${rs.rules.warnPct}%, blown at ${rs.rules.maxDrawdownPct}%).</div>`;
+    if (rs.state === 'unknown') return `<div class="db2-unverified" role="note"><i class="fa-solid fa-triangle-exclamation"></i> Risk rules not checked: ${esc((rs.problems || []).join(' '))}</div>`;
+    return '';
+  }
   function nowSection(all, eq) {
     const m = mode();
     const acc = activeAccount();
-    const calm = t => (t === 'pos' && unverified(acc) ? '' : t); // no green while the balance is unverified
+    const ruleAcc = ruleAccount();
+    const rs = ruleAcc && typeof window.obRuleState === 'function' ? window.obRuleState(ruleAcc) : null; // Part 3 state
+    const calm = t => (t === 'pos' && (unverified(acc) || (rs && ['blown', 'warn', 'unknown'].includes(rs.state))) ? '' : t); // no green while the balance or the rules cannot be trusted
     const st = S().streak(all);
     const d = disciplineState();
     // Discipline (today): the engine's numbers. Backtest has no limits.
@@ -152,12 +171,13 @@
     return `<section class="ds-section" id="dbNow">
       ${head('Right now', `${scopeLabel ? scopeLabel + ' · ' : ''}live`)}
       <div class="ds-grid">
-        <div class="ds-card db2-equity ds-span-4 ds-t-3" id="dbEquity">
+        <div class="ds-card db2-equity ds-span-4 ds-t-3${rs && rs.state === 'blown' ? ' db2-blown-card' : ''}" id="dbEquity">
           <div class="db2-stat-top"><span class="ds-label">Account equity</span><span class="ds-period">now</span></div>
           <div class="ds-big db2-xl">${money(eq.balance, false)}</div>
           <div class="ds-sub"><span class="${cls(eq.pct)}">${eq.pct >= 0 ? '+' : ''}${eq.pct.toFixed(2)}%</span> on ${money(eq.base, false)} · all time${eq.cash ? ` · cash ${money(eq.cash)}` : ''}</div>
           ${sparkline(all)}
           ${unverified(acc) ? `<div class="db2-unverified" role="note"><i class="fa-solid fa-triangle-exclamation"></i> ${UNVERIFIED_MSG}. <button type="button" class="ds-link" data-db-confirm-acc>Confirm it</button></div>` : ''}
+          ${ruleNote(rs, m)}
         </div>
         <div class="ds-card db2-disc ds-span-4 ds-t-6" id="dbDiscipline">
           <div class="db2-stat-top"><span class="ds-label">Discipline</span><span class="ds-period">today</span></div>
@@ -190,17 +210,43 @@
     tgt('Weekly target', 'this week', S().progress(sumIn(S().weekBounds(today)), acc.weeklyTarget));
     tgt('Monthly target', 'this month', S().progress(sumIn(S().monthBounds(today)), acc.monthlyTarget));
     tgt('Profit target', 'all time', S().progress(all.reduce((s, t) => s + pnlFor(t), 0), acc.profitTarget));
-    const lim = (label, period, used, limit, what) => {
+    // understated: an equity-based limit measured on closed balance only (no equity feed yet).
+    const lim = (label, period, used, limit, what, { understated = false, note = '', noGreen = false } = {}) => {
       if (!(Number(limit) > 0)) return;
       const pct = Math.min(100, (used / limit) * 100);
+      const tone = usedTone(pct);
+      const calmTone = tone === 'pos' && (unverified(acc) || understated || noGreen) ? '' : tone; // never green when it cannot be trusted
       cards.push(`<div class="ds-card db2-target">
         <div class="db2-stat-top"><span class="ds-label">${label}</span><span class="ds-period">${period}</span></div>
         <div class="db2-target-val"><b class="ds-num ${used > 0 ? 'ds-neg' : ''}">${money(used, false)}</b><span class="ds-sub"> of ${money(limit, false)} used</span></div>
-        <div class="ds-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="${esc(label)} used"><i class="${unverified(acc) && usedTone(pct) === 'pos' ? '' : usedTone(pct)}" style="width:${pct}%"></i></div>
-        <div class="ds-sub db2-cap">${pct >= 100 ? '<span class="ds-neg">Limit reached</span>' : `${money(limit - used, false)} room left · ${what}`}</div></div>`);
+        <div class="ds-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="${esc(label)} used"><i class="${calmTone}" style="width:${pct}%"></i></div>
+        <div class="ds-sub db2-cap">${pct >= 100 ? '<span class="ds-neg">Limit reached</span>' : `${money(limit - used, false)} room left · ${what}`}${note ? `<br>${note}` : ''}${understated ? `<br><span class="ds-warn">${esc(window.obRules.EQUITY_MSG.replace(/^./, c => c.toUpperCase()))}</span>` : ''}</div></div>`);
     };
-    lim('Max drawdown', 'now', S().currentDrawdown(all, pnlFor), acc.maxDrawdown, 'from peak');
-    lim('Daily loss', 'today', Math.max(0, -all.filter(t => String(t.date).slice(0, 10) === today).reduce((s, t) => s + pnlFor(t), 0)), acc.dailyLossLimit, "today's net loss");
+    const R = window.obRules;
+    const rules = R ? R.rulesFor(acc) : null;
+    if (!rules) {
+      // No preset: the older dollar limits from the account settings, as before.
+      lim('Max drawdown', 'now', S().currentDrawdown(all, pnlFor), acc.maxDrawdown, 'from peak');
+      lim('Daily loss', 'today', Math.max(0, -all.filter(t => String(t.date).slice(0, 10) === today).reduce((s, t) => s + pnlFor(t), 0)), acc.dailyLossLimit, "today's net loss");
+    } else if (!rules.complete) {
+      cards.push(`<div class="ds-card db2-target">
+        <div class="db2-stat-top"><span class="ds-label">Risk rules</span><span class="ds-period">${esc(rules.label)}</span></div>
+        <div class="ds-sub db2-cap"><span class="ds-warn">Rules incomplete, so drawdown and daily loss are not checked.</span> ${esc(rules.problems.join(' '))}</div></div>`);
+    } else {
+      const equityBase = rules.dailyLossBase === 'equity';
+      const lv = R.drawdownLevels(rules, acc.startingBalance);
+      // Part 3: measured on the current run only (rule-status.js); all trades when it is not loaded.
+      const rsT = typeof window.obRuleState === 'function' ? window.obRuleState(acc) : null;
+      const noGreen = !!(rsT && rsT.state !== 'ok');
+      const runLabel = rsT && rsT.runNumber > 1 ? ` · run ${rsT.runNumber}` : '';
+      const used = rsT && Number.isFinite(rsT.drawdown) ? rsT.drawdown : Math.max(0, -all.reduce((s, t) => s + pnlFor(t), 0));
+      if (lv) lim('Max drawdown', `now${runLabel}`, used, lv.maxLoss, `from starting balance (${rules.maxDrawdownPct}%)`,
+        { understated: equityBase, noGreen, note: `Warning level ${rules.warnPct}% (${money(lv.warnLoss, false)}) · ${esc(rules.label)}` });
+      const ds = rsT && rsT.daily ? rsT.daily : R.dailyStatus(acc, all, { pnlFor });
+      if (ds && ds.complete) lim('Daily loss', `today · ${esc(ds.tz)}`, ds.used, ds.allowed,
+        `floor ${money(ds.floor, false)}`,
+        { understated: ds.understated, noGreen, note: `${esc(R.formulaText(rules, acc.startingBalance, v => money(v, false)))} Day resets 00:00 ${esc(ds.tz)}.` });
+    }
     if (!cards.length) return '';
     const span = cards.length === 1 ? 'ds-span-4 ds-t-3' : cards.length === 2 ? 'ds-span-6 ds-t-3' : cards.length === 3 ? 'ds-span-4 ds-t-3' : cards.length === 4 ? 'ds-span-3 ds-t-3' : 'ds-span-4 ds-t-3';
     return `<section class="ds-section" id="dbTargets">
@@ -422,6 +468,7 @@
 
   function bind(root, all) {
     root.querySelector('[data-db-confirm-acc]')?.addEventListener('click', () => { if (typeof window.openAccountCenter === 'function') window.openAccountCenter('accounts'); });
+    root.querySelector('[data-db-new-run]')?.addEventListener('click', () => { const acc = ruleAccount(); if (acc && typeof window.obStartNewRun === 'function') window.obStartNewRun(acc); });
     root.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
       if (b.dataset.mode !== mode() && typeof window.switchMode === 'function') { page = 0; discipline = null; window.switchMode(b.dataset.mode); }
     }));

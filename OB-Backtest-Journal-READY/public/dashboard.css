@@ -171,3 +171,16 @@ html .ob-jh-grid .ob-jh-today .ob-jh-day::after { content: ""; display: inline-b
 /* migration flag on the equity card: unverified starting balance */
 .db2-unverified { margin-top: 10px; font-size: 12px; line-height: 1.45; color: var(--ds-warn); }
 .db2-unverified .ds-link { color: inherit; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: inherit; text-decoration: underline; }
+
+/* Part 3: an account that broke its rules (rule-status.js) — red card, BLOWN with the reason and the date */
+.db2-blown-card { border-color: color-mix(in srgb, var(--ds-neg) 55%, transparent) !important; background: linear-gradient(0deg, var(--ds-neg-tint), var(--ds-neg-tint)), var(--ds-surface-solid, transparent); }
+.db2-blown { margin-top: 10px; font-size: 12px; line-height: 1.45; color: var(--ds-neg); }
+.db2-blown b { font-family: var(--ds-mono); letter-spacing: .1em; margin-right: 4px; }
+.db2-blown .ds-link { color: inherit; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: inherit; text-decoration: underline; }
+
+/* Analytics: runs and overrides */
+.ob-rules-table { overflow-x: auto; margin-top: 8px; }
+.ob-rules-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ob-rules-table th { text-align: left; font-family: var(--ds-mono); font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-text-2); padding: 6px 8px; border-bottom: 1px solid var(--ds-line); white-space: nowrap; }
+.ob-rules-table td { padding: 8px; border-bottom: 1px solid var(--ds-line); white-space: nowrap; }
+.ob-rule-dialog .ds-dialog-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }

@@ -69,6 +69,27 @@
     queue();
   }
 
+  // ── daily loss room ────────────────────────────────────────────────────────
+  // With a rule preset (rule-presets.js): the preset's formula, counted in the account's reset
+  // timezone. Without one: the older dollar "Daily loss limit" on the display-timezone day.
+  // Equity-based presets cannot be checked yet (no equity feed): understated, never green.
+  function dailyRoom(acc) {
+    if (!acc) return null;
+    const R = window.obRules;
+    const rules = R ? R.rulesFor(acc) : null;
+    if (rules) {
+      const s = R.dailyStatus(acc, scopedTrades(), { pnlFor });
+      if (!s.complete) return { preset: true, incomplete: true, rules, todayPnl: s.todayPnl };
+      return { preset: true, rules, limit: s.allowed, used: s.used, left: Math.max(0, s.left), understated: s.understated, todayPnl: s.todayPnl, tz: s.tz, formula: s.formula };
+    }
+    const today = todayIso();
+    const todayPnl = scopedTrades().filter(t => String(t.date).slice(0, 10) === today).reduce((s, t) => s + pnlFor(t), 0);
+    const limit = Number(acc.dailyLossLimit) > 0 ? Number(acc.dailyLossLimit) : null;
+    return limit ? { limit, used: Math.max(0, -todayPnl), left: Math.max(0, limit - Math.max(0, -todayPnl)), todayPnl } : null;
+  }
+  const eaBlocked = acc => !!(acc && window.obRules && !window.obRules.eaAllowed(acc));
+  const EA_BLOCKED = () => (window.obRules ? window.obRules.EA_BLOCKED_MSG : 'EAs not permitted by this firm');
+
   // ── pieces ───────────────────────────────────────────────────────────────
   function stripHtml(d) {
     const m = mode(); const acc = activeAccount(); const accounts = liveAccounts(m);
@@ -83,13 +104,18 @@
       const tone = synced ? 'pos' : st.linked ? 'warn' : '';
       mt5Html = `<span class="tp-chip ${tone}" title="${esc(st.linked ? `${st.login || ''}${st.server ? ' · ' + st.server : ''}` : 'Read-only MT5 sync is not linked for this account')}"><span class="ds-dot"></span> MT5 · ${label}${st.linked && st.positionCount != null ? ` · ${plural(st.positionCount, 'open position', 'open positions')}` : ''}</span>
         ${st.linked
-          ? `<button type="button" class="ds-btn ds-btn-secondary ds-btn-sm" data-mt5="history"><i class="fa-solid fa-clock-rotate-left"></i> History</button><button type="button" class="ds-btn ds-btn-secondary ds-btn-sm tp-danger" data-mt5="unlink">Unlink</button>`
-          : `<button type="button" class="ds-btn ds-btn-secondary ds-btn-sm" data-mt5="link"><i class="fa-solid fa-link"></i> Link MT5</button>`}
+          ? `<button type="button" class="ds-btn ds-btn-secondary ds-btn-sm" data-mt5="history"><i class="fa-solid fa-clock-rotate-left"></i> History</button><button type="button" class="ds-btn ds-btn-secondary ds-btn-sm tp-danger" data-mt5="unlink">Unlink</button>${eaBlocked(acc) ? `<span class="tp-chip warn" title="Maven bans EAs on every platform. Unlink this account."><i class="fa-solid fa-ban"></i> ${esc(EA_BLOCKED())}</span>` : ''}`
+          : eaBlocked(acc)
+            ? `<span class="tp-chip" title="Maven bans EAs on every platform. Log this account's trades manually."><i class="fa-solid fa-ban"></i> ${esc(EA_BLOCKED())}</span>`
+            : `<button type="button" class="ds-btn ds-btn-secondary ds-btn-sm" data-mt5="link"><i class="fa-solid fa-link"></i> Link MT5</button>`}
         <button type="button" class="ds-btn ds-btn-secondary ds-btn-sm ds-icon-btn" data-mt5="help" aria-label="How to connect MT5" title="How to connect MT5"><i class="fa-solid fa-circle-question"></i></button>`;
     }
     // Rule status (what the hard-stop / daily-limit banner used to say)
     let rule = '';
-    if (m !== 'Backtest' && d) {
+    const rsS = acc && typeof window.obRuleState === 'function' ? window.obRuleState(acc) : null;
+    if (m !== 'Backtest' && rsS && rsS.state === 'blown') {
+      rule = `<span class="tp-chip neg" title="${esc(window.obBlownReason(rsS.blown))}"><i class="fa-solid fa-skull-crossbones"></i> BLOWN · run ${rsS.runNumber}</span>`;
+    } else if (m !== 'Backtest' && d) {
       if (d.consecutiveLosses >= d.hardStopThreshold && d.hardStopTriggered) {
         rule = `<span class="tp-chip neg" title="Trading is paused after hitting your ${d.hardStopThreshold}-loss rule."><i class="fa-solid fa-hand"></i> Hard stop · ${plural(d.consecutiveLosses, 'loss', 'losses')} in a row</span>`;
       } else if (d.dailyLimitReached) {
@@ -98,9 +124,16 @@
         const after = d.tradesAfterStop > 0 ? ` · ${plural(d.tradesAfterStop, 'trade', 'trades')} logged after it` : '';
         rule = `<span class="tp-chip warn" title="Your ${d.hardStopThreshold}-loss rule was hit earlier${d.hardStopDate ? ' on ' + (window.obTime ? window.obTime.date(d.hardStopDate) : d.hardStopDate) : ''}${after}."><i class="fa-solid fa-flag"></i> ${d.hardStopThreshold}-loss rule hit${d.hardStopDate ? ` on ${esc(window.obTime ? window.obTime.date(d.hardStopDate) : d.hardStopDate)}` : ''}${after}</span>`;
       } else {
+        const room = dailyRoom(acc);
         rule = unverified(acc)
           ? `<span class="tp-chip warn" title="${UNVERIFIED_MSG}"><i class="fa-solid fa-triangle-exclamation"></i> Balance unverified</span>`
-          : `<span class="tp-chip pos"><i class="fa-solid fa-shield-halved"></i> Rules OK</span>`;
+          : rsS && rsS.state === 'warn'
+            ? `<span class="tp-chip warn" title="Down ${rsS.drawdownPct}% from the starting balance; blown at ${rsS.rules.maxDrawdownPct}%"><i class="fa-solid fa-triangle-exclamation"></i> Drawdown warning · ${rsS.drawdownPct}%</span>`
+          : room && room.incomplete
+            ? `<span class="tp-chip warn" title="${esc(room.rules.problems.join(' '))}"><i class="fa-solid fa-triangle-exclamation"></i> Rules incomplete</span>`
+            : room && room.understated
+              ? `<span class="tp-chip warn" title="Daily loss: ${esc(window.obRules.EQUITY_MSG)}"><i class="fa-solid fa-triangle-exclamation"></i> Daily loss: closed balance only</span>`
+              : `<span class="tp-chip pos"><i class="fa-solid fa-shield-halved"></i> Rules OK</span>`;
       }
     }
     return `<div class="tp-strip-l">
@@ -115,6 +148,11 @@
   const unverified = acc => !!(acc && acc.needsVerification === true);
   function verdict(d, room, acc) {
     if (mode() === 'Backtest') return { tone: 'neutral', title: 'Backtest', text: 'No hard stop, daily limit or loss limit applies in Backtest. Log freely.' };
+    // Part 3: drawdown / daily loss state of the account's current run (rule-status.js)
+    const rs = acc && typeof window.obRuleState === 'function' ? window.obRuleState(acc) : null;
+    if (rs && rs.state === 'blown') {
+      return { tone: 'neg', title: 'No — this account is BLOWN', text: `${esc(window.obBlownReason(rs.blown))}. Manual trades are blocked: Add trade asks you to type BLOWN, and every override is recorded. MT5 trades are still logged. <button type="button" class="ds-link" data-new-run>Start new run</button>` };
+    }
     if (!d) return { tone: 'neutral', title: 'Checking…', text: 'Reading your rules.' };
     const lossesLeft = d.hardStopThreshold - d.consecutiveLosses;
     const tradesLeft = d.dailyMax - d.todayCount;
@@ -126,7 +164,12 @@
     const warn = [];
     if (lossesLeft === 1) warn.push('one more loss hits your hard stop');
     if (tradesLeft === 1) warn.push('this is your last trade today');
-    if (room && room.left < room.limit * 0.25) warn.push(`only ${money(room.left, false)} of loss room left`);
+    if (room && !room.incomplete && room.left < room.limit * 0.25) warn.push(`only ${money(room.left, false)} of loss room left`);
+    // A limit that cannot be computed is never a pass.
+    if (rs && rs.state === 'warn') warn.push(`you are down ${rs.drawdownPct}% from the starting balance: past the ${rs.rules.warnPct}% warning level, blown at ${rs.rules.maxDrawdownPct}%`);
+    if (rs && rs.state === 'unknown' && !(room && room.incomplete)) warn.push(`your risk rules are not checked (${(rs.problems || []).join(' ')})`);
+    if (room && room.incomplete) warn.push(`your ${room.rules.label} rules are incomplete, so today's loss limit is not checked`);
+    if (room && room.understated) warn.push(`daily loss is ${window.obRules.EQUITY_MSG}: floating losses are not counted`);
     if (unverified(acc)) return { tone: 'warn', title: 'Unverified starting balance', text: `${UNVERIFIED_MSG}.${warn.length ? ' ' + warn.join('; ').replace(/^./, c => c.toUpperCase()) + '.' : ''} <button type="button" class="ds-link" data-confirm-acc>Confirm it</button>` };
     if (warn.length) return { tone: 'warn', title: 'Yes, carefully', text: `${warn.join('; ').replace(/^./, c => c.toUpperCase())}.` };
     return { tone: 'pos', title: 'Yes — you can trade', text: `${plural(tradesLeft, 'trade', 'trades')} and ${plural(lossesLeft, 'loss', 'losses')} of room before a rule stops you.` };
@@ -134,11 +177,9 @@
 
   function canTradeHtml(d) {
     const m = mode(); const acc = activeAccount();
-    const today = todayIso();
-    const todays = scopedTrades().filter(t => String(t.date).slice(0, 10) === today);
-    const todayPnl = todays.reduce((s, t) => s + pnlFor(t), 0);
-    const limit = acc && Number(acc.dailyLossLimit) > 0 ? Number(acc.dailyLossLimit) : null;
-    const room = limit ? { limit, used: Math.max(0, -todayPnl), left: Math.max(0, limit - Math.max(0, -todayPnl)) } : null;
+    const room = dailyRoom(acc);
+    const limit = room && !room.incomplete ? room.limit : null;
+    const todayPnl = room ? room.todayPnl : scopedTrades().filter(t => String(t.date).slice(0, 10) === todayIso()).reduce((s, t) => s + pnlFor(t), 0);
     const v = verdict(d, room, acc);
     const calm = t => (t === 'pos' && unverified(acc) ? '' : t); // no green meter while the balance is unverified
     const tone = (left, of) => calm(left <= 0 ? 'neg' : left === 1 || (of && left < of * 0.25) ? 'warn' : 'pos');
@@ -154,9 +195,16 @@
       const tl = Math.max(0, d.dailyMax - d.todayCount), ll = Math.max(0, d.hardStopThreshold - d.consecutiveLosses);
       metrics = metric('Trades left today', tl, `/ ${d.dailyMax}`, (tl / (d.dailyMax || 1)) * 100, tone(tl, d.dailyMax), `${plural(d.todayCount, 'trade', 'trades')} logged today`)
         + metric('Losses left before hard stop', ll, `/ ${d.hardStopThreshold}`, (ll / (d.hardStopThreshold || 1)) * 100, tone(ll, d.hardStopThreshold), `${plural(d.consecutiveLosses, 'loss', 'losses')} in a row now`)
-        + (room
-          ? metric('Daily loss room left', money(room.left, false), `/ ${money(limit, false)}`, (room.left / limit) * 100, calm(room.left <= 0 ? 'neg' : room.left < limit * 0.25 ? 'warn' : 'pos'), `Today's P&amp;L <span class="${cls(todayPnl)}">${money(todayPnl)}</span>`)
-          : metric('Daily loss room left', '—', '', null, '', `No daily loss limit on this account · <button type="button" class="ds-link" data-go-acc>Set one</button>`));
+        + (room && room.incomplete
+          ? metric('Daily loss room left', '—', '', null, 'warn', `${esc(room.rules.label)} rules incomplete: not checked · <button type="button" class="ds-link" data-go-acc>Finish them</button>`)
+          : room
+            ? metric('Daily loss room left', money(room.left, false), `/ ${money(limit, false)}`, (room.left / (limit || 1)) * 100,
+              // understated (equity base, no equity feed): never a green meter
+              calm(room.left <= 0 ? 'neg' : room.left < limit * 0.25 ? 'warn' : room.understated ? '' : 'pos'),
+              `Today's P&amp;L <span class="${cls(todayPnl)}">${money(todayPnl)}</span>`
+                + (room.preset ? ` · ${esc(room.rules.label)}, ${room.formula === 'ftmo' ? 'FTMO formula' : 'standard formula'} · day resets 00:00 ${esc(room.tz)}` : '')
+                + (room.understated ? `<br><span class="ds-warn">${esc(window.obRules.EQUITY_MSG.replace(/^./, c => c.toUpperCase()))}</span>` : ''))
+            : metric('Daily loss room left', '—', '', null, '', `No daily loss limit on this account · <button type="button" class="ds-link" data-go-acc>Set one</button>`));
     }
     return `<div class="ds-section-head"><h2 class="ds-label">Can I trade?</h2><span class="ds-period">today${acc ? ' · ' + esc(acc.name) : m === 'Backtest' ? ' · Backtest' : ''}</span></div>
       <div class="ds-card tp-can tp-${v.tone}" role="status" aria-live="polite">
@@ -240,10 +288,13 @@
     }));
     page.querySelector('#tpCan [data-go-acc]')?.addEventListener('click', () => {
       const acc = activeAccount();
+      // the full editor (preset, reset zone, limits); the quick modal only has name and balance
+      if (acc && typeof window.obEditAccount === 'function' && window.obEditAccount(acc.id)) return;
       if (acc && typeof window.openEditAccountModal === 'function') window.openEditAccountModal(acc.id);
       else if (typeof window.openAccountCenter === 'function') window.openAccountCenter('accounts');
     });
     page.querySelector('#tpCan [data-confirm-acc]')?.addEventListener('click', () => { if (typeof window.openAccountCenter === 'function') window.openAccountCenter('accounts'); });
+    page.querySelector('#tpCan [data-new-run]')?.addEventListener('click', () => { const acc = activeAccount(); if (acc && typeof window.obStartNewRun === 'function') window.obStartNewRun(acc); });
     page.querySelectorAll('#tpToday [data-open]').forEach(b => b.addEventListener('click', () => window.openDrawer && window.openDrawer(b.dataset.open)));
     page.querySelectorAll('#tpToday [data-del]').forEach(b => b.addEventListener('click', () => window.deleteTrade && window.deleteTrade(b.dataset.del)));
     page.querySelector('#tpToday [data-csv]')?.addEventListener('click', () => window.copyTableCSV && window.copyTableCSV());

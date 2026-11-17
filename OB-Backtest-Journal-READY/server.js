@@ -6,8 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import './public/time-prefs.js'; // globalThis.obTimeCore (timezone-aware calendar days)
+import './public/rule-presets.js'; // globalThis.obRules: presets, daily floor, account state (Parts 2-3)
 import { localStore, supabaseStore, extractEmbedded, hasEmbedded, collectGarbage, isShotId, parseDataUrl, refFor, MAX_SHOT_BYTES } from './shots-store.js';
-import { DOC_KEYS, TRADES_KEY as TRADES_DOC_KEY } from './relational-core.js';
+import { DOC_KEYS, TRADES_KEY as TRADES_DOC_KEY, ACCOUNTS_KEY as ACCOUNTS_DOC_KEY, idTimestamp } from './relational-core.js';
 import { sqliteRelational, supabaseRelational } from './relational-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -98,6 +99,11 @@ shots.probe().then(shotStorageWorked, shotStorageFailed);
 // Orphaned screenshot files: { id: markedAtMs }, kept per user; files are deleted
 // only after 30 days unreferenced (see collectGarbage). Server-managed: read-only for the app.
 const SHOT_ORPHANS_KEY = 'ob-shots-orphans';
+// Part 3 records for users not on the relational tables (kv); the tables hold them otherwise.
+const RULE_RUNS_KEY = 'ob-account-runs';
+const RULE_OVERRIDES_KEY = 'ob-rule-overrides';
+// Records only the server writes: the app's storage PUT/DELETE refuse them.
+const SERVER_MANAGED_KEYS = new Set([SHOT_ORPHANS_KEY, RULE_RUNS_KEY, RULE_OVERRIDES_KEY]);
 async function shotCleanup(uid, beforeJson, afterJson) {
   let marks = {};
   try { marks = JSON.parse(await getStoredValue(uid, SHOT_ORPHANS_KEY) || '{}') || {}; } catch { marks = {}; }
@@ -725,8 +731,15 @@ app.put('/api/storage/:key', async (req, res) => {
     const user = await requireAuth(req, res);
     if (!user) return unauthorized(res);
     if (typeof req.body?.value !== 'string') return res.status(400).json({ error: 'value must be a string' });
-    if (req.params.key === SHOT_ORPHANS_KEY) return res.status(403).json({ error: 'This record is managed by the server', code: 'READ_ONLY' });
+    if (SERVER_MANAGED_KEYS.has(req.params.key)) return res.status(403).json({ error: 'This record is managed by the server', code: 'READ_ONLY' });
     let value = req.body.value;
+    if (req.params.key === ACCOUNTS_DOC_KEY) {
+      // BLOWN, the run number and the run start are decided by the server: an app save keeps them.
+      value = keepRuleFields(await getStoredValue(user.id, ACCOUNTS_DOC_KEY), value);
+      await setStoredValue(user.id, ACCOUNTS_DOC_KEY, value);
+      await checkRulesSafe(user.id); // a preset just set may already be breached
+      return res.json({ ok: true, ...(value !== req.body.value ? { value } : {}) });
+    }
     if (req.params.key !== SHOT_TRADES_KEY) {
       await setStoredValue(user.id, req.params.key, value);
       return res.json({ ok: true });
@@ -743,6 +756,9 @@ app.put('/api/storage/:key', async (req, res) => {
     }
     await setStoredValue(user.id, SHOT_TRADES_KEY, value);
     try { await shotCleanup(user.id, before, value); } catch (err) { console.warn('[shots] cleanup failed:', err.message); }
+    // Every trade write (the app, imports, MT5 sync through the gateway) re-checks the rules.
+    // Trades are never refused here: MT5 trades are always accepted.
+    await checkRulesSafe(user.id);
     res.json({ ok: true, ...(value !== req.body.value ? { value } : {}), ...(shotState.available ? {} : { shotStorage: 'embedded-fallback' }) });
   } catch (err) { console.error('Storage PUT failed:', err); res.status(500).json({ error: 'Storage write failed' }); }
 });
@@ -793,7 +809,7 @@ app.delete('/api/storage/:key', async (req, res) => {
   try {
     const user = await requireAuth(req, res);
     if (!user) return unauthorized(res);
-    if (req.params.key === SHOT_ORPHANS_KEY) return res.status(403).json({ error: 'This record is managed by the server', code: 'READ_ONLY' });
+    if (SERVER_MANAGED_KEYS.has(req.params.key)) return res.status(403).json({ error: 'This record is managed by the server', code: 'READ_ONLY' });
     const before = req.params.key === SHOT_TRADES_KEY ? await getStoredValue(user.id, SHOT_TRADES_KEY) : null;
     await deleteStoredValue(user.id, req.params.key);
     if (before) { try { await shotCleanup(user.id, before, '[]'); } catch (err) { console.warn('[shots] cleanup failed:', err.message); } }
@@ -997,6 +1013,209 @@ async function getDailyLimit(uid) {
   return Number.isFinite(n) && n > 0 ? n : DAILY_TRADE_LIMIT;
 }
 
+// ─── Risk rules: BLOWN, overrides and runs (Part 3) ────────────────────────────
+// The state itself is computed by public/rule-presets.js (accountState), the same code the
+// app runs. The server records BLOWN on the account (account.blown) the first time a write
+// shows a breach; from then on it stays until "Start new run", whatever the app saves.
+const RULE_FIELDS = ['blown', 'runNumber', 'runStartedAt'];
+
+/** An app save of the accounts document keeps the server's rule fields (and cannot add them). */
+function keepRuleFields(prevJson, nextJson) {
+  let next;
+  try { next = JSON.parse(nextJson); } catch { return nextJson; }
+  if (!next || typeof next !== 'object' || Array.isArray(next)) return nextJson;
+  const prev = parseJsonSafe(prevJson) || {};
+  const byId = new Map();
+  for (const list of Object.values(prev)) if (Array.isArray(list)) for (const a of list) if (a && a.id != null) byId.set(String(a.id), a);
+  let changed = false;
+  for (const list of Object.values(next)) {
+    if (!Array.isArray(list)) continue;
+    for (const a of list) {
+      if (!a || typeof a !== 'object') continue;
+      const p = byId.get(String(a.id));
+      for (const f of RULE_FIELDS) {
+        const want = p ? p[f] : undefined;
+        if (JSON.stringify(a[f]) === JSON.stringify(want)) continue;
+        if (want === undefined) delete a[f]; else a[f] = want;
+        changed = true;
+      }
+    }
+  }
+  return changed ? JSON.stringify(next) : nextJson;
+}
+
+async function ruleContext(uid) {
+  const accountsDoc = parseJsonSafe(await getStoredValue(uid, ACCOUNTS_DOC_KEY));
+  const s = parseJsonSafe(await getStoredValue(uid, SETTINGS_KEY)) || {};
+  return {
+    accountsDoc: accountsDoc && typeof accountsDoc === 'object' && !Array.isArray(accountsDoc) ? accountsDoc : {},
+    trades: await getTradeList(uid),
+    riskPct: Number(s.riskPercent) || 1,
+    initialCapital: Number(s.initialCapital) || 100000,
+  };
+}
+function findRuleAccount(doc, id) {
+  for (const [type, list] of Object.entries(doc)) {
+    if (!Array.isArray(list)) continue;
+    const acc = list.find(a => a && String(a.id) === String(id));
+    if (acc) return { type, acc };
+  }
+  return null;
+}
+// Same scope as the app: Backtest trades all belong to the Backtest account.
+function stateOf(ctx, type, acc) {
+  const R = globalThis.obRules;
+  const trades = ctx.trades.filter(t => t && t.mode === type && (type === 'Backtest' || String(t.accountId) === String(acc.id)));
+  return R.accountState(acc, trades, { pnlFor: t => R.pnlOf(t, acc, ctx) });
+}
+
+/** Records BLOWN on every account whose current run is breached. Returns the newly blown ids. */
+async function checkRules(uid) {
+  const ctx = await ruleContext(uid);
+  const newly = [];
+  for (const [type, list] of Object.entries(ctx.accountsDoc)) {
+    if (!Array.isArray(list)) continue;
+    for (const acc of list) {
+      if (!acc || typeof acc !== 'object' || acc.blown || !globalThis.obRules.rulesFor(acc)) continue;
+      const s = stateOf(ctx, type, acc);
+      if (s.state === 'blown' && s.breach) { acc.blown = { ...s.breach, runNumber: s.runNumber, at: new Date().toISOString() }; newly.push(String(acc.id)); }
+    }
+  }
+  if (newly.length) await setStoredValue(uid, ACCOUNTS_DOC_KEY, JSON.stringify(ctx.accountsDoc));
+  return newly;
+}
+async function checkRulesSafe(uid) {
+  try { return await checkRules(uid); } catch (err) { console.warn('[rules] check failed:', err.message); return []; }
+}
+
+/** Runs and overrides: the relational tables for users on them, kv otherwise. */
+async function ruleLedger(uid) {
+  if (await relationalFor(uid)) {
+    return {
+      addRun: r => relational.addRun(uid, r), listRuns: () => relational.listRuns(uid),
+      addOverride: o => relational.addOverride(uid, o), listOverrides: () => relational.listOverrides(uid),
+      useOverride: (id, tradeId) => relational.useOverride(uid, id, tradeId),
+    };
+  }
+  const read = async k => { const v = parseJsonSafe(await kvGet(uid, k)); return Array.isArray(v) ? v : []; };
+  return {
+    addRun: async r => kvSet(uid, RULE_RUNS_KEY, JSON.stringify([...(await read(RULE_RUNS_KEY)), r])),
+    listRuns: () => read(RULE_RUNS_KEY),
+    addOverride: async o => kvSet(uid, RULE_OVERRIDES_KEY, JSON.stringify([...(await read(RULE_OVERRIDES_KEY)), { ...o, used_by_trade: null, used_at: null }])),
+    listOverrides: () => read(RULE_OVERRIDES_KEY),
+    useOverride: async (id, tradeId) => {
+      const list = await read(RULE_OVERRIDES_KEY);
+      const o = list.find(x => x.id === id && !x.used_by_trade);
+      if (!o) return false;
+      Object.assign(o, { used_by_trade: tradeId, used_at: new Date().toISOString() });
+      await kvSet(uid, RULE_OVERRIDES_KEY, JSON.stringify(list));
+      return true;
+    },
+  };
+}
+
+/**
+ * A new manual trade on a blown account needs an unused BLOWN override for that account
+ * (trade.ruleOverride); it is then saved with postBreach. null = allowed.
+ * MT5 trades and edits of an existing trade are never blocked. Backtest is never blocked
+ * either (blocksManualEntry): the trade is saved with postBreach and no override.
+ */
+async function manualEntryCheck(uid, trade, mode) {
+  if (trade.source === 'mt5') return null;
+  const ctx = await ruleContext(uid);
+  if (ctx.trades.some(t => t && String(t.id) === String(trade.id))) return null;
+  const list = Array.isArray(ctx.accountsDoc[mode]) ? ctx.accountsDoc[mode] : [];
+  const acc = list.find(a => a && trade.accountId != null && String(a.id) === String(trade.accountId)) || (mode === 'Backtest' ? list[0] : null);
+  if (!acc) return null;
+  const s = stateOf(ctx, mode, acc);
+  if (s.state !== 'blown') return null;
+  if (!globalThis.obRules.blocksManualEntry(mode)) { trade.postBreach = true; return null; }
+  const ovr = typeof trade.ruleOverride === 'string' ? trade.ruleOverride : '';
+  if (ovr) {
+    try {
+      const ledger = await ruleLedger(uid);
+      const mine = (await ledger.listOverrides()).find(o => o.id === ovr && String(o.account_id) === String(acc.id));
+      if (mine && await ledger.useOverride(ovr, String(trade.id))) { trade.postBreach = true; return null; }
+    } catch (err) { console.warn('[rules] override check failed:', err.message); }
+  }
+  return {
+    status: 423,
+    body: {
+      error: `${acc.name || 'This account'} is BLOWN, so manual trades are blocked. Type BLOWN to log one anyway, or start a new run.`,
+      code: 'ACCOUNT_BLOWN', accountId: String(acc.id), mode, blown: s.blown,
+    },
+  };
+}
+
+// POST /api/accounts/:id/override { confirm: 'BLOWN' } → a recorded, one-trade override.
+app.post('/api/accounts/:id/override', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    if (String(req.body?.confirm ?? '') !== globalThis.obRules.BLOWN_WORD) {
+      return res.status(400).json({ error: 'Type BLOWN to confirm the override.', code: 'CONFIRM_REQUIRED' });
+    }
+    await checkRulesSafe(user.id);
+    const ctx = await ruleContext(user.id);
+    const found = findRuleAccount(ctx.accountsDoc, req.params.id);
+    if (!found) return res.status(404).json({ error: 'Account not found', code: 'ACCOUNT_NOT_FOUND' });
+    const s = stateOf(ctx, found.type, found.acc);
+    if (s.state !== 'blown') return res.status(409).json({ error: 'This account is not blown.', code: 'NOT_BLOWN' });
+    if (!globalThis.obRules.blocksManualEntry(found.type)) return res.status(409).json({ error: 'Backtest accounts are never locked, so no override is needed.', code: 'NOT_LOCKED' });
+    const override = { id: `ovr-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`, account_id: String(found.acc.id), run_number: s.runNumber, created_at: new Date().toISOString() };
+    try { await (await ruleLedger(user.id)).addOverride(override); }
+    catch (err) {
+      // An override that cannot be recorded is refused.
+      console.warn('[rules] override not recorded:', err.message);
+      return res.status(503).json({ error: 'The override could not be recorded, so it is refused. If this is Supabase, run migrations/003_rule_overrides.sql.', code: 'OVERRIDE_UNAVAILABLE' });
+    }
+    res.status(201).json({ ok: true, override });
+  } catch (err) { console.error('Override failed:', err); res.status(500).json({ error: 'Override failed' }); }
+});
+
+// POST /api/accounts/:id/new-run { startingBalance } → archive the run, start the next one.
+app.post('/api/accounts/:id/new-run', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    const start = Number(String(req.body?.startingBalance ?? '').replace(/,/g, ''));
+    if (!Number.isFinite(start) || start <= 0) return res.status(400).json({ error: 'Enter a starting balance greater than 0.', code: 'BAD_BALANCE' });
+    await checkRulesSafe(user.id);
+    const ctx = await ruleContext(user.id);
+    const found = findRuleAccount(ctx.accountsDoc, req.params.id);
+    if (!found) return res.status(404).json({ error: 'Account not found', code: 'ACCOUNT_NOT_FOUND' });
+    const { acc } = found;
+    if (!globalThis.obRules.rulesFor(acc)) return res.status(409).json({ error: 'Choose a rule preset for this account first.', code: 'NO_RULES' });
+    const s = stateOf(ctx, found.type, acc);
+    const now = new Date().toISOString();
+    const run = {
+      account_id: String(acc.id), run_number: s.runNumber,
+      starting_balance: Number(acc.startingBalance) || 0,
+      started_at: acc.runStartedAt || idTimestamp(acc.id) || now, ended_at: now,
+      end_reason: s.state === 'blown' ? 'blown' : 'manual_reset',
+      peak_balance: Number.isFinite(s.peak) ? s.peak : null,
+    };
+    await (await ruleLedger(user.id)).addRun(run);
+    Object.assign(acc, { startingBalance: start, balance: start, runNumber: s.runNumber + 1, runStartedAt: now, needsVerification: false });
+    delete acc.blown;
+    await setStoredValue(user.id, ACCOUNTS_DOC_KEY, JSON.stringify(ctx.accountsDoc));
+    res.json({ ok: true, run, accounts: await getStoredValue(user.id, ACCOUNTS_DOC_KEY) });
+  } catch (err) { console.error('New run failed:', err); res.status(500).json({ error: 'Starting a new run failed' }); }
+});
+
+// GET /api/rules/log → previous runs and overrides (Analytics)
+app.get('/api/rules/log', async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+    if (!user) return unauthorized(res);
+    const ledger = await ruleLedger(user.id);
+    const runs = await ledger.listRuns();
+    let overrides = [], overridesAvailable = true;
+    try { overrides = await ledger.listOverrides(); } catch (err) { overridesAvailable = false; console.warn('[rules] overrides not readable:', err.message); }
+    res.json({ ok: true, runs, overrides, overridesAvailable });
+  } catch (err) { console.error('Rules log failed:', err); res.status(500).json({ error: 'Rules log failed' }); }
+});
+
 // GET /api/trades/daily-count?mode=Real&date=YYYY-MM-DD
 app.get('/api/trades/daily-count', async (req, res) => {
   try {
@@ -1038,6 +1257,10 @@ app.post('/api/trades', async (req, res) => {
       return res.status(400).json({ error: 'trade object with id is required', code: 'TRADE_INVALID' });
     }
 
+    // Part 3: a blown account takes no manual trade without a BLOWN override.
+    const blocked = await manualEntryCheck(user.id, trade, mode);
+    if (blocked) return res.status(blocked.status).json(blocked.body);
+
     if (mode !== 'Backtest') {
       const limit      = await getDailyLimit(user.id);
       const date       = String(trade.date || await todayFor(user.id)).slice(0, 10);
@@ -1071,7 +1294,8 @@ app.post('/api/trades', async (req, res) => {
     }
 
     await setStoredValue(user.id, SHOT_TRADES_KEY, JSON.stringify(updated));
-    return res.status(201).json({ ok: true, id: trade.id, total: updated.length });
+    const blown = await checkRulesSafe(user.id);
+    return res.status(201).json({ ok: true, id: trade.id, total: updated.length, ...(trade.postBreach ? { postBreach: true } : {}), ...(blown.length ? { blown } : {}) });
   } catch (err) {
     console.error('POST /api/trades failed:', err);
     return res.status(500).json({ error: 'Trade save failed' });

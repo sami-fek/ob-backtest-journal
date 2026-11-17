@@ -10,6 +10,7 @@ import { tradesDocToRows, rowsToTradesDoc, accountsDocToRows, rowsToAccountsDoc,
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SQL = fs.readFileSync(path.join(__dirname, '..', 'migrations', '001_relational.sql'), 'utf8');
+const SQL003 = fs.readFileSync(path.join(__dirname, '..', 'migrations', '003_rule_overrides.sql'), 'utf8');
 let PGlite = null;
 try { ({ PGlite } = await import('@electric-sql/pglite')); } catch { /* skipped below */ }
 const skip = PGlite ? false : '@electric-sql/pglite is not installed (npm install)';
@@ -99,4 +100,24 @@ test('one MT5 ticket per account', { skip }, async () => {
   await db.query(`insert into trades (user_id,id,account_id,mt5_ticket) values ('u1','m1','demo-1','123')`);
   await assert.rejects(db.query(`insert into trades (user_id,id,account_id,mt5_ticket) values ('u1','m2','demo-1','123')`), /duplicate key/);
   await db.query(`insert into trades (user_id,id,account_id,mt5_ticket) values ('u1','m3','demo-2','123')`); // another account: fine
+});
+
+test('003_rule_overrides: needs 001, runs twice, RLS on, one override per trade is enforced by the server query', { skip }, async () => {
+  const bare = new PGlite();
+  await bare.exec(PRELUDE);
+  await bare.exec(SQL.replace(/insert into public\.schema_migrations[^;]*;/, '')); // 001 without its record
+  await assert.rejects(bare.exec(SQL003), /run migrations\/001_relational\.sql first/);
+  const db = await fresh();
+  await db.exec(SQL003); await db.exec(SQL003);
+  assert.equal(await n(db, "select count(*) n from schema_migrations where version='003_rule_overrides'"), 1);
+  assert.equal((await db.query("select relrowsecurity from pg_class where relname='rule_overrides'")).rows[0].relrowsecurity, true);
+  await db.query("insert into rule_overrides (user_id, id, account_id, run_number) values ('u1','ovr-1','funded-1',1)");
+  // the server's "use" is an update guarded by used_by_trade is null: a second use changes nothing
+  const use = () => db.query("update rule_overrides set used_by_trade=$1, used_at=now() where user_id='u1' and id='ovr-1' and used_by_trade is null", ['tr-a']);
+  assert.equal((await use()).affectedRows, 1); assert.equal((await use()).affectedRows, 0);
+  // the accounts table takes the blown status and account_runs takes a run
+  await call(db, 'journal_save_accounts', ['u1', JSON.stringify([{ id: 'funded-1', name: 'F', type: 'funded', status: 'blown', run_number: 2, preset: 'my-rules', reset_timezone: 'UTC', extra: {} }]), 'replace']);
+  await db.query("insert into account_runs (user_id, account_id, run_number, starting_balance, started_at, ended_at, end_reason, peak_balance) values ('u1','funded-1',1,10000,now(),now(),'blown',10100)");
+  assert.equal(await n(db, "select count(*) n from accounts where status='blown' and run_number=2 and preset='my-rules'"), 1);
+  await assert.rejects(db.query("insert into account_runs (user_id, account_id, run_number, starting_balance, started_at, end_reason) values ('u1','funded-1',1,1,now(),'blown')"), /duplicate key/, 'one row per run');
 });

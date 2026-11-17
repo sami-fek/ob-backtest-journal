@@ -912,6 +912,8 @@
   <!-- Trade save rule (50% checklist + note + screenshot); also unit-tested -->
   <!-- Saved timezone, currency symbol and date format (BUILD-PLAN-2 Part 4) -->
   <script src="/time-prefs.js"></script>
+  <!-- Rule presets (My Rules, FundingPips, FTMO, The5ers, Maven, Custom) and the daily floor formulas -->
+  <script src="/rule-presets.js"></script>
   <script src="/note-utils.js"></script>
   <!-- Screenshots stored as files; trades keep references (BUILD-PLAN-2 Part 4) -->
   <script src="/shots.js"></script>
@@ -1990,15 +1992,16 @@
       const winRate = totalCount > 0 ? winsCount / totalCount : 0;
       const avgWin = winsCount > 0 ? winsR / winsCount : 0;
       const avgLoss = lossesCount > 0 ? lossesR / lossesCount : 1;
-      const expectancy = (winRate * avgWin) - ((1 - winRate) * avgLoss);
+      // With no trades expectancy is undefined: show a dash, not -1.00 R (avgLoss defaults to 1).
+      const expectancy = totalCount > 0 ? (winRate * avgWin) - ((1 - winRate) * avgLoss) : null;
       const wlRatio = avgLoss > 0 ? avgWin / avgLoss : 0;
       const maxDD = computeMaxDD(list);
       document.getElementById('analyticsProfitFactor').textContent = pf.toFixed(2);
-      document.getElementById('analyticsExpectancy').textContent = `${expectancy >= 0 ? '+' : ''}${expectancy.toFixed(2)} R`;
+      document.getElementById('analyticsExpectancy').textContent = expectancy === null ? '—' : `${expectancy >= 0 ? '+' : ''}${expectancy.toFixed(2)} R`;
       document.getElementById('analyticsMaxDD').textContent = `${maxDD.toFixed(2)} R`;
       document.getElementById('analyticsWinLossRatio').textContent = `${wlRatio.toFixed(2)}x`;
       document.getElementById('statProfitFactor').textContent = pf.toFixed(2);
-      document.getElementById('statExpectancy').textContent = `${expectancy.toFixed(2)} R`;
+      document.getElementById('statExpectancy').textContent = expectancy === null ? '—' : `${expectancy.toFixed(2)} R`;
       const ddEl = document.getElementById('statMaxDD');
       if (ddEl) ddEl.textContent = `${maxDD.toFixed(2)} R`;
       updateAnalyticsInsight();
@@ -2415,6 +2418,11 @@
               if (r.status === 429) {
                 const body = await r.json().catch(() => ({}));
                 showDailyLimitBlock(body); // hard block — trade not saved
+                return;
+              }
+              if (r.status === 423) { // account BLOWN (rule-status.js): hard block — trade not saved
+                const body = await r.json().catch(() => ({}));
+                if (typeof window.obShowBlownBlock === 'function') window.obShowBlownBlock(body); else alert(body.error || 'This account is BLOWN.');
                 return;
               }
               if (!r.ok) console.warn('[Journal] /api/trades returned', r.status, '— saving locally');
@@ -2883,7 +2891,7 @@
         const text = (data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || '').trim();
         if (!text) throw new Error('AI returned an empty response.');
 
-        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const time = window.obTime ? window.obTime.clock(new Date()) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         showDrawerAi('result', { text, time });
       } catch (err) {
         const msg = err && err.message ? String(err.message) : 'Unable to reach the AI service right now. Please try again later.';
@@ -3133,5 +3141,7 @@
   <script src="/journal-page.js"></script>
   <script src="/site-shell.js"></script>
   <script src="/trading-page.js"></script>
+  <!-- Drawdown and daily loss enforcement: BLOWN, overrides, new runs (Part 3) -->
+  <script src="/rule-status.js"></script>
 </body>
 </html>

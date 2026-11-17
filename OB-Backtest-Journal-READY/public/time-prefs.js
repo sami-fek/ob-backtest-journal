@@ -10,7 +10,7 @@
  *    formatDate(iso, fmt)         YYYY-MM-DD | DD/MM/YYYY | MM/DD/YYYY | DD MMM YYYY
  *
  *  obTime (browser; reads the settings saved in Account center › Preferences):
- *    tz(), today(), dayOf(instant), money(v, opts), date(iso), sym()
+ *    tz(), today(), dayOf(instant), money(v, opts), date(iso), sym(), instant(v), clock(v)
  *
  * Without a saved timezone the device timezone is used (same as before).
  * Tests: test/time-prefs.test.js.
@@ -68,7 +68,16 @@
     }
   }
 
-  root.obTimeCore = { FORMATS, validTz, isoInTz, todayIso, formatMoney, formatDate };
+  /** Clock time / date-time of an instant in `tz` (device timezone when tz is empty/invalid). */
+  function formatInstant(instant, tz, opts) {
+    const d = instant instanceof Date ? instant : new Date(instant);
+    if (Number.isNaN(d.getTime())) return '';
+    const o = Object.assign({}, opts || { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    if (validTz(tz)) o.timeZone = tz;
+    return d.toLocaleString('en-GB', o);
+  }
+
+  root.obTimeCore = { FORMATS, validTz, isoInTz, todayIso, formatMoney, formatDate, formatInstant };
 
   if (typeof window === 'undefined') return;
   const settings = () => { try { return (typeof window.obGetSettings === 'function' && window.obGetSettings()) || {}; } catch (_) { return {}; } };
@@ -81,6 +90,9 @@
     today: () => todayIso(tz()),
     dayOf: instant => isoInTz(instant, tz()),
     money: (v, opts) => formatMoney(v, sym(), opts),
-    date: iso => formatDate(iso, dateFmt())
+    date: iso => formatDate(iso, dateFmt()),
+    // An instant (sync time, close time, message time) in the saved display timezone.
+    instant: (v, opts) => formatInstant(v, tz(), opts),
+    clock: v => formatInstant(v, tz(), { hour: '2-digit', minute: '2-digit' })
   };
 })(typeof window !== 'undefined' ? window : globalThis);

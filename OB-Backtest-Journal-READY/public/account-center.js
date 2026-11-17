@@ -446,12 +446,24 @@
             const b = balanceOf(a);
             const n = tradesFor(a).length;
             const inUse = a.type !== 'Backtest' && activeIdFor(a.type) === a.id && a.status !== 'archived';
-            const meta = [a.broker, a.currency, `${n} trade${n === 1 ? '' : 's'}`, a.profitTarget ? 'target ' + money(a.profitTarget) : '', a.maxDrawdown ? 'max DD ' + money(a.maxDrawdown) : '', a.dailyLossLimit ? 'daily loss ' + money(a.dailyLossLimit) : ''].filter(Boolean).map(esc).join(' · ');
+            const rules = window.obRules ? window.obRules.rulesFor(a) : null;
+            const ruleMeta = rules
+              ? (rules.complete
+                ? [`${rules.label} rules`, `max DD ${rules.maxDrawdownPct}%`, `daily ${rules.dailyLossPct}% (${rules.dailyLossFormula === 'ftmo' ? 'FTMO formula' : 'standard'})`, `resets 00:00 ${rules.resetTimezone}`]
+                : [`${rules.label} rules incomplete`])
+              : [a.maxDrawdown ? 'max DD ' + money(a.maxDrawdown) : '', a.dailyLossLimit ? 'daily loss ' + money(a.dailyLossLimit) : ''];
+            const meta = [a.broker, a.currency, `${n} trade${n === 1 ? '' : 's'}`, a.profitTarget ? 'target ' + money(a.profitTarget) : '', ...ruleMeta].filter(Boolean).map(esc).join(' · ');
             return `<div class="ac-acc ${a.status === 'archived' ? 'archived' : ''} ${inUse ? 'active-acc' : ''}" data-id="${esc(a.id)}">
               <div class="min-w-0">
                 <div class="ac-acc-name">${esc(a.name)} ${typeBadge(a.type)} <span class="ac-badge status-${a.status}">${a.status === 'archived' ? 'Archived' : 'Active'}</span>${inUse ? '<span class="ac-badge inuse">In use</span>' : ''}</div>
                 <div class="ac-acc-meta">${meta}</div>
                 ${a.needsVerification === true ? `<div class="ac-unverified" role="note"><i class="fa-solid fa-triangle-exclamation"></i> Unverified starting balance - confirm before trusting the risk numbers. <button type="button" class="ac-link" data-act="verify">Confirm balance</button></div>` : ''}
+                ${(() => { // Part 3 (rule-status.js): BLOWN with the reason and the date; warning level
+                  const rs = rules && typeof window.obRuleState === 'function' ? window.obRuleState(a) : null;
+                  if (rs && rs.state === 'blown') return `<div class="ac-blown" role="alert"><b>BLOWN</b> · run ${rs.runNumber} · ${esc(window.obBlownReason(rs.blown))}. <button type="button" class="ac-link" data-act="newrun">Start new run</button></div>`;
+                  if (rs && rs.state === 'warn') return `<div class="ac-unverified" role="note"><i class="fa-solid fa-triangle-exclamation"></i> Warning level: down ${rs.drawdownPct}% (blown at ${rs.rules.maxDrawdownPct}%).</div>`;
+                  return rs && rs.runNumber > 1 ? `<div class="ac-acc-meta">Run ${rs.runNumber}</div>` : '';
+                })()}
               </div>
               <div>
                 <div class="ac-acc-bal">${money(b.balance)}</div>
@@ -503,6 +515,7 @@
         else if (act === 'use') { localStorage.setItem(`my_journal_active_account_${a.type}_v1`, a.id); window.dispatchEvent(new CustomEvent('wallet-accounts-updated')); refreshApp(); toast(`${a.name} is now used for ${a.type}.`); rerender(); }
         else if (act === 'cash') { state.settingsAccId = a.id; show('settings'); }
         else if (act === 'verify') openVerify(a);
+        else if (act === 'newrun' && typeof window.obStartNewRun === 'function') window.obStartNewRun(a);
       });
     });
     body.querySelectorAll('[data-move]').forEach(btn => btn.addEventListener('click', async () => {
@@ -539,7 +552,35 @@
     const isNew = !a;
     const cur = a || B().normalizeAccount({ name: '', startingBalance: 100000 }, 'Demo');
     const currencyOpts = [...new Set([...CURRENCIES, cur.currency])].map(c => `<option ${c === cur.currency ? 'selected' : ''}>${esc(c)}</option>`).join('');
-    const field = (id, label, value, extra = '') => `<label class="ac-field"><span class="ac-label">${label}</span><input class="ac-input mono" id="${id}" inputmode="decimal" value="${value == null ? '' : esc(value)}" ${extra}></label>`;
+    const field = (id, label, value, extra = '', cls = '') => `<label class="ac-field ${cls}"><span class="ac-label">${label}</span><input class="ac-input mono" id="${id}" inputmode="decimal" value="${value == null ? '' : esc(value)}" ${extra}></label>`;
+    // Rule preset (rule-presets.js): numbers come from the preset; Custom lets you type them.
+    const R = window.obRules;
+    const presetSel = (R ? [['', 'None (use the dollar limits below)'], ...R.PRESETS.map(p => [p.id, p.label])] : [['', 'None']])
+      .map(([v, l]) => `<option value="${v}" ${(cur.preset || '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('');
+    const tzNow = R && R.validResetTz(cur.resetTimezone) ? cur.resetTimezone : (R && R.presetById(cur.preset) ? R.presetById(cur.preset).resetTimezone : 'UTC');
+    const tzOpts = (() => {
+      if (!R) return `<option>${esc(tzNow)}</option>`;
+      const { common, all } = R.timezoneChoices();
+      const extra = [...common, ...all].includes(tzNow) ? '' : `<option value="${esc(tzNow)}" selected>${esc(R.tzLabel(tzNow))}</option>`;
+      const opt = z => `<option value="${esc(z)}" ${z === tzNow ? 'selected' : ''}>${esc(R.tzLabel(z))}</option>`;
+      return `${extra}<optgroup label="Common">${common.map(opt).join('')}</optgroup>${all.length ? `<optgroup label="All time zones">${all.map(opt).join('')}</optgroup>` : ''}`;
+    })();
+    const rulesHtml = R ? `
+        <div class="ac-rules" id="aeRules">
+          <div class="ac-rules-head"><span class="ac-label">Risk rules</span><span class="ac-hint">Drawdown and daily loss are measured from the starting balance.</span></div>
+          <div class="ac-grid">
+            <label class="ac-field"><span class="ac-label">Rule preset</span><select class="ac-select" id="aePreset">${presetSel}</select></label>
+            <label class="ac-field" data-rule><span class="ac-label">Daily reset time zone</span><select class="ac-select" id="aeTz">${tzOpts}</select></label>
+            ${field('aeRDD', 'Max drawdown %', '', '', 'ac-rule-num')}
+            ${field('aeRWarn', 'Warn at %', '', '', 'ac-rule-num')}
+            ${field('aeRDaily', 'Daily loss %', '', '', 'ac-rule-num')}
+            <label class="ac-field" data-rule><span class="ac-label">Daily loss base</span><select class="ac-select" id="aeRBase"><option value="balance">Closed balance</option><option value="equity">Equity (balance + floating P/L)</option></select></label>
+            <label class="ac-field full" data-rule><span class="ac-label">Daily floor formula</span><select class="ac-select" id="aeRFormula"><option value="standard">Standard: % of the day-start value</option><option value="ftmo">FTMO: % of the initial capital, a fixed amount</option></select></label>
+          </div>
+          <p class="ac-hint ac-rule-text" id="aeRText" data-rule></p>
+          <p class="ac-hint" id="aeTzText" data-rule></p>
+          <p class="ac-unverified" id="aeRNote" hidden></p>
+        </div>` : '';
     const m = modal(`${dialogHead(isNew ? 'Add account' : 'Edit account', isNew ? 'Create a trading account.' : 'The type cannot be changed after creation, because the account\'s trades belong to that mode.')}
       <div class="ac-dialog-body">
         <div class="ac-grid">
@@ -549,10 +590,11 @@
           <label class="ac-field"><span class="ac-label">Currency</span><select class="ac-select" id="aeCurrency">${currencyOpts}</select></label>
           ${field('aeStart', 'Starting balance *', cur.startingBalance)}
           ${field('aeTarget', 'Profit target', cur.profitTarget, 'placeholder="optional"')}
-          ${field('aeDD', 'Max drawdown', cur.maxDrawdown, 'placeholder="optional"')}
-          ${field('aeDaily', 'Daily loss limit', cur.dailyLossLimit, 'placeholder="optional"')}
+          ${field('aeDD', 'Max drawdown', cur.maxDrawdown, 'placeholder="optional"', 'ac-legacy-lim')}
+          ${field('aeDaily', 'Daily loss limit', cur.dailyLossLimit, 'placeholder="optional"', 'ac-legacy-lim')}
           <label class="ac-field"><span class="ac-label">Status</span><select class="ac-select" id="aeStatus"><option value="active" ${cur.status !== 'archived' ? 'selected' : ''}>Active</option><option value="archived" ${cur.status === 'archived' ? 'selected' : ''}>Archived</option></select></label>
         </div>
+        ${rulesHtml}
         ${isNew ? '<p class="ac-hint" id="aeBacktestHint" style="margin:0" hidden>Backtest trades are not split by account, so a Backtest account shows all Backtest trades.</p>' : ''}
         <div class="ac-err" id="aeErr" hidden></div>
       </div>
@@ -561,6 +603,64 @@
     const typeSel = $('#aeType', el);
     const hint = $('#aeBacktestHint', el);
     if (hint) typeSel.addEventListener('change', () => { hint.hidden = typeSel.value !== 'Backtest'; });
+
+    // ── rule preset wiring ─────────────────────────────────────────────────
+    const presetEl = $('#aePreset', el);
+    const NUM_IDS = [['#aeRDD', 'maxDrawdownPct'], ['#aeRWarn', 'warnPct'], ['#aeRDaily', 'dailyLossPct']];
+    const custom = Object.assign({ maxDrawdownPct: '', warnPct: '', dailyLossPct: '', dailyLossBase: 'balance', dailyLossFormula: 'standard' }, cur.customRules || {});
+    const readCustom = () => ({
+      ...Object.fromEntries(NUM_IDS.map(([sel, k]) => [k, String($(sel, el).value).replace(',', '.').trim()])),
+      dailyLossBase: $('#aeRBase', el).value, dailyLossFormula: $('#aeRFormula', el).value,
+    });
+    const formRules = () => {
+      const id = presetEl.value;
+      if (!id) return null;
+      return R.rulesFor({ preset: id, resetTimezone: $('#aeTz', el).value, customRules: id === 'custom' ? readCustom() : undefined });
+    };
+    function ruleText() {
+      const rules = formRules();
+      const start = numOrNull($('#aeStart', el).value);
+      const note = $('#aeRNote', el);
+      const notes = [];
+      if (!rules) { note.hidden = true; return; }
+      const p = R.presetById(rules.preset);
+      $('#aeRText', el).textContent = rules.complete
+        ? `${R.formulaText(rules, start, v => money(v))} Max drawdown ${rules.maxDrawdownPct}%${start > 0 ? ` (${money(start * rules.maxDrawdownPct / 100)})` : ''} of the starting balance, warning at ${rules.warnPct}%.`
+        : `Incomplete: ${rules.problems.join(' ')}`;
+      $('#aeTzText', el).textContent = `Rule days run from 00:00 to 00:00 in ${$('#aeTz', el).value}. Times in the app are shown in ${prefs().timezone}.`;
+      if (p && p.note) notes.push(p.note);
+      if (rules.dailyLossBase === 'equity') notes.push('Daily loss is measured on equity. Until live equity is available, it is checked on closed balance only and shown as understated, never as a pass.');
+      if (!R.eaAllowed({ preset: rules.preset })) notes.push(`${R.EA_BLOCKED_MSG}: the MT5 link is not offered for this account.${cur.mt5 && cur.mt5.linked ? ' This account is linked to MT5 now: unlink it.' : ''}`);
+      note.textContent = notes.join(' ');
+      note.hidden = !notes.length;
+    }
+    function syncRules(presetChanged) {
+      if (!presetEl) return;
+      const id = presetEl.value;
+      el.querySelectorAll('.ac-legacy-lim').forEach(x => { x.hidden = !!id; });
+      el.querySelectorAll('#aeRules [data-rule], #aeRules .ac-rule-num').forEach(x => { x.hidden = !id; });
+      if (id) {
+        const isCustom = id === 'custom';
+        const src = isCustom ? custom : R.presetById(id);
+        NUM_IDS.forEach(([sel, k]) => { $(sel, el).value = src[k] ?? ''; $(sel, el).disabled = !isCustom; });
+        $('#aeRBase', el).value = src.dailyLossBase || 'balance';
+        $('#aeRFormula', el).value = src.dailyLossFormula || 'standard';
+        $('#aeRBase', el).disabled = !isCustom; $('#aeRFormula', el).disabled = !isCustom;
+        // The reset zone defaults from the preset (DECISIONS.md); it can still be changed.
+        if (presetChanged && !isCustom) $('#aeTz', el).value = R.presetById(id).resetTimezone;
+      }
+      ruleText();
+    }
+    if (presetEl) {
+      presetEl.addEventListener('change', () => syncRules(true));
+      $('#aeTz', el).addEventListener('change', ruleText);
+      $('#aeStart', el).addEventListener('input', ruleText);
+      el.querySelectorAll('#aeRDD, #aeRWarn, #aeRDaily, #aeRBase, #aeRFormula').forEach(x => x.addEventListener('input', () => {
+        if (presetEl.value === 'custom') Object.assign(custom, readCustom());
+        ruleText();
+      }));
+      syncRules(false);
+    }
     $('#aeSave', el).addEventListener('click', () => {
       const err = $('#aeErr', el);
       const fail = msg => { err.textContent = msg; err.hidden = false; };
@@ -580,7 +680,24 @@
       if (status === 'archived' && MODE_TYPES.includes(type) && liveCount(type, cur.id) === 0) {
         return fail(`Each mode needs one active account, so this ${type} account cannot be archived.`);
       }
-      const fields = { name, broker: $('#aeBroker', el).value.trim(), currency: $('#aeCurrency', el).value, startingBalance: start, balance: start, profitTarget: target, maxDrawdown: dd, dailyLossLimit: daily, status };
+      // Rule preset: stored as the preset id, the reset zone name and (Custom only) its numbers.
+      const ruleFields = {};
+      if (presetEl) {
+        const id = presetEl.value || null;
+        ruleFields.preset = id;
+        if (id) {
+          const tz = $('#aeTz', el).value;
+          if (!R.validResetTz(tz)) return fail('Choose a daily reset time zone by name (for example Europe/Prague), not a UTC offset.');
+          ruleFields.resetTimezone = tz;
+          if (id === 'custom') {
+            const cr = readCustom();
+            const problems = R.checkCustom(cr);
+            if (problems.length) return fail(problems.join(' '));
+            ruleFields.customRules = { maxDrawdownPct: Number(cr.maxDrawdownPct), warnPct: Number(cr.warnPct), dailyLossPct: Number(cr.dailyLossPct), dailyLossBase: cr.dailyLossBase, dailyLossFormula: cr.dailyLossFormula };
+          }
+        }
+      }
+      const fields = { name, broker: $('#aeBroker', el).value.trim(), currency: $('#aeCurrency', el).value, startingBalance: start, balance: start, profitTarget: target, maxDrawdown: dd, dailyLossLimit: daily, status, ...ruleFields };
       if (isNew) {
         const d = readAccountsRaw();
         const acc = B().normalizeAccount({ ...fields, id: `${type.toLowerCase()}-${Date.now()}` }, type);
@@ -1028,6 +1145,13 @@
     if (typeof window.switchTab === 'function') window.switchTab('accounts');
     if (alreadyOpen || state.rendered) show(target);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // The full account editor (rule preset, reset zone, limits) from anywhere in the app.
+  window.obEditAccount = function (id) {
+    const a = findAccount(id);
+    if (a) openAccountEditor(a);
+    return !!a;
   };
 
   function syncStickyTop() {

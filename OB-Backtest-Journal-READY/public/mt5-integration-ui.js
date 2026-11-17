@@ -29,7 +29,11 @@
   const activeId = () => localStorage.getItem(`my_journal_active_account_${mode()}_v1`) || list()[0]?.id;
   const activeAcc = () => list().find(a => a.id === activeId()) || list()[0];
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const fmtDate = iso => { if (!iso) return '—'; try { return new Date(iso).toLocaleString(); } catch { return iso; } };
+  // Instants in the saved display timezone (Account center › Preferences), not the device's.
+  const fmtDate = iso => { if (!iso) return '—'; try { return window.obTime ? (window.obTime.instant(iso) || iso) : new Date(iso).toLocaleString(); } catch { return iso; } };
+  // Maven bans EAs (rule-presets.js): no EA linking is offered for its accounts.
+  const eaBlocked = accountId => { const a = list().find(x => x.id === accountId); return !!(a && window.obRules && !window.obRules.eaAllowed(a)); };
+  const EA_BLOCKED = () => (window.obRules ? window.obRules.EA_BLOCKED_MSG : 'EAs not permitted by this firm');
   const fmtMoney = (n, currency) => `${Number.isFinite(Number(n)) ? Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '—'} ${currency || ''}`.trim();
 
   const save = accounts => {
@@ -214,6 +218,21 @@
   function openLinkModal(accountId) {
     const acc = list().find(a => a.id === accountId);
     if (!acc) return;
+    if (eaBlocked(accountId)) {
+      overlay(`
+        <div class="p-6">
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <div class="ds-label">${esc(mode())} · ${esc(acc.name)}</div>
+              <h3 class="ds-dialog-title">${esc(EA_BLOCKED())}</h3>
+              <p class="ds-dialog-text">This account uses the Maven preset. Maven bans EAs on every platform, so the MT5 logger is not offered here. Log its trades manually.</p>
+            </div>
+            <button data-x class="ds-close" aria-label="Close">×</button>
+          </div>
+          <div style="display:flex;justify-content:flex-end"><button data-x class="ds-btn ds-btn-secondary">OK</button></div>
+        </div>`, o => o.querySelectorAll('[data-x]').forEach(b => b.addEventListener('click', () => o.remove())));
+      return;
+    }
     overlay(`
       <div class="p-6">
         <div class="flex justify-between items-start mb-5">
@@ -420,7 +439,7 @@
             const dir = String(t.direction || t.type || '').toLowerCase();
             const dirClass = dir === 'buy' ? 'color:#16a34a;font-weight:800' : 'color:#dc2626;font-weight:800';
             return `<tr>
-              <td>${t.closeTime ? new Date(t.closeTime).toLocaleDateString() : '—'}</td>
+              <td>${t.closeTime ? esc(window.obTime ? window.obTime.instant(t.closeTime, { year: 'numeric', month: 'short', day: '2-digit' }) : new Date(t.closeTime).toLocaleDateString()) : '—'}</td>
               <td style="font-weight:700">${esc(t.symbol || '—')}</td>
               <td style="${dirClass}">${dir.toUpperCase()}</td>
               <td>${Number(t.volume || 0).toFixed(2)}</td>
@@ -557,6 +576,8 @@
                         Unlink
                       </button>
                     </div>
+                  ` : eaBlocked(a.accountId) ? `
+                    <span class="mt5-acc-meta" style="flex:1"><i class="fa-solid fa-ban" style="font-size:10px"></i> ${esc(EA_BLOCKED())}. Log this account's trades manually.</span>
                   ` : `
                     <span class="mt5-acc-meta" style="flex:1">Click to connect this account to MT5 for automatic trade sync</span>
                     <button class="mt5-btn mt5-btn-primary" style="margin-left:auto;flex-shrink:0"

@@ -116,6 +116,17 @@
 /* migration flag: starting balance equals the 100,000 default and may be a placeholder */
 .ac-unverified { margin-top: 6px; font-size: 11.5px; line-height: 1.45; color: var(--ds-warn, #b45309); }
 .ac-unverified .ac-link { color: inherit; text-decoration: underline; }
+/* Rule preset block in the account editor (rule-presets.js) */
+.ac-field[hidden], .ac-rules [hidden] { display: none !important; }
+.ac-rules { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+.ac-rules-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.ac-rules-head .ac-label { text-transform: uppercase; letter-spacing: .06em; font-family: 'JetBrains Mono', monospace; }
+.ac-rules-head .ac-hint, .ac-rules .ac-hint { margin: 0; }
+.ac-rules .ac-rule-text { color: var(--text); }
+.ac-rules .ac-unverified { margin-top: 0; }
+/* the BLOWN state (Part 3) on an account card */
+.ac-blown { margin-top: 6px; font-size: 11.5px; line-height: 1.45; color: var(--ds-neg, #ef4444); font-weight: 600; }
+.ac-blown b { letter-spacing: .06em; }
 .ac-acc-bal { font: 800 15px/1.2 'JetBrains Mono', monospace; color: var(--text); text-align: right; }
 .ac-acc-ret { font: 700 11px/1.2 'JetBrains Mono', monospace; text-align: right; margin-top: 2px; }
 .ac-acc-actions { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--border-subtle); }

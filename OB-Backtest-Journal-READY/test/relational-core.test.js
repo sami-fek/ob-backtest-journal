@@ -111,3 +111,20 @@ test('migration fixes: Backtest account and trades, repointed orphan, unresolved
   assert.deepEqual(out.report.unresolved.map(r => r.id), ['t4'], 'two Real accounts: never guessed');
   assert.equal(accounts.Backtest, undefined, 'the input is not modified');
 });
+
+test('accounts: preset, reset zone and run number have columns; BLOWN sets the status; odd values stay in extra', () => {
+  const doc = { Funded: [
+    { id: 'f1', name: 'FTMO 90k', balance: 90000, startingBalance: 90000, preset: 'ftmo', resetTimezone: 'Europe/Prague', runNumber: 2, runStartedAt: '2026-11-15T09:00:00.000Z', blown: { kind: 'daily_loss', day: '2026-11-16' } },
+    { id: 'f2', name: 'Odd', balance: 1, startingBalance: 1, preset: 'nope', resetTimezone: 'UTC+2', runNumber: 'x' }] };
+  const rows = accountsDocToRows(doc, 'u1');
+  assert.deepEqual(rows.map(r => [r.preset, r.reset_timezone, r.run_number, r.status]), [['ftmo', 'Europe/Prague', 2, 'blown'], [null, null, 1, 'active']]);
+  assert.deepEqual([rows[1].extra.preset, rows[1].extra.resetTimezone, rows[1].extra.runNumber], ['nope', 'UTC+2', 'x'], 'kept, never forced into a column');
+  assert.equal('preset' in rows[0].extra, false);
+  assert.deepEqual(JSON.parse(rowsToAccountsDoc(rows)), doc, 'round trip');
+  // as a database returns them (run_number as a number, extra as text)
+  assert.deepEqual(JSON.parse(rowsToAccountsDoc(rows.map(r => ({ ...r, extra: JSON.stringify(r.extra) })))), doc);
+  // an app save without the fields keeps the stored preset and zone
+  const omitted = accountsDocToRows({ Funded: [{ id: 'f1', name: 'Renamed', balance: 90000, startingBalance: 90000 }] }, 'u1', rows);
+  assert.deepEqual([omitted[0].preset, omitted[0].reset_timezone, omitted[0].run_number, omitted[0].status], ['ftmo', 'Europe/Prague', 2, 'active']);
+  assert.equal(JSON.parse(rowsToAccountsDoc(omitted)).Funded[0].preset, 'ftmo', 'still visible to the app');
+});

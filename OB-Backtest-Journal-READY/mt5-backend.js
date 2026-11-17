@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import './public/time-prefs.js'; // globalThis.obTimeCore: trade dates in the user's timezone
+import './public/rule-presets.js'; // globalThis.obRules: Maven bans EAs (no MT5 link for its accounts)
 
 const ACCOUNT_STORAGE_KEY = 'my_journal_accounts_v1';
 const TRADES_STORAGE_KEY = 'ob-trades';
@@ -291,7 +292,11 @@ function mergeJournalTrades(existingValue, incomingClosed, info, account, tz) {
     if (!normalized) continue;
     if (seenTickets.has(normalized.ticket)) continue;
     seenTickets.add(normalized.ticket);
-    additions.push(buildJournalTradeFromClosed(normalized, info, account, tz));
+    const trade = buildJournalTradeFromClosed(normalized, info, account, tz);
+    // A blown account still receives every MT5 trade (losing real trades is worse than any
+    // discipline signal); they are marked as logged after the breach.
+    if (account && account.blown && typeof account.blown === 'object') trade.postBreach = true;
+    additions.push(trade);
   }
   if (!additions.length) return { journal, added: 0 };
   // Newest first
@@ -320,7 +325,9 @@ export function registerMt5Routes(app, storage) {
       const modeValue = requireMode(req.body?.mode);
       const loginValue = requireLogin(req.body?.login);
       const serverValue = requireServer(req.body?.server);
-      getAccountRecord(await getStoredValue(sessionId, ACCOUNT_STORAGE_KEY), accountId, modeValue);
+      const accountRecord = getAccountRecord(await getStoredValue(sessionId, ACCOUNT_STORAGE_KEY), accountId, modeValue);
+      // The firm bans EAs (Maven preset): the logger is never linked to this account.
+      if (!globalThis.obRules.eaAllowed(accountRecord)) throw new Mt5Error(403, 'MT5_EA_NOT_PERMITTED', globalThis.obRules.EA_BLOCKED_MSG);
       const label = safeLabel(req.body?.label, loginValue + ' - ' + serverValue);
       const linkKey = key(LINK_PREFIX, accountId);
       const old = parseJson(await getStoredValue(sessionId, linkKey));
@@ -381,7 +388,7 @@ export function registerMt5Routes(app, storage) {
           const { journal, added } = mergeJournalTrades(existingJournal, rawClosed, info, accountRecord, tz);
           if (added > 0) {
             await setStoredValue(info.sessionId, TRADES_STORAGE_KEY, JSON.stringify(journal));
-            addedToJournal = added;
+            addedToJournal = added; // the server re-checks the account's rules on this write (server.js checkRules)
           }
         } catch (e) {
           // Account record may have been deleted; log but don't fail the sync.
