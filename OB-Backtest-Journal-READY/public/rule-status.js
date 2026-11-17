@@ -63,9 +63,25 @@
     if (!acc || !R()) return null;
     const f = find(acc.id);
     const type = (f && f.type) || acc.type;
-    return R().accountState(f ? f.acc : acc, tradesOf(type, f ? f.acc : acc), { pnlFor: pnlFor(acc) });
+    // Part 8: live equity from MYJournalLogger (mt5-live.js); the rules use it only when fresh
+    const equity = window.obMt5Live ? window.obMt5Live.forAccount(acc.id) : null;
+    return R().accountState(f ? f.acc : acc, tradesOf(type, f ? f.acc : acc), { pnlFor: pnlFor(acc), equity: equity || undefined });
   }
   window.obRuleState = stateFor;
+  /**
+   * A coarse fingerprint of what the rule cards show for an account: state, equity basis,
+   * amounts in steps of 1% of the limit, the broker offset. Pages redraw on new live equity
+   * (every 20-30 s) only when it changes.
+   */
+  window.obRuleSignature = acc => {
+    const s = acc ? stateFor(acc) : null;
+    if (!s) return '';
+    const d = s.daily || {};
+    const unit = Math.max(1, (Number(d.allowed) || Number(s.maxLoss) || 100) / 100);
+    const live = window.obMt5Live ? window.obMt5Live.forAccount(acc.id) : null;
+    return JSON.stringify([acc.id, s.state, s.equityState, d.basis, Math.round((Number(d.used) || 0) / unit), Math.round((Number(s.drawdown) || 0) / unit),
+      !!d.understated, live ? live.serverOffsetMinutes : null, live ? window.obMt5Live.isStale(live) : null]);
+  };
   window.obBlownReason = blown => (R() ? R().blownReason(blown, money, fmtDay) : '');
 
   // ── small UI pieces ─────────────────────────────────────────────────────────

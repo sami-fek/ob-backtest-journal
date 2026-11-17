@@ -57,6 +57,7 @@
         reloadTrades();
         refresh();
         listeners.forEach(fn => { try { fn(data); } catch (_) {} });
+        window.dispatchEvent(new CustomEvent('ob-mt5-live')); // pages redraw what live equity changes
         schedule();
         return data;
       });

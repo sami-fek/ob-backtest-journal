@@ -226,3 +226,5 @@ html[data-theme="dark"] .ac-badge.backtest { color: #a78bfa; }
 /* Keep the section title + Save Changes visible while scrolling long sections
    (sits just below the sticky site header; --ac-top is set by account-center.js). */
 .ac-head { position: sticky; top: var(--ac-top, 72px); z-index: 30; background: var(--page); padding: 10px 0; margin-top: -10px; }
+/* Part 8: the reset zone disagrees with the MT5 server offset */
+.ac-warn-text { color: var(--ds-warn, #b45309); }

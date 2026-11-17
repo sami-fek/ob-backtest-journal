@@ -1092,14 +1092,57 @@ function keepMt5Trades(prevJson, nextJson, deletedIds) {
   return { json: JSON.stringify([...kept, ...list]), kept };
 }
 
+/**
+ * Live equity of one account for the rules (Part 8), computed as the Edge Functions do: the
+ * newest snapshot, the equity at 00:00 of today's rule day in the account's reset zone (within
+ * 10 minutes of it, else unknown) and the day's lowest equity. undefined without a snapshot.
+ */
+async function liveEquityFor(uid, acc, atMs = Date.now()) {
+  const R = globalThis.obRules;
+  let last = null;
+  try { last = await relational.latestEquity(uid, String(acc.id)); } catch { return undefined; }
+  if (!last) return undefined;
+  const iso = v => new Date(v).toISOString();
+  const out = { equity: Number(last.equity), balance: Number(last.balance), takenAt: iso(last.taken_at),
+    serverOffsetMinutes: last.server_offset_minutes == null ? null : Number(last.server_offset_minutes) };
+  const rules = R.rulesFor(acc);
+  if (rules) {
+    const day = R.dayOf(atMs, rules.resetTimezone);
+    const start = R.dayStartUtc(day, rules.resetTimezone);
+    try {
+      out.day = day;
+      out.dayStartEquity = R.pickDayStartEquity(await relational.equityBetween(uid, String(acc.id), iso(start - 10 * 60_000), iso(start + 10 * 60_000)), start);
+      const low = await relational.minEquity(uid, String(acc.id), iso(start), iso(atMs));
+      out.dayMinEquity = low == null ? null : Number(low);
+    } catch { /* day numbers unknown: the rules treat that as understated */ }
+  }
+  return out;
+}
+
 async function ruleContext(uid) {
   const accountsDoc = parseJsonSafe(await getStoredValue(uid, ACCOUNTS_DOC_KEY));
   const s = parseJsonSafe(await getStoredValue(uid, SETTINGS_KEY)) || {};
+  const doc = accountsDoc && typeof accountsDoc === 'object' && !Array.isArray(accountsDoc) ? accountsDoc : {};
+  // Part 8: live equity for the firm presets that measure it (journals on the tables only)
+  const now = Date.now();
+  const equity = new Map();
+  if (await relationalFor(uid)) {
+    for (const [type, list] of Object.entries(doc)) {
+      if (type === 'Backtest' || !Array.isArray(list)) continue;
+      for (const acc of list) {
+        const rules = acc && globalThis.obRules.rulesFor(acc);
+        if (!rules || rules.dailyLossBase !== 'equity' || acc.blown) continue;
+        const e = await liveEquityFor(uid, acc, now);
+        if (e) equity.set(String(acc.id), e);
+      }
+    }
+  }
   return {
-    accountsDoc: accountsDoc && typeof accountsDoc === 'object' && !Array.isArray(accountsDoc) ? accountsDoc : {},
+    accountsDoc: doc,
     trades: await getTradeList(uid),
     riskPct: Number(s.riskPercent) || 1,
     initialCapital: Number(s.initialCapital) || 100000,
+    now, equityFor: id => equity.get(String(id)),
   };
 }
 function findRuleAccount(doc, id) {
@@ -1113,7 +1156,7 @@ function findRuleAccount(doc, id) {
 // Same scope as the app: Backtest trades all belong to the Backtest account.
 function stateOf(ctx, type, acc) {
   const R = globalThis.obRules;
-  return R.accountState(acc, R.accountTrades(type, acc, ctx.trades), { pnlFor: t => R.pnlOf(t, acc, ctx) });
+  return R.accountState(acc, R.accountTrades(type, acc, ctx.trades), { pnlFor: t => R.pnlOf(t, acc, ctx), equity: ctx.equityFor && ctx.equityFor(acc.id), now: ctx.now });
 }
 
 /** Records BLOWN on every account whose current run is breached. Returns the newly blown ids. */
@@ -1372,7 +1415,8 @@ app.get('/api/mt5/live', async (req, res) => {
     const now = Date.now();
     if (!(await relationalFor(user.id))) return res.json({ ok: true, available: false, accounts: {}, staleAfterSeconds: EQUITY_STALE_MS / 1000 });
     const doc = parseJsonSafe(await getStoredValue(user.id, ACCOUNTS_DOC_KEY)) || {};
-    const ids = Object.entries(doc).filter(([type, list]) => type !== 'Backtest' && Array.isArray(list)).flatMap(([, list]) => list.filter(a => a && a.id != null).map(a => String(a.id)));
+    const accs = Object.entries(doc).filter(([type, list]) => type !== 'Backtest' && Array.isArray(list)).flatMap(([, list]) => list.filter(a => a && a.id != null));
+    const ids = accs.map(a => String(a.id));
     let positions = [], positionsAvailable = true;
     try { positions = await relational.listOpenPositions(user.id); } catch { positionsAvailable = false; }
     let keys = [];
@@ -1381,15 +1425,15 @@ app.get('/api/mt5/live', async (req, res) => {
     const num = v => (v === null || v === undefined || v === '' ? null : Number(v));
     const accounts = {};
     for (const id of ids) {
-      let eq = null;
-      try { eq = await relational.latestEquity(user.id, id); } catch { eq = null; }
+      const eq = (await liveEquityFor(user.id, accs.find(a => String(a.id) === id), now)) || null;
       const key = keys.find(k => String(k.account_id) === id);
       const mine = positions.filter(p => String(p.account_id) === id);
       if (!eq && !key && !mine.length) continue; // no EA has ever reported for this account
-      const takenAt = iso(eq && eq.taken_at);
-      const offset = eq && eq.server_offset_minutes != null ? Number(eq.server_offset_minutes) : key && key.last_server_offset_minutes != null ? Number(key.last_server_offset_minutes) : null;
+      const takenAt = eq ? eq.takenAt : null;
+      const offset = eq && eq.serverOffsetMinutes != null ? eq.serverOffsetMinutes : key && key.last_server_offset_minutes != null ? Number(key.last_server_offset_minutes) : null;
       accounts[id] = {
         equity: eq ? num(eq.equity) : null, balance: eq ? num(eq.balance) : null, takenAt,
+        day: eq && eq.day || null, dayStartEquity: eq && eq.dayStartEquity != null ? eq.dayStartEquity : null, dayMinEquity: eq && eq.dayMinEquity != null ? eq.dayMinEquity : null,
         stale: !takenAt || now - Date.parse(takenAt) > EQUITY_STALE_MS,
         serverOffsetMinutes: offset, linked: !!key, lastSeenAt: iso(key && key.last_used_at),
         positions: mine.map(p => ({

@@ -464,6 +464,11 @@
                   if (rs && rs.state === 'warn') return `<div class="ac-unverified" role="note"><i class="fa-solid fa-triangle-exclamation"></i> Warning level: down ${rs.drawdownPct}% (blown at ${rs.rules.maxDrawdownPct}%).</div>`;
                   return rs && rs.runNumber > 1 ? `<div class="ac-acc-meta">Run ${rs.runNumber}</div>` : '';
                 })()}
+                ${(() => { // Part 8: the broker offset MYJournalLogger reported vs the reset zone
+                  const live = rules && window.obMt5Live ? window.obMt5Live.forAccount(a.id) : null;
+                  const oc = live && live.serverOffsetMinutes != null ? window.obRules.offsetCheck(a, live.serverOffsetMinutes) : null;
+                  return oc && oc.warn ? `<div class="ac-unverified" role="note"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(oc.message)} <button type="button" class="ac-link" data-act="edit">Change it</button></div>` : '';
+                })()}
               </div>
               <div>
                 <div class="ac-acc-bal">${money(b.balance)}</div>
@@ -627,9 +632,13 @@
       $('#aeRText', el).textContent = rules.complete
         ? `${R.formulaText(rules, start, v => money(v))} Max drawdown ${rules.maxDrawdownPct}%${start > 0 ? ` (${money(start * rules.maxDrawdownPct / 100)})` : ''} of the starting balance, warning at ${rules.warnPct}%.`
         : `Incomplete: ${rules.problems.join(' ')}`;
-      $('#aeTzText', el).textContent = `Rule days run from 00:00 to 00:00 in ${$('#aeTz', el).value}. Times in the app are shown in ${prefs().timezone}.`;
+      // Part 8: the broker offset MYJournalLogger reported, next to the chosen reset zone
+      const live = window.obMt5Live && cur.id ? window.obMt5Live.forAccount(cur.id) : null;
+      const oc = live && live.serverOffsetMinutes != null ? R.offsetCheck({ ...cur, preset: rules.preset, resetTimezone: $('#aeTz', el).value, customRules: rules.preset === 'custom' ? readCustom() : cur.customRules }, live.serverOffsetMinutes) : null;
+      $('#aeTzText', el).textContent = `Rule days run from 00:00 to 00:00 in ${$('#aeTz', el).value}. Times in the app are shown in ${prefs().timezone}.${oc ? ' ' + oc.message : ''}`;
+      $('#aeTzText', el).classList.toggle('ac-warn-text', !!(oc && oc.warn));
       if (p && p.note) notes.push(p.note);
-      if (rules.dailyLossBase === 'equity') notes.push('Daily loss is measured on equity. Until live equity is available, it is checked on closed balance only and shown as understated, never as a pass.');
+      if (rules.dailyLossBase === 'equity') notes.push('Daily loss and drawdown are measured on equity (floating P/L included) while MYJournalLogger reports it. Without a report in the last 5 minutes they are checked on closed balance only and shown as understated, never as a pass.');
       if (!R.eaAllowed({ preset: rules.preset })) notes.push(`${R.EA_BLOCKED_MSG}: the MT5 link is not offered for this account.${cur.mt5 && cur.mt5.linked ? ' This account is linked to MT5 now: unlink it.' : ''}`);
       note.textContent = notes.join(' ');
       note.hidden = !notes.length;

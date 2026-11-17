@@ -210,8 +210,8 @@
     tgt('Weekly target', 'this week', S().progress(sumIn(S().weekBounds(today)), acc.weeklyTarget));
     tgt('Monthly target', 'this month', S().progress(sumIn(S().monthBounds(today)), acc.monthlyTarget));
     tgt('Profit target', 'all time', S().progress(all.reduce((s, t) => s + pnlFor(t), 0), acc.profitTarget));
-    // understated: an equity-based limit measured on closed balance only (no equity feed yet).
-    const lim = (label, period, used, limit, what, { understated = false, note = '', noGreen = false } = {}) => {
+    // understated: an equity-based limit measured on closed balance only (no live equity, or stale).
+    const lim = (label, period, used, limit, what, { understated = false, understatedMsg = '', note = '', noGreen = false } = {}) => {
       if (!(Number(limit) > 0)) return;
       const pct = Math.min(100, (used / limit) * 100);
       const tone = usedTone(pct);
@@ -220,7 +220,7 @@
         <div class="db2-stat-top"><span class="ds-label">${label}</span><span class="ds-period">${period}</span></div>
         <div class="db2-target-val"><b class="ds-num ${used > 0 ? 'ds-neg' : ''}">${money(used, false)}</b><span class="ds-sub"> of ${money(limit, false)} used</span></div>
         <div class="ds-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="${esc(label)} used"><i class="${calmTone}" style="width:${pct}%"></i></div>
-        <div class="ds-sub db2-cap">${pct >= 100 ? '<span class="ds-neg">Limit reached</span>' : `${money(limit - used, false)} room left · ${what}`}${note ? `<br>${note}` : ''}${understated ? `<br><span class="ds-warn">${esc(window.obRules.EQUITY_MSG.replace(/^./, c => c.toUpperCase()))}</span>` : ''}</div></div>`);
+        <div class="ds-sub db2-cap">${pct >= 100 ? '<span class="ds-neg">Limit reached</span>' : `${money(limit - used, false)} room left · ${what}`}${note ? `<br>${note}` : ''}${understated ? `<br><span class="ds-warn">${esc(understatedMsg || window.obRules.EQUITY_MSG.replace(/^./, c => c.toUpperCase()))}</span>` : ''}</div></div>`);
     };
     const R = window.obRules;
     const rules = R ? R.rulesFor(acc) : null;
@@ -240,12 +240,18 @@
       const noGreen = !!(rsT && rsT.state !== 'ok');
       const runLabel = rsT && rsT.runNumber > 1 ? ` · run ${rsT.runNumber}` : '';
       const used = rsT && Number.isFinite(rsT.drawdown) ? rsT.drawdown : Math.max(0, -all.reduce((s, t) => s + pnlFor(t), 0));
-      if (lv) lim('Max drawdown', `now${runLabel}`, used, lv.maxLoss, `from starting balance (${rules.maxDrawdownPct}%)`,
-        { understated: equityBase, noGreen, note: `Warning level ${rules.warnPct}% (${money(lv.warnLoss, false)}) · ${esc(rules.label)}` });
       const ds = rsT && rsT.daily ? rsT.daily : R.dailyStatus(acc, all, { pnlFor });
+      // Part 8: live equity (MYJournalLogger) for the firm presets; the EA's server offset next to the reset zone
+      const eqText = R.equityText(ds, v => (window.obTime ? window.obTime.clock(v) : v));
+      const live = window.obMt5Live ? window.obMt5Live.forAccount(acc.id) : null;
+      const oc = live && live.serverOffsetMinutes != null ? R.offsetCheck(acc, live.serverOffsetMinutes) : null;
+      const ocNote = oc ? `<br><span class="${oc.warn ? 'ds-warn' : 'ds-sub'}">${oc.warn ? '<i class="fa-solid fa-triangle-exclamation"></i> ' : ''}${esc(oc.message)}</span>` : '';
+      if (lv) lim('Max drawdown', `now${runLabel}`, used, lv.maxLoss, `from starting balance (${rules.maxDrawdownPct}%)${rsT && rsT.equityState === 'live' ? ', on live equity' : ''}`,
+        { understated: rsT ? rsT.understated : equityBase, understatedMsg: eqText && eqText.long, noGreen, note: `Warning level ${rules.warnPct}% (${money(lv.warnLoss, false)}) · ${esc(rules.label)}` });
       if (ds && ds.complete) lim('Daily loss', `today · ${esc(ds.tz)}`, ds.used, ds.allowed,
         `floor ${money(ds.floor, false)}`,
-        { understated: ds.understated, noGreen, note: `${esc(R.formulaText(rules, acc.startingBalance, v => money(v, false)))} Day resets 00:00 ${esc(ds.tz)}.` });
+        { understated: ds.understated, understatedMsg: eqText && eqText.long, noGreen: noGreen || !!(oc && oc.warn),
+          note: `${esc(R.formulaText(rules, acc.startingBalance, v => money(v, false)))} Day resets 00:00 ${esc(ds.tz)}.${eqText && eqText.live && !ds.understated ? ` ${esc(eqText.long)}` : ''}${ocNote}` });
     }
     if (!cards.length) return '';
     const span = cards.length === 1 ? 'ds-span-4 ds-t-3' : cards.length === 2 ? 'ds-span-6 ds-t-3' : cards.length === 3 ? 'ds-span-4 ds-t-3' : cards.length === 4 ? 'ds-span-3 ds-t-3' : 'ds-span-4 ds-t-3';
@@ -504,6 +510,13 @@
   }
 
   function queue() { if (renderQueued) return; renderQueued = true; setTimeout(render, 40); }
+  // Part 8: live equity can change the limit cards; redraw only when what they show changes
+  let liveSig = '';
+  window.addEventListener('ob-mt5-live', () => {
+    const acc = ruleAccount();
+    const sig = acc && typeof window.obRuleSignature === 'function' ? window.obRuleSignature(acc) : '';
+    if (sig && sig !== liveSig) { liveSig = sig; queue(); }
+  });
   async function loadName() {
     try {
       const raw = typeof window.storageGet === 'function' ? await window.storageGet('ob-profile') : null;

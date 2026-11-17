@@ -162,14 +162,25 @@ export async function runIngest({ db, key, body, now = new Date() }) {
   await db.query(`update public.ea_keys set last_used_at = $2::timestamptz, last_server_offset_minutes = coalesce($3, last_server_offset_minutes)
     where key_hash = $1`, [k.key_hash, nowIso, offset]);
 
-  // New trades: re-check the rules (the browser is not the only thing enforcing them).
+  // Keep 14 days of 30-second snapshots (about 40,000 rows per account); a breach is recorded
+  // when its snapshot arrives, so older ones are not needed. Runs about once an hour.
+  if (equitySaved && Math.floor(now.getTime() / 30_000) % 120 === 0) {
+    await db.query(`delete from public.equity_snapshots where user_id = $1 and account_id = $2 and taken_at < $3::timestamptz`,
+      [k.user_id, k.account_id, new Date(now.getTime() - 14 * 86_400_000).toISOString()]).catch(err => logError(db, 'mt5-ingest', err, { step: 'prune' }));
+  }
+
+  // New trades or new equity: re-check the rules (the browser is not the only thing enforcing
+  // them). With live equity, a floating loss can blow a firm account before any trade closes.
   let blownNow = false, markedPostBreach = 0;
-  if (inserted.length) {
+  if (inserted.length || equitySaved) {
     const recorded = await checkUserRules(db, k.user_id, nowIso);
     const mine = recorded.find(r => r.id === String(k.account_id));
     if (mine) {
       blownNow = true;
-      const [breachRow] = await db.query(`select close_time from public.trades where user_id = $1 and id = $2`, [k.user_id, mine.blown.tradeId]);
+      // an equity breach has no trade that caused it: the deals in this batch closed before it
+      const [breachRow] = mine.blown.tradeId
+        ? await db.query(`select close_time from public.trades where user_id = $1 and id = $2`, [k.user_id, mine.blown.tradeId])
+        : [];
       const after = breachRow && breachRow.close_time ? Date.parse(new Date(breachRow.close_time).toISOString()) : null;
       const ids = after === null ? [] : inserted.filter(t => t.id !== mine.blown.tradeId && Date.parse(t.closeTime) > after).map(t => t.id);
       for (const id of ids) {

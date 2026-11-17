@@ -101,4 +101,6 @@ The heartbeat line appears at most once every 10 minutes.
 
 **Limits.**
 - **Supabase calls:** one call every 30 seconds is about 86,400 calls a month per account. Supabase Free allows 500,000 a month, enough for about five accounts at 30 seconds.
+- **Equity history:** snapshots older than 14 days are deleted automatically, about 40,000 rows per account. A breach is recorded when its snapshot arrives, so nothing older is needed.
+- **Equity checks:** a floating loss is checked every 30 seconds. A dip that recovers between two reports is not seen.
 - **Times on re-sent history:** a re-sent trade from before a daylight-saving change can show its time one hour off. It is still never duplicated, because the dedup key is the ticket.

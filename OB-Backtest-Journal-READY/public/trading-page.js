@@ -72,15 +72,19 @@
   // ── daily loss room ────────────────────────────────────────────────────────
   // With a rule preset (rule-presets.js): the preset's formula, counted in the account's reset
   // timezone. Without one: the older dollar "Daily loss limit" on the display-timezone day.
-  // Equity-based presets cannot be checked yet (no equity feed): understated, never green.
+  // Equity-based presets use live equity from MYJournalLogger when it is fresh (Part 8);
+  // without it they count closed balance only: understated, never green.
   function dailyRoom(acc) {
     if (!acc) return null;
     const R = window.obRules;
     const rules = R ? R.rulesFor(acc) : null;
     if (rules) {
-      const s = R.dailyStatus(acc, scopedTrades(), { pnlFor });
+      // the account's current run, MT5 trades at the broker's P/L, live equity (rule-status.js)
+      const rs = typeof window.obRuleState === 'function' ? window.obRuleState(acc) : null;
+      const s = rs && rs.daily ? rs.daily : R.dailyStatus(acc, scopedTrades(), { pnlFor });
       if (!s.complete) return { preset: true, incomplete: true, rules, todayPnl: s.todayPnl };
-      return { preset: true, rules, limit: s.allowed, used: s.used, left: Math.max(0, s.left), understated: s.understated, todayPnl: s.todayPnl, tz: s.tz, formula: s.formula };
+      const eqText = R.equityText(s, v => (window.obTime ? window.obTime.clock(v) : v));
+      return { preset: true, rules, limit: s.allowed, used: s.used, left: Math.max(0, s.left), understated: s.understated, todayPnl: s.todayPnl, tz: s.tz, formula: s.formula, eqText };
     }
     const today = todayIso();
     const todayPnl = scopedTrades().filter(t => String(t.date).slice(0, 10) === today).reduce((s, t) => s + pnlFor(t), 0);
@@ -132,7 +136,7 @@
           : room && room.incomplete
             ? `<span class="tp-chip warn" title="${esc(room.rules.problems.join(' '))}"><i class="fa-solid fa-triangle-exclamation"></i> Rules incomplete</span>`
             : room && room.understated
-              ? `<span class="tp-chip warn" title="Daily loss: ${esc(window.obRules.EQUITY_MSG)}"><i class="fa-solid fa-triangle-exclamation"></i> Daily loss: closed balance only</span>`
+              ? `<span class="tp-chip warn" title="${esc(room.eqText ? room.eqText.long : window.obRules.EQUITY_MSG)}"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(room.eqText ? room.eqText.short : 'Daily loss: closed balance only')}</span>`
               : `<span class="tp-chip pos"><i class="fa-solid fa-shield-halved"></i> Rules OK</span>`;
       }
     }
@@ -169,7 +173,9 @@
     if (rs && rs.state === 'warn') warn.push(`you are down ${rs.drawdownPct}% from the starting balance: past the ${rs.rules.warnPct}% warning level, blown at ${rs.rules.maxDrawdownPct}%`);
     if (rs && rs.state === 'unknown' && !(room && room.incomplete)) warn.push(`your risk rules are not checked (${(rs.problems || []).join(' ')})`);
     if (room && room.incomplete) warn.push(`your ${room.rules.label} rules are incomplete, so today's loss limit is not checked`);
-    if (room && room.understated) warn.push(`daily loss is ${window.obRules.EQUITY_MSG}: floating losses are not counted`);
+    if (room && room.understated) warn.push(room.eqText && room.eqText.live
+      ? 'the daily floor may be understated: equity at the start of the day is unknown'
+      : `daily loss is ${window.obRules.EQUITY_MSG}: floating losses are not counted`);
     if (unverified(acc)) return { tone: 'warn', title: 'Unverified starting balance', text: `${UNVERIFIED_MSG}.${warn.length ? ' ' + warn.join('; ').replace(/^./, c => c.toUpperCase()) + '.' : ''} <button type="button" class="ds-link" data-confirm-acc>Confirm it</button>` };
     if (warn.length) return { tone: 'warn', title: 'Yes, carefully', text: `${warn.join('; ').replace(/^./, c => c.toUpperCase())}.` };
     return { tone: 'pos', title: 'Yes — you can trade', text: `${plural(tradesLeft, 'trade', 'trades')} and ${plural(lossesLeft, 'loss', 'losses')} of room before a rule stops you.` };
@@ -203,7 +209,7 @@
               calm(room.left <= 0 ? 'neg' : room.left < limit * 0.25 ? 'warn' : room.understated ? '' : 'pos'),
               `Today's P&amp;L <span class="${cls(todayPnl)}">${money(todayPnl)}</span>`
                 + (room.preset ? ` · ${esc(room.rules.label)}, ${room.formula === 'ftmo' ? 'FTMO formula' : 'standard formula'} · day resets 00:00 ${esc(room.tz)}` : '')
-                + (room.understated ? `<br><span class="ds-warn">${esc(window.obRules.EQUITY_MSG.replace(/^./, c => c.toUpperCase()))}</span>` : ''))
+                + (room.eqText ? `<br><span class="${room.understated ? 'ds-warn' : 'ds-sub'}">${esc(room.eqText.long)}</span>` : room.understated ? `<br><span class="ds-warn">${esc(window.obRules.EQUITY_MSG.replace(/^./, c => c.toUpperCase()))}</span>` : ''))
             : metric('Daily loss room left', '—', '', null, '', `No daily loss limit on this account · <button type="button" class="ds-link" data-go-acc>Set one</button>`));
     }
     return `<div class="ds-section-head"><h2 class="ds-label">Can I trade?</h2><span class="ds-period">today${acc ? ' · ' + esc(acc.name) : m === 'Backtest' ? ' · Backtest' : ''}</span></div>
@@ -303,6 +309,13 @@
 
   function queue() { if (queued) return; queued = true; setTimeout(render, 40); }
   window.obTradingRefresh = queue;
+  // Part 8: live equity can change "Can I trade?"; redraw only when what it shows changes
+  let liveSig = '';
+  window.addEventListener('ob-mt5-live', () => {
+    const acc = activeAccount();
+    const sig = acc && typeof window.obRuleSignature === 'function' ? window.obRuleSignature(acc) : '';
+    if (sig && sig !== liveSig) { liveSig = sig; queue(); }
+  });
   function wrap(name, after) {
     const fn = window[name];
     if (typeof fn !== 'function' || fn.__obTpWrapped) return;

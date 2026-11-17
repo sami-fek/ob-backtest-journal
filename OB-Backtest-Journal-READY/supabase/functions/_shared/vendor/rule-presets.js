@@ -29,22 +29,25 @@
 (function (root) {
   'use strict';
 
+  // resetAt: when the day resets. 'server' = 00:00 broker server time (FundingPips, FTMO, The5ers;
+  // DECISIONS.md), 'utc' = 00:00 UTC whatever the server (Maven), 'own' = your own rule day
+  // (My Rules), 'unknown' = Custom.
   // id → rules. dailyLossBase: what the floor is measured against ('balance' = closed balance,
   // 'equity' = balance + floating P/L).
   const PRESETS = [
     { id: 'my-rules', label: 'My Rules', maxDrawdownPct: 10, warnPct: 8, dailyLossPct: 3, dailyLossBase: 'balance', dailyLossFormula: 'standard',
-      resetTimezone: 'UTC', ea: 'n/a', note: '' },
+      resetTimezone: 'UTC', resetAt: 'own', ea: 'n/a', note: '' },
     { id: 'fundingpips', label: 'FundingPips', maxDrawdownPct: 10, warnPct: 8, dailyLossPct: 5, dailyLossBase: 'equity', dailyLossFormula: 'standard',
-      resetTimezone: 'Etc/GMT-3', ea: 'ask',
+      resetTimezone: 'Etc/GMT-3', resetAt: 'server', ea: 'ask',
       note: 'FundingPips reports its reset as UTC+3. Confirm it on your account: if it moves with summer time, use Europe/Athens.' },
     { id: 'ftmo', label: 'FTMO', maxDrawdownPct: 10, warnPct: 8, dailyLossPct: 5, dailyLossBase: 'equity', dailyLossFormula: 'ftmo',
-      resetTimezone: 'Europe/Prague', ea: 'yes', note: '' },
+      resetTimezone: 'Europe/Prague', resetAt: 'server', ea: 'yes', note: '' },
     { id: 'the5ers', label: 'The5ers', maxDrawdownPct: 10, warnPct: 8, dailyLossPct: 5, dailyLossBase: 'equity', dailyLossFormula: 'standard',
-      resetTimezone: 'Europe/Athens', ea: 'yes', note: '' },
+      resetTimezone: 'Europe/Athens', resetAt: 'server', ea: 'yes', note: '' },
     { id: 'maven', label: 'Maven', maxDrawdownPct: 8, warnPct: 6.4, dailyLossPct: 4, dailyLossBase: 'equity', dailyLossFormula: 'standard',
-      resetTimezone: 'UTC', ea: 'no', note: 'Maven resets at 00:00 UTC.' },
+      resetTimezone: 'UTC', resetAt: 'utc', ea: 'no', note: 'Maven resets at 00:00 UTC.' },
     { id: 'custom', label: 'Custom', maxDrawdownPct: null, warnPct: null, dailyLossPct: null, dailyLossBase: 'balance', dailyLossFormula: 'standard',
-      resetTimezone: 'UTC', ea: 'n/a', note: '' },
+      resetTimezone: 'UTC', resetAt: 'unknown', ea: 'n/a', note: '' },
   ];
   const PRESET_IDS = PRESETS.map(p => p.id);
   const BASES = ['balance', 'equity'];
@@ -101,6 +104,7 @@
       resetTimezone: tz,
       resetTimezoneIsDefault: !validResetTz(account.resetTimezone),
       ea: p.ea, note: p.note,
+      resetAt: p.resetAt, // 'server': the firm resets at 00:00 broker server time (Part 8 compares the EA's offset)
     };
     out.problems = id === 'custom' ? checkCustom(own) : [];
     out.complete = out.problems.length === 0;
@@ -168,10 +172,62 @@
     return String((t && t.date) || '').slice(0, 10);
   }
 
+  /** Minutes `tz` is ahead of UTC at instant ms (Europe/Prague in July: 120). */
+  function zoneOffsetMinutes(tz, ms) {
+    const d = new Date(ms == null ? Date.now() : ms);
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(d);
+    const g = t => Number((parts.find(x => x.type === t) || {}).value);
+    const wall = Date.UTC(g('year'), g('month') - 1, g('day'), g('hour') % 24, g('minute'), g('second'));
+    return Math.round((wall - Math.floor(d.getTime() / 1000) * 1000) / 60_000);
+  }
+  /** The instant (ms) a rule day starts: 00:00 of `day` ('YYYY-MM-DD') in `tz`. */
+  function dayStartUtc(day, tz) {
+    const [y, m, d] = String(day).split('-').map(Number);
+    const midnightAsUtc = Date.UTC(y, m - 1, d);
+    let t = midnightAsUtc - zoneOffsetMinutes(tz, midnightAsUtc) * 60_000;
+    t = midnightAsUtc - zoneOffsetMinutes(tz, t) * 60_000; // again, in case summer time changes near midnight
+    return t;
+  }
+
+  // ── Part 8: live equity from MYJournalLogger ───────────────────────────────
+  const EQUITY_STALE_MS = 5 * 60_000;
+  const DAY_START_WINDOW_MS = 10 * 60_000;
+  /**
+   * The live equity the rules may use. eq: { equity, balance, takenAt, dayStartEquity,
+   * dayMinEquity, day } (GET /api/mt5/live, or the Edge Functions). Returns
+   *   { state: 'live', equity, ... }   newest snapshot at most 5 minutes old
+   *   { state: 'stale', takenAt }       older: its number is NOT used
+   *   { state: 'none' }                 no EA report
+   */
+  function liveEquity(eq, now) {
+    const at = Date.parse(eq && eq.takenAt);
+    if (!eq || !fin(num(eq.equity)) || !fin(at)) return { state: 'none' };
+    const nowMs = now == null ? Date.now() : +now;
+    if (nowMs - at > EQUITY_STALE_MS) return { state: 'stale', takenAt: eq.takenAt };
+    return {
+      state: 'live', equity: num(eq.equity), balance: fin(num(eq.balance)) ? num(eq.balance) : null, takenAt: eq.takenAt,
+      dayStartEquity: fin(num(eq.dayStartEquity)) ? num(eq.dayStartEquity) : null,
+      dayMinEquity: fin(num(eq.dayMinEquity)) ? num(eq.dayMinEquity) : null, day: eq.day || null,
+    };
+  }
+  /** Day-start equity: the snapshot nearest to 00:00 of the rule day, within 10 minutes; null otherwise. */
+  function pickDayStartEquity(rows, dayStartMs) {
+    let best = null;
+    for (const r of Array.isArray(rows) ? rows : []) {
+      const at = Date.parse(r && (r.taken_at instanceof Date ? r.taken_at.toISOString() : r.taken_at));
+      const e = num(r && r.equity);
+      if (!fin(at) || !fin(e) || Math.abs(at - dayStartMs) > DAY_START_WINDOW_MS) continue;
+      if (!best || Math.abs(at - dayStartMs) < best.d) best = { d: Math.abs(at - dayStartMs), e };
+    }
+    return best ? best.e : null;
+  }
+
   /**
    * Today's daily-loss position for an account with a preset (null without one).
-   * opts: { pnlFor(trade) → money, now (Date|ms), dayStartEquity (when an equity feed exists) }.
+   * opts: { pnlFor(trade) → money, now (Date|ms), dayStartEquity, equity (live equity, Part 8) }.
    * trades: this account's trades. Cash movements count toward the balance, never as a loss.
+   * With an equity base and live equity, the loss is measured on equity (floating P/L
+   * included): used = anchor − equity now, worst = anchor − the day's lowest equity.
    */
   function dailyStatus(account, trades, opts) {
     const rules = rulesFor(account);
@@ -193,9 +249,25 @@
       .filter(m => m && /^\d{4}-\d{2}-\d{2}$/.test(String(m.date)) && m.date < today && fin(num(m.amount)))
       .reduce((s, m) => s + (m.type === 'withdraw' ? -1 : 1) * Math.abs(num(m.amount)), 0);
     const dayStartBalance = fin(start) ? round2(start + before + cash) : NaN;
-    const f = dailyFloor(rules, { dayStartBalance, dayStartEquity: o.dayStartEquity, initialCapital: start });
-    const used = round2(Math.max(0, -todayPnl));
-    const out = { rules, tz, today, dayStartBalance, todayPnl: round2(todayPnl), todayCount, used, ...f };
+    const equityBase = rules.dailyLossBase === 'equity';
+    const le = equityBase ? liveEquity(o.equity, o.now) : { state: 'n/a' };
+    const sameDay = le.state === 'live' && (!le.day || le.day === today); // the server's day numbers are for today
+    const dse = fin(num(o.dayStartEquity)) ? num(o.dayStartEquity) : sameDay ? le.dayStartEquity : null;
+    const f = dailyFloor(rules, { dayStartBalance, dayStartEquity: dse, initialCapital: start });
+    let used = round2(Math.max(0, -todayPnl));
+    const out = { rules, tz, today, dayStartBalance, todayPnl: round2(todayPnl), todayCount, ...f, basis: 'closed balance', equityState: le.state };
+    if (le.state === 'stale') out.equityAt = le.takenAt;
+    if (le.state === 'live' && f.complete) {
+      const low = Math.min(le.equity, sameDay && le.dayMinEquity != null ? le.dayMinEquity : le.equity);
+      used = round2(Math.max(0, f.anchor - le.equity));
+      Object.assign(out, {
+        basis: 'equity', equity: le.equity, equityAt: le.takenAt, dayStartEquity: dse, dayMinEquity: round2(low),
+        worst: round2(Math.max(0, f.anchor - low)), breached: low <= f.floor + 1e-9,
+        // ftmo measures from the day-start balance by definition; standard needs day-start equity
+        understated: f.formula === 'ftmo' ? false : dse === null,
+      });
+    }
+    out.used = used;
     if (f.complete) { out.allowed = f.amount; out.left = round2(f.amount - used); }
     return out;
   }
@@ -297,7 +369,21 @@
         breach = { kind: 'daily_loss', day: d, tradeId: t.id, loss: round2(-dayPnl), limit: allowance, pct: rules.dailyLossPct, formula: rules.dailyLossFormula };
       }
     }
-    const drawdown = round2(Math.max(0, start - bal));
+    const daily = dailyStatus(account, list.map(x => x.t), { pnlFor, now: o.now, equity: o.equity });
+    // Part 8: firm presets (equity base) with live equity: floating P/L counts. The day's lowest
+    // equity reaching the daily floor, or equity reaching the max drawdown level, is a breach
+    // even when closed balance alone is fine.
+    const le = rules.dailyLossBase === 'equity' ? liveEquity(o.equity, o.now) : { state: 'n/a' };
+    let drawdown = round2(Math.max(0, start - bal));
+    if (le.state === 'live') {
+      const low = daily && daily.basis === 'equity' ? Math.min(le.equity, daily.dayMinEquity) : le.equity;
+      if (!breach && start - low >= lv.maxLoss - 1e-9) {
+        breach = { kind: 'max_drawdown', basis: 'equity', day: daily ? daily.today : null, loss: round2(start - low), limit: lv.maxLoss, pct: rules.maxDrawdownPct, equity: round2(low) };
+      } else if (!breach && daily && daily.basis === 'equity' && daily.breached) {
+        breach = { kind: 'daily_loss', basis: 'equity', day: daily.today, loss: daily.worst, limit: daily.amount, pct: rules.dailyLossPct, formula: rules.dailyLossFormula, equity: daily.dayMinEquity };
+      }
+      drawdown = round2(Math.max(drawdown, start - le.equity));
+    }
     const computed = breach ? 'blown' : drawdown >= lv.warnLoss - 1e-9 ? 'warn' : 'ok';
     return {
       ...base, rules, tz,
@@ -305,8 +391,10 @@
       blown: saved || (breach ? { ...breach, runNumber } : null),
       breach, drawdown, drawdownPct: round2(drawdown / start * 100), warnLoss: lv.warnLoss, maxLoss: lv.maxLoss,
       balance: round2(bal), peak: round2(peak), tradeCount: list.length,
-      understated: rules.dailyLossBase === 'equity',
-      daily: dailyStatus(account, list.map(x => x.t), { pnlFor, now: o.now }),
+      // equity base without live equity: closed balance only, understated (never a green pass)
+      understated: rules.dailyLossBase === 'equity' && (le.state !== 'live' || !!(daily && daily.understated)),
+      equityState: le.state, equityAt: le.takenAt || null, equity: le.state === 'live' ? le.equity : null,
+      daily,
     };
   }
 
@@ -318,7 +406,8 @@
 
   /**
    * Accounts whose current run is breached but not yet recorded as BLOWN.
-   * accountsDoc: { Real: [...], Funded: [...], ... }; ctx: { riskPct, initialCapital }.
+   * accountsDoc: { Real: [...], Funded: [...], ... }; ctx: { riskPct, initialCapital, now,
+   * equityFor(accountId) → live equity (Part 8) }.
    * Returns [{ type, id, blown }], blown being the record to store on the account.
    * The server (server.js checkRules) and the risk-check Edge Function both use this.
    */
@@ -329,7 +418,8 @@
       if (!Array.isArray(list)) continue;
       for (const acc of list) {
         if (!acc || typeof acc !== 'object' || acc.blown || !rulesFor(acc)) continue;
-        const s = accountState(acc, accountTrades(type, acc, trades), { pnlFor: t => pnlOf(t, acc, c) });
+        const equity = typeof c.equityFor === 'function' ? c.equityFor(String(acc.id)) : undefined;
+        const s = accountState(acc, accountTrades(type, acc, trades), { pnlFor: t => pnlOf(t, acc, c), equity, now: c.now });
         if (s.state === 'blown' && s.breach) out.push({ type, id: String(acc.id), blown: { ...s.breach, runNumber: s.runNumber, at: atIso || new Date().toISOString() } });
       }
     }
@@ -341,10 +431,65 @@
     if (!blown) return '';
     const m = typeof money === 'function' ? money : (v => String(v));
     const fd = typeof date === 'function' ? date : (v => v);
+    const onEquity = blown.basis === 'equity' ? ' on equity (floating P/L included)' : '';
     const what = blown.kind === 'daily_loss'
-      ? `Daily loss limit breached: lost ${m(blown.loss)} in one day, allowed ${m(blown.limit)} (${blown.pct}%${blown.formula === 'ftmo' ? ' of initial capital' : ''})`
-      : `Max drawdown reached: down ${m(blown.loss)} from the starting balance, limit ${m(blown.limit)} (${blown.pct}%)`;
+      ? `Daily loss limit breached${onEquity}: lost ${m(blown.loss)} in one day, allowed ${m(blown.limit)} (${blown.pct}%${blown.formula === 'ftmo' ? ' of initial capital' : ''})`
+      : `Max drawdown reached${onEquity}: down ${m(blown.loss)} from the starting balance, limit ${m(blown.limit)} (${blown.pct}%)`;
     return blown.day ? `${what}, on ${fd(blown.day)}` : what;
+  }
+
+  /**
+   * The EA-reported broker offset next to the account's reset zone (Part 8). A wrong reset zone
+   * silently counts daily loss on the wrong day. Returns null without rules or an offset, else
+   * { serverOffsetMinutes, zoneOffsetMinutes, agree, warn, message, serverLabel, zoneLabel }.
+   * warn: the firm resets at 00:00 server time (or Custom) and the two differ.
+   */
+  function offsetLabel(min) {
+    const a = Math.abs(min), h = Math.floor(a / 60), mm = a % 60;
+    return `UTC${min < 0 ? '−' : '+'}${h}${mm ? ':' + String(mm).padStart(2, '0') : ''}`;
+  }
+  /**
+   * What an equity-based daily figure (dailyStatus) is measured on, in words (Part 8).
+   * when(iso) formats a time. Returns null for balance-based presets.
+   *   { live: true, short, long }   measured on live equity
+   *   { live: false, short, long }  equity stale or missing: closed balance only, understated
+   */
+  function equityText(s, when) {
+    if (!s || !s.rules || s.rules.dailyLossBase !== 'equity') return null;
+    const w = typeof when === 'function' ? when : (v => v);
+    if (s.basis === 'equity') {
+      return { live: true, short: 'Daily loss on live equity',
+        long: `Measured on live equity (floating P/L included), as of ${w(s.equityAt)}.${s.understated ? ' Equity at the start of the day is unknown (MT5 was not reporting at 00:00), so the floor shown may be too low.' : ''}` };
+    }
+    if (s.equityState === 'stale') {
+      return { live: false, short: 'Equity stale',
+        long: `Equity stale: the last MT5 report was at ${w(s.equityAt)}, more than 5 minutes ago, so only closed balance is counted (understated).` };
+    }
+    return { live: false, short: 'Daily loss: closed balance only', long: `${EQUITY_MSG.replace(/^./, c => c.toUpperCase())}.` };
+  }
+
+  function offsetCheck(account, serverOffsetMinutes, now) {
+    const rules = rulesFor(account);
+    if (!rules || !Number.isInteger(serverOffsetMinutes)) return null;
+    const tz = rules.resetTimezone;
+    const zone = zoneOffsetMinutes(tz, now);
+    const agree = zone === serverOffsetMinutes;
+    const serverLabel = offsetLabel(serverOffsetMinutes), zoneLabel = offsetLabel(zone);
+    let warn = false, message;
+    if (rules.resetAt === 'server') {
+      warn = !agree;
+      message = agree
+        ? `MT5 server time ${serverLabel} matches the reset zone ${tz} (${zoneLabel}).`
+        : `MT5 server time is ${serverLabel}, but the reset zone ${tz} is ${zoneLabel} now. ${rules.label} resets at 00:00 server time: check the reset zone, or daily loss is counted on the wrong day.`;
+    } else if (rules.resetAt === 'unknown') {
+      warn = !agree;
+      message = agree
+        ? `MT5 server time ${serverLabel} matches the reset zone ${tz} (${zoneLabel}).`
+        : `MT5 server time is ${serverLabel}; the reset zone ${tz} is ${zoneLabel} now. If your firm resets at 00:00 server time, change the reset zone to match.`;
+    } else {
+      message = `MT5 server time is ${serverLabel}. ${rules.label} resets at 00:00 ${tz} (${zoneLabel}), not at server midnight.`;
+    }
+    return { serverOffsetMinutes, zoneOffsetMinutes: zone, agree, warn, message, serverLabel, zoneLabel };
   }
 
   /** Plain-language formula for the editor and the cards. money(v) formats an amount. */
@@ -401,6 +546,7 @@
     presetById, validResetTz, checkCustom, rulesFor, dailyFloor, drawdownLevels,
     dayOf, tradeDay, dailyStatus, formulaText, eaAllowed, timezoneChoices, tzLabel,
     pnlOf, brokerPnl, inRun, accountState, blownReason, blocksManualEntry, accountTrades, newBreaches,
+    zoneOffsetMinutes, dayStartUtc, liveEquity, pickDayStartEquity, offsetCheck, offsetLabel, equityText, EQUITY_STALE_MS,
     BLOWN_WORD: 'BLOWN',
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -58,6 +58,10 @@ function documentStore(backend) {
     listOpenPositions: backend.listOpenPositions,
     /** Newest equity snapshot of an account: { equity, balance, server_offset_minutes, taken_at } or null. */
     latestEquity: backend.latestEquity,
+    /** Snapshots of an account between two instants: [{ equity, taken_at }] (day-start equity). */
+    equityBetween: backend.equityBetween,
+    /** Lowest equity of an account between two instants, or null. */
+    minEquity: backend.minEquity,
 
     /** The stored document as the app expects it (string), or null when there is none. */
     async loadDoc(uid, key) {
@@ -222,6 +226,8 @@ export function sqliteRelational(db) {
     listEaKeys: async uid => db.prepare('SELECT account_id, key_hint, mt5_login, mt5_server, created_at, last_used_at, last_server_offset_minutes FROM ea_keys WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at').all(uid),
     listOpenPositions: async uid => db.prepare('SELECT * FROM mt5_positions WHERE user_id = ? ORDER BY account_id, open_time').all(uid),
     latestEquity: async (uid, accountId) => db.prepare('SELECT equity, balance, server_offset_minutes, taken_at FROM equity_snapshots WHERE user_id = ? AND account_id = ? ORDER BY taken_at DESC LIMIT 1').get(uid, accountId) ?? null,
+    equityBetween: async (uid, accountId, fromIso, toIso) => db.prepare('SELECT equity, taken_at FROM equity_snapshots WHERE user_id = ? AND account_id = ? AND taken_at >= ? AND taken_at <= ? ORDER BY taken_at').all(uid, accountId, fromIso, toIso),
+    minEquity: async (uid, accountId, fromIso, toIso) => db.prepare('SELECT MIN(equity) AS low FROM equity_snapshots WHERE user_id = ? AND account_id = ? AND taken_at >= ? AND taken_at <= ?').get(uid, accountId, fromIso, toIso)?.low ?? null,
     deleteUser: async uid => db.transaction(() => {
       for (const t of ['mt5_positions', 'ea_keys', 'trade_attachments', 'trades', 'equity_snapshots', 'account_runs', 'rule_overrides', 'accounts', 'journal_migrated_users']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(uid);
     })(),
@@ -287,6 +293,11 @@ export function supabaseRelational(request) {
     latestEquity: async (uid, accountId) => {
       const [row] = (await request(`equity_snapshots?select=equity,balance,server_offset_minutes,taken_at&user_id=eq.${enc(uid)}&account_id=eq.${enc(accountId)}&order=taken_at.desc&limit=1`)) || [];
       return row ?? null;
+    },
+    equityBetween: (uid, accountId, fromIso, toIso) => all(`equity_snapshots?select=equity,taken_at&user_id=eq.${enc(uid)}&account_id=eq.${enc(accountId)}&taken_at=gte.${enc(fromIso)}&taken_at=lte.${enc(toIso)}&order=taken_at.asc`),
+    minEquity: async (uid, accountId, fromIso, toIso) => {
+      const [row] = (await request(`equity_snapshots?select=equity&user_id=eq.${enc(uid)}&account_id=eq.${enc(accountId)}&taken_at=gte.${enc(fromIso)}&taken_at=lte.${enc(toIso)}&order=equity.asc&limit=1`)) || [];
+      return row ? Number(row.equity) : null;
     },
     // Postgres: rows follow the users row (on delete cascade)
   });
